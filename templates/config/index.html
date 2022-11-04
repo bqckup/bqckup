@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-wrapper">
+    <div class="container-xl">
+        <div class="page-header">
+            <div class="row align-items-center" style="padding-bottom:1em;">
+                <div class="col-auto">
+                    <div class="page-pretitle">
+                        General
+                    </div>
+                    <h2 class="page-title">
+                        Config
+                    </h2>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-7">
+                {% if firstTime %}
+                <div class="alert alert-warning mb-3">
+                    Before you using this apps,you need to setup the configuration first.
+                </div>
+                {% elif not is_authorized %}
+                <div class="alert alert-danger mb-3">
+                    Your storage is not authorized <b class="text-danger">(Failed to connect)</b>
+                </div>
+                {% endif %}
+                <div class="card">
+                    <ul class="nav nav-tabs" data-bs-toggle="tabs">
+                        <li class="nav-item">
+                            <a href="#apps" class="nav-link active" data-bs-toggle="tab">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-settings-automation mr-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                    <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"></path>
+                                    <path d="M10 9v6l5 -3z"></path>
+                                 </svg>
+                                Apps
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#backup" class="nav-link" data-bs-toggle="tab">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-cloud-upload mr-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                    <path d="M7 18a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7h-1"></path>
+                                    <polyline points="9 15 12 12 15 15"></polyline>
+                                    <line x1="12" y1="12" x2="12" y2="21"></line>
+                                 </svg>
+                                Backup
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#email" class="nav-link" data-bs-toggle="tab">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 icon icon-tabler icon-tabler-mail" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                    <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                                    <polyline points="3 7 12 13 21 7"></polyline>
+                                 </svg>
+                                E-Mail
+                            </a>
+                        </li>
+                    </ul>                      
+                    <div class="card-body">
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="apps">
+                                <form action="{{ url_for('mConfig.save_config') }}" method="POST" class="form_ajax">
+                                    <input type="hidden" name="backup_id" value="0">
+                                    <div class="mb-3">
+                                        <label for="" class="form-label text-muted">Turn on apps every <small class="text-muted">(In hours)</small></label>
+                                        <input type="text" name="turn_on_apps" placeholder="e.g: 4" class="form-control" value="{{ turn_on_apps }}">
+                                        <small class="form-text text-muted">
+                                            This will turn off the services
+                                        </small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="" class="form-label text-muted">Server disk limit <small class="text-muted">(In GB)</small></label>
+                                        <input type="number" name="server_disk_limit" placeholder="e.g: 4" class="form-control" value="{{ server_disk_limit }}">
+                                        <small class="form-text text-muted">
+                                            This will warn you if its reach this limit
+                                        </small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="" class="form-label text-muted">Cloud disk limit <small class="text-muted">(In GB)</small></label>
+                                        <input type="number" name="cloud_storage_limit" placeholder="e.g: 4" class="form-control" value="{{ cloud_storage_limit }}">
+                                        <small class="form-text text-muted">
+                                            This will warn you if its reach this limit
+                                        </small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-check form-check-inline">
+                                            <input class="form-check-input" type="checkbox" {{ '' if disk_full_notification == '' else 'checked' }} name="disk_full_notification">
+                                            <span class="form-check-label">Email me when disk reach it's limit</span>
+                                        </label>
+                                    </div>
+                                    <button type="submit" class="btn btn-md btn-primary float-right">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-send" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                                            <path d="M21 3l-6.5 18a0.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a0.55 .55 0 0 1 0 -1l18 -6.5"></path>
+                                         </svg>
+                                        Save
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="tab-pane fade" id="backup">
+                                <div class="mb-3">
+                                    <label for="" class="form-label text-muted">Cloud</label>
+                                    <select id="cloud_storage"  class="form-control">
+                                        {% set selected = 'selected' if cloud_storage == 'digitaloceans' else '' %}
+                                        <option value="digitaloceans" selected>DigitalOceans spaces S3</option>
+                                    </select> 
+                                </div>
+                                <div class="form_section drive" style="display: none !important;">
+                                    <form action="{{ url_for('mConfig.save_config') }}" method="POST" class="form_ajax" callback="checkAuth">
+                                    <input type="hidden" name="cloud_storage">
+                                        {% if google_auth %}
+                                        <div class="alert alert-primary" id="alert_google_auth">
+                                        <b>Authenticated</b> ✅,
+                                        <div class="pt-1">
+                                            <a href="{{ google_auth_link }}" target="_blank">Change Account ?</a>
+                                        </div>
+                                    </div>
+
+                                    {% else %}
+                                    <div class="alert alert-warning" id="alert_google_auth">
+                                        You're not authorized, please <a href="{{ google_auth_link }}" target="_blank">Sign In</a>
+                                    </div>
+
+                                    {% endif %}
+
+                                    <div class="mb-3">
+                                        <label for="" class="form-label">Code</label>
+                                        <input type="text" class="form-control" name="google_code" autocomplete="off" value="{{ google_code }}" placeholder="Secret Code" >
+                                    </div>
+                                    <button type="submit" class="btn btn-md btn-primary float-right">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-send" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                                            <path d="M21 3l-6.5 18a0.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a0.55 .55 0 0 1 0 -1l18 -6.5"></path>
+                                         </svg>
+                                        Save
+                                    </button>
+                                </form>
+                                </div>
+                                <div class="form_section digitaloceans" style="display: none !important;">
+                                    <form action="{{ url_for('mConfig.save_config') }}" method="POST" class="form_ajax">
+                                        <input type="hidden" name="cloud_storage">
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted">Region name</label>
+                                            <input type="text" class="form-control" name="cloud_storage_region_name" value="{{ region_name }}" placeholder="Region name">
+                                        </div>
+    
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted">Bucket Name</label>
+                                            <input type="text" class="form-control" name="cloud_storage_bucket_name" value="{{ bucket_name }}" placeholder="Bucket name">
+                                        </div>
+                                    
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted">Endpoint URL</label>
+                                            <input type="text" class="form-control" name="cloud_storage_endpoint" placeholder="URL Endpoint" value="{{ url_endpoint }}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted">Key</label>
+                                            <input type="text" class="form-control" name="cloud_storage_key" placeholder="ID" value="{{ client_key }}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted">Secret</label>
+                                            <input type="text" class="form-control" name="cloud_storage_secret" placeholder="Secret Key" value="{{ client_secret }}">
+                                        </div>
+                                        <button type="submit" class="btn btn-md btn-primary float-right">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-send" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                                                <path d="M21 3l-6.5 18a0.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a0.55 .55 0 0 1 0 -1l18 -6.5"></path>
+                                             </svg>
+                                            Save
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="email">
+                                <div class="alert alert-info">
+                                    To setup the email for notification, you can read it <a href="#" style="font-weight:600">Here</a>
+                                </div>
+                                <form action="{{ url_for('mConfig.save_config') }}" method="POST" class="form_ajax">
+                                    <div class="mb-3">
+                                        <label for="" class="form-label text-muted">Provider</label>
+                                        <select name="provider_email_master" class="form-control">
+                                            <option value="gmail" selected>G-Mail</option>
+                                        </select>
+                                    </div>                                    
+                                    <div class="mb-3">
+                                        <label for="" class="form-label text-muted">E-mail</label>
+                                        <input type="email" class="form-control" placeholder="E-mail" name="email_master" value="{{ email_master }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="" class="form-label text-muted">Password</label>
+                                        <input type="password" name="password_email_master" class="form-control" placeholder="Password" value="do_not_change">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="" class="form-label text-muted">Port</label>
+                                        <input type="number" name="port_email_master" class="form-control" placeholder="PORT" value="{{ port_email_master }}">
+                                        <small class="text-muted form-text">
+                                            Recommended to use 587 for gmail
+                                        </small>
+                                    </div>
+                                    <button type="submit" class="btn btn-md btn-primary float-right">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-send" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                                            <path d="M21 3l-6.5 18a0.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a0.55 .55 0 0 1 0 -1l18 -6.5"></path>
+                                         </svg>
+                                         Save
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+{% block script %}
+<script src="{{ url_for('static', filename='additional/js/config.js') }}"></script>
+{% endblock %}

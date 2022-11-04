@@ -1,0 +1,52 @@
+<div class="d-flex align-items-center">
+    <div class="subheader">Last BackUp</div>
+</div>
+<div class="h2 mr-2 text-primary">
+    <a href="#">
+        {{ lastBackup.backup_id|isNone|getSiteName }}
+    </a>
+</div>
+<style>
+    table.d-block tr td {
+        padding: .2em;
+    }
+</style>
+<div class="row">
+    <div class="col-12 mt-2">
+        <div class="text-muted">Filename</div>
+        <span style="font-weight: 500;">{{ lastBackup.path|isNone|getFilenameFromFullPath }} <small
+                style="color:#a6a6a6;">({{ lastBackup.size|isNone|humanReadableSize }})</small></span>
+    </div>
+    <div class="col-12 mt-3">
+        <div class="text-muted">Next backup</div>
+        {% if timeNextBackup %}
+        <div style="font-weight: 500;" class="next_backup"></div>
+        {% else %}
+        -
+        {% endif %}
+
+    </div>
+    <div class="mt-1">
+        <small style="color:#a6a6a6;">Backup name : {{ nextBackup['backup_name'] if nextBackup else '' }}</small>
+    </div>
+</div>
+
+<script>
+    if(typeof nextBackup == 'undefined') {
+        var nextBackup = new Date(parseInt("{{ timeNextBackup }}") * 1000)
+    }
+    if(typeof currentDate == 'undefined') {
+        var currentDate = Date.now()
+    }
+  
+    if (currentDate > nextBackup) {
+      $('.next_backup').html(
+        `<span class="badge bg-yellow-lt">Backup on progress</span>`
+      );
+    } else {
+      $('.next_backup').countdown({
+        until: nextBackup,
+        expiryText: "On Progress..."
+      })
+    }
+  </script>

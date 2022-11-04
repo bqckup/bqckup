@@ -1,0 +1,81 @@
+
+<!doctype html>
+<!--
+* Tabler - Premium and Open Source dashboard template with responsive and high quality UI.
+* @version 1.0.0-alpha.5
+* @link https://github.com/tabler/tabler
+* Copyright 2018-2019 The Tabler Authors
+* Copyright 2018-2019 codecalm.net Paweł Kuna
+* Licensed under MIT (https://tabler.io/license)
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+    <title>Page 401 | OJTBackup</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
+    <meta name="msapplication-TileColor" content="#206bc4"/>
+    <meta name="theme-color" content="#206bc4"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="mobile-web-app-capable" content="yes"/>
+    <meta name="HandheldFriendly" content="True"/>
+    <meta name="MobileOptimized" content="320"/>
+    <meta name="robots" content="noindex,nofollow,noarchive"/>
+    <link rel="icon" href="./favicon.ico" type="image/x-icon"/>
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon"/>
+    <!-- Libs CSS -->
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon"/>
+    <!-- Libs CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='libs/jqvmap/dist/jqvmap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='libs/selectize/dist/css/selectize.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='libs/fullcalendar/core/main.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='libs/fullcalendar/daygrid/main.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='libs/fullcalendar/timegrid/main.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='libs/fullcalendar/list/main.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='libs/flatpickr/dist/flatpickr.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='libs/nouislider/distribute/nouislider.min.css') }}">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v1.8.0/mapbox-gl.css" rel="stylesheet"/>
+    <!-- Tabler Core -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tabler.min.css') }}">
+    <!-- Tabler Plugins -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tabler-flags.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tabler-payments.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tabler-buttons.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/demo.min.css') }}">
+    <style>
+      body {
+      	display: none;
+      }
+    </style>
+  </head>
+  <body class="antialiased border-top-wide border-primary d-flex flex-column">
+    <div class="flex-fill d-flex align-items-center justify-content-center">
+      <div class="container-tight py-6">
+        <div class="empty">
+          <div class="empty-header">401</div>
+          <p class="empty-title">Oops… You just found an error page</p>
+          <p class="empty-subtitle text-muted">
+            We are sorry but our server encountered an internal error
+          </p>
+          <div class="empty-action">
+            <a href="{{ url_for('auth.login') }}" class="btn btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z"/>
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <line x1="5" y1="12" x2="11" y2="18" />
+                <line x1="5" y1="12" x2="11" y2="6" />
+              </svg>
+              Go sign in
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Libs JS -->
+    <script>
+      document.body.style.display = "block"
+    </script>
+  </body>
+</html>
