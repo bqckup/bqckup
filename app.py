@@ -1,6 +1,24 @@
+from modules.docs import docs
+from modules.config import mConfig
+from modules.auth import auth
+from helpers import (
+    generate_token,
+    initialization,
+    splitNewLine,
+    isNone,
+    getDateFromUnix,
+    getInt,
+    convertDatetime,
+    today24Format,
+    timeSince,
+)
+from classes.s3 import s3
 from models import BackupQueue
 from config import *
-import sys, logging, time, os
+import sys
+import logging
+import time
+import os
 from datetime import timedelta
 from flask.json import jsonify
 from decouple import config
@@ -18,24 +36,8 @@ from flask_login import LoginManager, login_required, logout_user, current_user
 from flask_caching import Cache
 from playhouse.shortcuts import model_to_dict
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from classes.s3 import s3
-from helpers import (
-    generate_token,
-    initialization,
-    splitNewLine,
-    isNone,
-    getDateFromUnix,
-    getInt,
-    convertDatetime,
-    today24Format,
-    timeSince,
-)
-
-from modules.auth import auth
-from modules.config import mConfig
-from modules.docs import docs
+sys.path.insert(0, os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..")))
 
 
 app = Flask(__name__)
@@ -45,6 +47,8 @@ login_manager.init_app(app)
 login_manager.session_protection = "basic"
 
 # user loader needed by flask_login
+
+
 @login_manager.user_loader
 def load_user(id):
     from models import User
@@ -304,15 +308,17 @@ def index():
     if not AWS_S3_BUCKET:
         return redirect(url_for('mConfig.index'))
 
+    print(session)
+
     cloudUsage = ojtbackup.getCloudDiskUsage()
     cloudStorageFull = ojtbackup.cloudStorageFull()
 
     # checking update
     if session["check_update"]:
         session["need_update"] = False
-        if OJTBackup().checkUpdate() != 0:
-            session["need_update"] = True
-            session["check_update"] = False
+        # if OJTBackup().checkUpdate() != 0:
+        #     session["need_update"] = True
+        #     session["check_update"] = False
 
     return render_template(
         "index.html",
@@ -447,7 +453,7 @@ def backup_now():
 
     # check if there is any backup runnig
     isExists = BackupQueue().runningBackupExists()
-    
+
     if isExists:
         return jsonify(error=1, msg="There is doing backup Progress,Please wait until it done")
 
@@ -528,7 +534,8 @@ def save():
 
             c = mysql.connector.connect(**databaseCredentials)
         except mysql.connector.Error as e:
-            flash("Something wrong with your database configuation, %s" % e, "error")
+            flash("Something wrong with your database configuation, %s" %
+                  e, "error")
             return redirect(url_for("index"))
         else:
             c.close()
@@ -571,7 +578,8 @@ def save():
         except Exception as e:
             # doing rollback if its failed
             trx.rollback()
-            flash(f"Failed added {post.get('site')}, cause : {e.strip()}", "error")
+            flash(
+                f"Failed added {post.get('site')}, cause : {e.strip()}", "error")
             return redirect(url_for("index"))
 
         flash(f"Success added {post.get('site')}", "success")
@@ -677,7 +685,7 @@ def clearFolderName(s):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True, port=config("PORT"))
+    app.run(host="127.0.0.1", debug=True, port=9393)
 else:
     logging.basicConfig(
         filename="OJTBackup.log",

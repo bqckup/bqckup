@@ -16,12 +16,12 @@ def login():
             return redirect(url_for('index'))
 
         try:
-            User().select().get()            
+            User().select().get()
         except:
             return redirect(url_for('auth.register'))
 
         return render_template('auth/login.html')
-        
+
     elif request.method == 'POST':
         session.permanent = True
         form = request.form
@@ -31,6 +31,7 @@ def login():
         try:
             user = User().select().where(User.username == username).get()
         except Exception as e:
+            print(e)
             flash(f"User {username} not found", "error")
             return redirect(url_for('auth.login'))
 
@@ -38,18 +39,20 @@ def login():
             login_user(user, remember=False, duration=timedelta(minutes=1))
 
             session['check_update'] = True
+            session['name'] = user.name
 
             return redirect(url_for('index'))
         else:
             flash("Wrong username/password", 'error')
             return redirect(url_for('auth.login'))
 
+
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
     from models import User
 
     if 'username' in session:
-            return redirect(url_for('index'))
+        return redirect(url_for('index'))
 
     if request.method == 'GET':
         try:
@@ -85,6 +88,7 @@ def register():
 
         return redirect(url_for('auth.register'))
 
+
 @auth.route('/change_password', methods=['GET', 'POST'])
 def change_password():
     from models import User
@@ -99,7 +103,7 @@ def change_password():
     user = User().getByTmpCode(code)
 
     from datetime import datetime
-    
+
     # check if code still valid
     if not user or datetime.now() > user.forgot_password_time:
 
@@ -109,7 +113,7 @@ def change_password():
         return redirect(url_for('auth.login'))
 
     if request.method == 'POST':
-        user.password = generate_password_hash(request.form.get('password'))    
+        user.password = generate_password_hash(request.form.get('password'))
         user.save()
 
         User().resetTmpCode(user.id)
@@ -125,20 +129,19 @@ def change_password():
 def forgot_password():
     from models import User
     if 'username' in session:
-            return redirect(url_for('index'))
-            
+        return redirect(url_for('index'))
+
     if request.method == 'POST':
         form = request.form
         email = form.get('email').strip()
         # check if email exists
         user = User().getByColumn(User.email, email)
 
-
         if not user:
             flash(f"{email} not found", 'error')
             return redirect(url_for('auth.forgot_password'))
 
-        # create a code        
+        # create a code
         code = User().generateTmpCode(user)
 
         from urllib.parse import urlparse
@@ -149,9 +152,9 @@ def forgot_password():
 
         # send mail
         data = {
-            'target':user.email,
-            'subject':'Reset your password',
-            'message':f"Here's the link to reset your password<br>{linkReset}"
+            'target': user.email,
+            'subject': 'Reset your password',
+            'message': f"Here's the link to reset your password<br>{linkReset}"
         }
 
         Mail(data).send()

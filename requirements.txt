@@ -23,5 +23,4 @@ flask_wtf
 flask_cors
 flask_caching
 mysql-connector-python
-yaml
 pyyaml
