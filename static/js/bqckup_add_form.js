@@ -42,6 +42,9 @@ function bqckup_add() {
         user: "",
         password: "",
       },
+      configuration: {
+        schedule: "",
+      },
     },
     submit() {},
   };

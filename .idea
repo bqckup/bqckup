@@ -1,0 +1,12 @@
+today
+current_time
+last backup
+time schedule
+backup schedule
+
+schedule = last backup diff with today
+
+# Today Example
+if schedule == 1:
+	if current_time < schedule time:
+		do backup

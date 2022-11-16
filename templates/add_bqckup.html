@@ -27,13 +27,13 @@
     <div class="page-body">
         <div class="container-xl">
             <div class="steps">
-                <a href="#" class="step-item" :class="step == 'files' ? 'active' : ''" data-bs-toggle="tooltip" title="Step 1 description">
+                <a href="#" class="step-item" :class="step == 'files' ? 'active' : ''">
                     Setup Files
                 </a>
-                <a href="#" class="step-item" :class="step == 'database' ? 'active' : ''" data-bs-toggle="tooltip" title="Step 2 description">
+                <a href="#" class="step-item" :class="step == 'database' ? 'active' : ''">
                     Setup Database
                 </a>
-                <a href="#" class="step-item" :class="step == 'files' ? 'configuration' : ''" data-bs-toggle="tooltip" title="Step 3 description">
+                <a href="#" class="step-item" :class="step == 'files' ? 'configuration' : ''">
                     Setup Bqckup
                 </a>
             </div>
@@ -49,7 +49,7 @@
                     </div>
                   </div>
                 <div class="card-body">
-                    <div x-show="step == 'files'">
+                    <div x-show="step == 'files'" x-transition>
                         <div class="mb-3">
                             <label for="" class="form-label">Backup name</label>
                             <input type="text" class="form-control" x-model.defer="payload.backup.name" placeholder="Backup name" required>
@@ -59,7 +59,7 @@
                             <textarea name="" id="" cols="30" rows="3" x-model.defer="payload.backup.path" class="form-control" required></textarea>
                         </div>
                     </div>
-                    <div x-show="step == 'database'">
+                    <div x-show="step == 'database'" x-transition>
                         <div class="alert alert-important alert-info alert-dismissible" role="alert">
                             <div class="d-flex">
                                 <div class="spinner-border" role="status"></div>
@@ -93,7 +93,8 @@
                                     <path d="M10 11l-2 2"></path>
                                     <path d="M13 14l-2 2"></path>
                                     <path d="M16 16l4 4"></path>
-                                 </svg>                                <div class="d-flex align-items-center ms-2">
+                                 </svg>                                
+                                 <div class="d-flex align-items-center ms-2">
                                     Connection failed
                                 </div>
                             </div>
@@ -132,6 +133,21 @@
                                  </svg>
                                 Test Connection
                             </button>
+                        </div>
+                    </div>
+                    <div x-show="step == 'configuration'">
+                        <div class="mb-3">
+                            <label class="form-label">Schedule</label>
+                            <div class="btn-group w-100" role="group">
+                              <input type="radio" class="btn-check" x-model.defer="payload.configuration.schedule" id="schedule-daily" autocomplete="off" checked="" value="daily">
+                              <label for="schedule-daily" type="button" class="btn">Daily</label>
+                              <input type="radio" class="btn-check" x-model.defer="payload.configuration.schedule" id="schedule-weekly" autocomplete="off">
+                              <label for="schedule-weekly" type="button" class="btn">Weekly</label>
+                              <input type="radio" class="btn-check" x-model.defer="payload.configuration.schedule" id="schedule-monthly" autocomplete="off">
+                              <label for="schedule-monthly" type="button" class="btn">Monthly</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
                         </div>
                     </div>
                 </div>
