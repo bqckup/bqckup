@@ -1,9 +1,10 @@
+import os, logging
 from datetime import timedelta
 from flask import Blueprint, request, flash, redirect, url_for, session, render_template
 from flask_login import current_user, login_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from helpers import generate_token
-
+from helpers import generate_token, read_file_content
+from config import BQ_PATH
 
 auth = Blueprint('auth', __name__)
 
@@ -31,7 +32,7 @@ def login():
         try:
             user = User().select().where(User.username == username).get()
         except Exception as e:
-            print(e)
+            logging.error(e)
             flash(f"User {username} not found", "error")
             return redirect(url_for('auth.login'))
 

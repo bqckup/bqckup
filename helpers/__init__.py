@@ -1,13 +1,30 @@
 import os, errno, datetime, logging, sys
-from os import getcwd, path
+from os import path
 from datetime import date
-
+from pathlib import Path
 sys.path.append("..")
+"""
+convert bytes to megabytes, etc.
+       sample code:
+           print('mb= ' + str(bytesto(314575262000000, 'm')))
+       sample output: 
+           mb= 300002347.946
+"""
+def bytes_to(to, bytes, bsize=1024):
+    a = {'k' : 1, 'm': 2, 'g' : 3, 't' : 4, 'p' : 5, 'e' : 6 }
+    r = float(bytes)
+    
+    for i in range(a[to]):
+        r = r / bsize
 
+    return round(r)
+def read_file_content(file_path):
+    if not path.exists(file_path):
+        raise Exception(f"Failed to read file, {file_path} is doesn't exists")
+    return Path(file_path).read_text()
 
 def splitNewLine(string):
     return string.splitlines()
-
 
 # get default path app
 def getAppPath():

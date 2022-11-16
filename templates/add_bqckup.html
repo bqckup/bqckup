@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-wrapper" x-data="bqckup_add">
+    <div class="container-xl">
+        <div class="page-header">
+            <div class="row">
+                <div class="col">
+                  <!-- Page pre-title -->
+                  <div class="page-pretitle">
+                    Bqckup
+                  </div>
+                  <h2 class="page-title">
+                    Add
+                  </h2>
+                </div>
+                <div class="col-auto ms-auto d-print-none" style="width: {{ 'auto' if not session['need_update'] else '50%'}};height:1em;">
+                  <div class="text-end page-pretitle">
+                    Server Time
+                  </div>
+                  <h2 class="page-title">
+                    00:00:00
+                  </h2>
+                  </div>
+              </div>
+        </div>
+    </div>
+    <div class="page-body">
+        <div class="container-xl">
+            <div class="steps">
+                <a href="#" class="step-item" :class="step == 'files' ? 'active' : ''" data-bs-toggle="tooltip" title="Step 1 description">
+                    Setup Files
+                </a>
+                <a href="#" class="step-item" :class="step == 'database' ? 'active' : ''" data-bs-toggle="tooltip" title="Step 2 description">
+                    Setup Database
+                </a>
+                <a href="#" class="step-item" :class="step == 'files' ? 'configuration' : ''" data-bs-toggle="tooltip" title="Step 3 description">
+                    Setup Bqckup
+                </a>
+            </div>
+            <div class="card mt-4">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title" x-text="form.name"></h3>
+                        <p class="card-subtitle" x-text="form.description"></p>
+                    </div>
+                    <div class="card-actions">
+                      <button class="btn" :class="step == 'files' ? 'd-none' : ''" x-on:click="previous()"> Back </button>
+                      <button class="btn btn-primary" :disabled="false" :class="step == 'configuration' ? 'd-none' : ''" x-on:click="next()"> Next </button>
+                    </div>
+                  </div>
+                <div class="card-body">
+                    <div x-show="step == 'files'">
+                        <div class="mb-3">
+                            <label for="" class="form-label">Backup name</label>
+                            <input type="text" class="form-control" x-model.defer="payload.backup.name" placeholder="Backup name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="" class="form-label">Path</label>
+                            <textarea name="" id="" cols="30" rows="3" x-model.defer="payload.backup.path" class="form-control" required></textarea>
+                        </div>
+                    </div>
+                    <div x-show="step == 'database'">
+                        <div class="alert alert-important alert-info alert-dismissible" role="alert">
+                            <div class="d-flex">
+                              <div>
+                                <!-- Download SVG icon from http://tabler-icons.io/i/info-circle -->
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><circle cx="12" cy="12" r="9" /><line x1="12" y1="8" x2="12.01" y2="8" /><polyline points="11 12 12 12 12 16 13 16" /></svg>
+                              </div>
+                              <div>
+                                Here is something that you might like to know.
+                              </div>
+                            </div>
+                            <a class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="close"></a>
+                          </div>
+                        <div class="mb-3">
+                            <label for="" class="form-label" >Database type</label>
+                            <select name="" id="" class="form-control" x-model.defer="payload.database.type">
+                                <option value="mysqli" selected>MySQL</option>
+                                <option value="postgre">PostGreSql</option>
+                                <option value="sqlite">Sqlite</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="" class="form-label" >Database User</label>
+                            <input type="text" class="form-control" placeholder="Database user" x-model.defer="payload.database.user">
+                        </div>
+                        <div class="mb-3">
+                            <label for="" class="form-label" >Database Name</label>
+                            <input type="text" class="form-control" placeholder="Database name" x-model.defer="payload.database.name">
+                        </div>
+                        <div class="mb-3">
+                            <label for="" class="form-label">Database Password</label>
+                            <input type="password" class="form-control" placeholder="Database password" x-model.defer="payload.database.password">
+                        </div>
+                        <div class="mb-3">
+                            <button class="btn btn-primary" x-on:click="testDatabaseConnection()">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                    <path d="M7 12l5 5l-1.5 1.5a3.536 3.536 0 1 1 -5 -5l1.5 -1.5z"></path>
+                                    <path d="M17 12l-5 -5l1.5 -1.5a3.536 3.536 0 1 1 5 5l-1.5 1.5z"></path>
+                                    <path d="M3 21l2.5 -2.5"></path>
+                                    <path d="M18.5 5.5l2.5 -2.5"></path>
+                                    <path d="M10 11l-2 2"></path>
+                                    <path d="M13 14l-2 2"></path>
+                                 </svg>
+                                Test Connection
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block script %}
+<script src="{{ url_for('static', filename='js/bqckup_add_form.js') }}"></script>
+{% endblock %}
+

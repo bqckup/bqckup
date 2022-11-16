@@ -1,37 +1,17 @@
 from modules.docs import docs
 from modules.config import mConfig
 from modules.auth import auth
-from helpers import (
-    generate_token,
-    initialization,
-    splitNewLine,
-    isNone,
-    getDateFromUnix,
-    getInt,
-    convertDatetime,
-    today24Format,
-    timeSince,
-)
+from modules.backup import backup
+from classes.server import Server
+from helpers import generate_token, initialization, splitNewLine, isNone, getDateFromUnix, getInt, convertDatetime, today24Format, timeSince, bytes_to
 from classes.s3 import s3
 from models import BackupQueue
 from config import *
-import sys
-import logging
-import time
-import os
+import sys, logging, time, os
 from datetime import timedelta
 from flask.json import jsonify
 from decouple import config
-from flask import (
-    Flask,
-    render_template,
-    request,
-    flash,
-    redirect,
-    url_for,
-    session,
-    abort,
-)
+from flask import Flask, render_template, request, flash, redirect, url_for, session, abort
 from flask_login import LoginManager, login_required, logout_user, current_user
 from flask_caching import Cache
 from playhouse.shortcuts import model_to_dict
@@ -39,6 +19,8 @@ from playhouse.shortcuts import model_to_dict
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..")))
 
+# SECRET_KEY=os.urandom(24)
+SECRET_KEY="secret_key"
 
 app = Flask(__name__)
 
@@ -47,8 +29,6 @@ login_manager.init_app(app)
 login_manager.session_protection = "basic"
 
 # user loader needed by flask_login
-
-
 @login_manager.user_loader
 def load_user(id):
     from models import User
@@ -60,20 +40,17 @@ def load_user(id):
     else:
         return user
 
-
-app.config["SECRET_KEY"] = ")mEV=i7uyoybyq<"
+app.config["SECRET_KEY"] = SECRET_KEY
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 app.config["CACHE_TYPE"] = "SimpleCache"
 app.config["CACHE_DEFAULT_TIMEOUT"] = 300
 
-
 app.register_blueprint(auth, url_prefix="/auth/")
 app.register_blueprint(mConfig, url_prefix="/config/")
 app.register_blueprint(docs, url_prefix="/docs/")
-
+app.register_blueprint(backup, url_prefix="/backup/")
 
 cache = Cache(app)
-
 
 # assign global variable
 # ref : https://stackoverflow.com/a/43336023
@@ -308,30 +285,20 @@ def index():
     if not AWS_S3_BUCKET:
         return redirect(url_for('mConfig.index'))
 
-    print(session)
-
     cloudUsage = ojtbackup.getCloudDiskUsage()
     cloudStorageFull = ojtbackup.cloudStorageFull()
-
-    # checking update
-    if session["check_update"]:
-        session["need_update"] = False
-        # if OJTBackup().checkUpdate() != 0:
-        #     session["need_update"] = True
-        #     session["check_update"] = False
-
+    
+    _server_storage = Server().get_storage_information()
+    
+    server_storage = {
+        "used": bytes_to('g', _server_storage.used),
+        "free": bytes_to('g', _server_storage.free),
+        "total": bytes_to('g', _server_storage.total),
+    }
+    
     return render_template(
         "index.html",
-        cloudStorage='s3',
-        backup_token=backup_token,
-        db_token=db_token,
-        user_token=user_token,
-        serverUsage=serverUsage,
-        cloudUsage=cloudUsage,
-        title_bar="Dashboard",
-        currentVersion=config("VERSION"),
-        serverStorageFull=serverStorageFull,
-        cloudStorageFull=cloudStorageFull,
+        server_storage=server_storage,
     )
 
 

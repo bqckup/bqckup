@@ -47,7 +47,11 @@
       <div class="container-tight py-6">
         <form class="card card-md" action="" method="POST" id="login_form">
           <div class="card-body">
-            <h2 class="mb-5 text-center">Login to your account</h2>
+            <div class="d-flex justify-content-center align-items-center mb-3">
+              <div class="w-50">
+                <img src="{{ url_for('static', filename='img/logo-bqckup3.png') }}" alt="">
+              </div>
+            </div>
             <div class="row">
                 {% with messages = get_flashed_messages(with_categories=true) %}
                   {% if messages %}
@@ -68,14 +72,14 @@
             <div class="mb-2">
               <label class="form-label">
                 Password
-                <span class="form-label-description">
+                <!-- <span class="form-label-description">
                   <a href="{{ url_for('auth.forgot_password') }}">I forgot password</a>
-                </span>
+                </span> -->
               </label>
               <input type="password" class="form-control" name="password" placeholder="Password" required>
             </div>
             <div class="form-footer">
-              <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+              <button type="submit" class="w-100 btn btn-primary btn-block">Sign in</button>
             </div>
           </div>
         </form>

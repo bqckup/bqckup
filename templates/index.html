@@ -68,37 +68,125 @@
           </h2>
         </div>
         <div class="col-auto ms-auto d-print-none" style="width: {{ 'auto' if not session['need_update'] else '50%'}};height:1em;">
-          {% if not session['need_update'] %}
-          <h2 class="text-primary mt-2">
-            Ver {{ currentVersion }}
-          </h2>
-          {% endif %}
-          {% if session['need_update'] %}
-          <div class="row">
-            <div class="col-6 col-md-4"></div>
-            <div class="col-4 col-md-4"></div>
-            <div class="col-2 col-md-4">
-              <button class="btn btn-md btn-white" onclick="updateNow(this)" style="margin-top:.4em;border-color:#ddd;float:right;">
-                <svg class="icon line-color animation-bounce" width="24" height="24" id="download" data-name="Line color"
-                  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                  <path id="secondary" d="M12,3V16M8,12l4,4,4-4"
-                    style="fill: none; stroke: rgb(2, 117, 248); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5;">
-                  </path>
-                  <path id="primary" d="M20,16v4a1.08,1.08,0,0,1-1.14,1H5.14A1.08,1.08,0,0,1,4,20V16"
-                    style="fill: none; stroke: rgb(209, 209, 209); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5;">
-                  </path>
-                </svg>
-                Update now &nbsp;<small style="font-size: .6em;position:relative;top:3px;">(V 1.0.2)</small>
-              </button>
-            </div>
+          <div class="text-end page-pretitle">
+            Server Time
           </div>
-          {% endif %}
+          <h2 class="page-title">
+            00:00:00
+          </h2>
+          </div>
       </div>
     </div>
   </div>
   <div class="page-body">
     <div class="container-xl">
-      
+      <div class="row">
+        <div class="col-4">
+          <div class="row row-cols-2 row-deck row-cards">
+            <div class="col col-sm">
+              <div class="card">
+                <div class="card-body">
+                  <div class="p-1">
+                    <img src="{{ url_for('static', filename='img/logo-bqckup.png') }}" alt="">
+                  </div>
+                  <div class="text-center mt-2">
+                    Version: 1.0.0
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col col-sm">
+              <div class="card">
+                <div class="empty">
+                  <svg xmlns="http://www.w3.org/2000/svg"  style="--tblr-icon-size: 4rem;" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                    <ellipse cx="12" cy="6" rx="8" ry="3"></ellipse>
+                    <path d="M4 6v6a8 3 0 0 0 16 0v-6"></path>
+                    <path d="M4 12v6a8 3 0 0 0 16 0v-6"></path>
+                 </svg>
+                  <div class="empty-action">
+                    <a href="{{ url_for('bqckup.view_add') }}" class="btn btn-primary">
+                      Add Bqckup
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row mt-3">
+            <div class="col">
+              <div class="card">
+                <div class="card-header">
+                  <h2 class="card-title">
+                    Storage Information
+                  </h2>
+                </div>
+                <div class="card-body">
+                  <div class="datagrid">
+                    <div class="datagrid-item">
+                      <div class="datagrid-title">Server Storage</div>
+                      <div class="datagrid-content">{{ server_storage['used'] }} / {{ server_storage['total'] }} (GB)</div>
+                      <div class="progress mt-2">
+                        <div class="progress-bar" style="width: {{ (server_storage['used'] / server_storage['total']) * 100 }}%" role="progressbar" aria-valuenow="38" aria-valuemin="0" aria-valuemax="100" aria-label="38% Complete">
+                          <span class="visually-hidden">38% Complete</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="datagrid-item">
+                      <div class="datagrid-title text-start">
+                          Cloud Storage
+                          <div class="float-end">
+                            <span class="form-help" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Hint: We suggest you to set the limit for your cloud storage, so bqckup will give you a warning when it's almost exceed">?</span>
+                          </div>
+                      </div>
+                      <div class="datagrid-content">100 / ∞</div>
+                      <div class="progress mt-2">
+                        <div class="progress-bar" style="width: 100%" role="progressbar" aria-valuenow="38" aria-valuemin="0" aria-valuemax="100" aria-label="38% Complete">
+                          <span class="visually-hidden">38% Complete</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>      
+        </div>
+        <div class="col">
+          <div class="card">
+            <div class="card-header">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                <polyline points="12 8 12 12 14 14"></polyline>
+                <path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"></path>
+             </svg>
+              <h2 class="card-title">
+                Recent Activity
+              </h2>
+            </div>
+            <div class="empty">
+              <div class="empty-img">
+                <img src="{{ url_for('static', filename='illustrations/undraw_quitting_time_dm8t.svg') }}" height="128" alt="">
+              </div>
+              <p class="empty-title">No Bqckup Found</p>
+              <p class="empty-subtitle text-muted">
+                You just need simply add bqckup by clicking this button (not good)
+              </p>
+              <div class="empty-action">
+                <a href="{{ url_for('bqckup.view_add') }}" class="btn btn-primary">
+                  <!-- Download SVG icon from http://tabler-icons.io/i/search -->
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-plus" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                 </svg>
+                  Create your first Bqckup
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
