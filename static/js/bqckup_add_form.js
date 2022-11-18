@@ -1,5 +1,6 @@
 function bqckup_add() {
   return {
+    storages: [],
     step: "files",
     form: {
       name: "Setup Files",
@@ -8,6 +9,17 @@ function bqckup_add() {
     notifications: {
       testingDatabaseSuccess: false,
       testingDatabaseFailed: false,
+    },
+    init() {
+      this.fetchStorages();
+    },
+    async fetchStorages() {
+      let request = await fetch("/backup/get_storages");
+      if (request.status != 200) {
+        return alert("Failed to fetching storages");
+      }
+      let response = await request.json();
+      this.storages = response;
     },
     open(step = false) {
       this.step = this.step == "files" ? "database" : "configuration";
@@ -33,26 +45,18 @@ function bqckup_add() {
       switch (this.step) {
         case "files":
           if (!this.$refs.form_files.checkValidity()) {
-            return;
+            return alert(
+              "The form needs to be filled in to proceed to the next step"
+            );
           }
-        // if (
-        //   !this.payload.backup.name.length ||
-        //   !this.payload.backup.path.length
-        // ) {
-        //   alert("Please complete the form to continue");
-        //   return;
-        // }
       }
       this.open();
     },
     async testDatabaseConnection() {
-      this.$el.disabled = true;
-      for (const _ in this.payload.database) {
-        if (!this.payload.database[_].length) {
-          alert("Please complete the form");
-          return;
-        }
+      if (!this.$refs.form_files.checkValidity()) {
+        return;
       }
+      this.$el.disabled = true;
       let formData = new FormData();
       for (const _data in this.payload.database) {
         formData.append(_data, this.payload.database[_data]);

@@ -65,93 +65,106 @@
                                 <label for="" class="form-label">Path</label>
                                 <textarea name="" id="" cols="30" rows="3" x-model.defer="payload.backup.path"
                                     class="form-control" required></textarea>
+                                    <span class="form-text">
+                                        Use enter ⏎ if it's more than one path
+                                    </span>
                             </div>
                         </form>
                     </div>
                     <div x-show="step == 'database'" x-transition>
-                        <div class="alert alert-important alert-success alert-dismissible" role="alert"
-                            x-show="notifications.testingDatabaseSuccess">
-                            <div class="d-flex">
-                                <svg xmlns="http://www.w3.org/2000/svg" style="--tblr-icon-size: 1.5rem;" class="icon"
-                                    width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
-                                    fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                                    <path d="M5 12l5 5l10 -10"></path>
-                                </svg>
-                                <div class="d-flex align-items-center ms-2">
-                                    Connection success
+                        <form x-ref="form_database">
+                            <div class="alert alert-important alert-success alert-dismissible" role="alert"
+                                x-show="notifications.testingDatabaseSuccess">
+                                <div class="d-flex">
+                                    <svg xmlns="http://www.w3.org/2000/svg" style="--tblr-icon-size: 1.5rem;" class="icon"
+                                        width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                                        fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                        <path d="M5 12l5 5l10 -10"></path>
+                                    </svg>
+                                    <div class="d-flex align-items-center ms-2">
+                                        Connection success
+                                    </div>
                                 </div>
+                                <a class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="close"></a>
                             </div>
-                            <a class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="close"></a>
-                        </div>
-                        <div class="alert alert-important alert-danger alert-dismissible" role="alert"
-                            x-show="notifications.testingDatabaseFailed">
-                            <div class="d-flex">
-                                <svg xmlns="http://www.w3.org/2000/svg" style="--tblr-icon-size: 1.5rem;" class="icon"
-                                    width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
-                                    fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                                    <path d="M20 16l-4 4"></path>
-                                    <path d="M7 12l5 5l-1.5 1.5a3.536 3.536 0 1 1 -5 -5l1.5 -1.5z"></path>
-                                    <path d="M17 12l-5 -5l1.5 -1.5a3.536 3.536 0 1 1 5 5l-1.5 1.5z"></path>
-                                    <path d="M3 21l2.5 -2.5"></path>
-                                    <path d="M18.5 5.5l2.5 -2.5"></path>
-                                    <path d="M10 11l-2 2"></path>
-                                    <path d="M13 14l-2 2"></path>
-                                    <path d="M16 16l4 4"></path>
-                                </svg>
-                                <div class="d-flex align-items-center ms-2">
-                                    Connection failed
+                            <div class="alert alert-important alert-danger alert-dismissible" role="alert"
+                                x-show="notifications.testingDatabaseFailed">
+                                <div class="d-flex">
+                                    <svg xmlns="http://www.w3.org/2000/svg" style="--tblr-icon-size: 1.5rem;" class="icon"
+                                        width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                                        fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                        <path d="M20 16l-4 4"></path>
+                                        <path d="M7 12l5 5l-1.5 1.5a3.536 3.536 0 1 1 -5 -5l1.5 -1.5z"></path>
+                                        <path d="M17 12l-5 -5l1.5 -1.5a3.536 3.536 0 1 1 5 5l-1.5 1.5z"></path>
+                                        <path d="M3 21l2.5 -2.5"></path>
+                                        <path d="M18.5 5.5l2.5 -2.5"></path>
+                                        <path d="M10 11l-2 2"></path>
+                                        <path d="M13 14l-2 2"></path>
+                                        <path d="M16 16l4 4"></path>
+                                    </svg>
+                                    <div class="d-flex align-items-center ms-2">
+                                        Connection failed
+                                    </div>
                                 </div>
+                                <a class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="close"></a>
                             </div>
-                            <a class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="close"></a>
-                        </div>
-                        <div class="mb-3">
-                            <label for="" class="form-label">Database type</label>
-                            <select name="" id="" class="form-control" x-model.defer="payload.database.type">
-                                <option value="mysqli" selected>MySQL</option>
-                                <option value="postgre">PostGreSql</option>
-                                <option value="sqlite">Sqlite</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="" class="form-label">Database Host</label>
-                            <input type="text" class="form-control" placeholder="Database Host"
-                                x-model.defer="payload.database.host">
-                        </div>
-                        <div class="mb-3">
-                            <label for="" class="form-label">Database User</label>
-                            <input type="text" class="form-control" placeholder="Database user"
-                                x-model.defer="payload.database.user">
-                        </div>
-                        <div class="mb-3">
-                            <label for="" class="form-label">Database Password</label>
-                            <input type="password" class="form-control" placeholder="Database password"
-                                x-model.defer="payload.database.password">
-                        </div>
-                        <div class="mb-3">
-                            <label for="" class="form-label">Database Name</label>
-                            <input type="text" class="form-control" placeholder="Database name"
-                                x-model.defer="payload.database.name">
-                        </div>
-                        <div class="mb-3">
-                            <button class="btn btn-primary" x-on:click="testDatabaseConnection()">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24"
-                                    viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
-                                    stroke-linecap="round" stroke-linejoin="round">
-                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                                    <path d="M7 12l5 5l-1.5 1.5a3.536 3.536 0 1 1 -5 -5l1.5 -1.5z"></path>
-                                    <path d="M17 12l-5 -5l1.5 -1.5a3.536 3.536 0 1 1 5 5l-1.5 1.5z"></path>
-                                    <path d="M3 21l2.5 -2.5"></path>
-                                    <path d="M18.5 5.5l2.5 -2.5"></path>
-                                    <path d="M10 11l-2 2"></path>
-                                    <path d="M13 14l-2 2"></path>
-                                </svg>
-                                Test Connection
-                            </button>
-                        </div>
+                            <div class="mb-3">
+                                <label for="" class="form-label">Database type</label>
+                                <select name="" id="" class="form-control" x-model.defer="payload.database.type">
+                                    <option value="mysqli" selected>MySQL</option>
+                                    <option value="postgre">PostGreSql</option>
+                                    <option value="sqlite">Sqlite</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="" class="form-label">Database Host</label>
+                                <input type="text" class="form-control" placeholder="Database Host"
+                                    x-model.defer="payload.database.host">
+                            </div>
+                            <div class="mb-3">
+                                <label for="" class="form-label">Database User</label>
+                                <input type="text" class="form-control" placeholder="Database user"
+                                    x-model.defer="payload.database.user">
+                            </div>
+                            <div class="mb-3">
+                                <label for="" class="form-label">Database Password</label>
+                                <input type="password" class="form-control" placeholder="Database password"
+                                    x-model.defer="payload.database.password">
+                            </div>
+                            <div class="mb-3">
+                                <label for="" class="form-label">Database Name</label>
+                                <input type="text" class="form-control" placeholder="Database name"
+                                    x-model.defer="payload.database.name">
+                            </div>
+                            <div class="mb-3">
+                                <button class="btn btn-primary" x-on:click="testDatabaseConnection()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24"
+                                        viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                        <path d="M7 12l5 5l-1.5 1.5a3.536 3.536 0 1 1 -5 -5l1.5 -1.5z"></path>
+                                        <path d="M17 12l-5 -5l1.5 -1.5a3.536 3.536 0 1 1 5 5l-1.5 1.5z"></path>
+                                        <path d="M3 21l2.5 -2.5"></path>
+                                        <path d="M18.5 5.5l2.5 -2.5"></path>
+                                        <path d="M10 11l-2 2"></path>
+                                        <path d="M13 14l-2 2"></path>
+                                    </svg>
+                                    Test Connection
+                                </button>
+                            </div>
+                        </form>
                     </div>
                     <div x-show="step == 'configuration'">
+                        <div class="mb-3">
+                            <label for="" class="form-label">Storage</label>
+                            <select class="form-control" x-model.defer="payload.configuration.storage">
+                                <template x-for="storage in storages">
+                                    <option :value="storage" x-text="storage"></option>
+                                </template>
+                            </select>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">Schedule</label>
                             <div class="btn-group w-100" role="group">

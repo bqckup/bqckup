@@ -41,7 +41,7 @@
   }
 
 </style>
-<div class="page-wrapper">
+<div class="page-wrapper" x-data="dashboard" x-cloak>
   <div class="container-xl">
     <!-- Page title -->
     <div class="page-header d-print-none">
@@ -164,7 +164,63 @@
                 Recent Activity
               </h2>
             </div>
-            <div class="empty">
+            <div class="card-table">
+              <table class="table table-vcenter">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Size</th>
+                    <th>Storage</th>
+                    <th>Last Run</th>
+                    <th>Next Run</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <div class="d-flex align-items-center">
+                        <span class="status-indicator status-green">
+                          <span class="status-indicator-circle"></span>
+                        </span>
+                        <div>
+                          OJTBackup
+                        </div>
+                      </div>
+                  </td>
+                    <td>100 GB</td>
+                    <td>ojtbackup</td>
+                    <td>
+                      1 Hours Ago
+                    </td>
+                    <td>
+                      in 2 Hours
+                    </td>
+                    <td>
+                      <div class="dropdown">
+                        <a href="#" class="btn-action" data-bs-toggle="dropdown" aria-expanded="false">
+                          <!-- Download SVG icon from http://tabler-icons.io/i/dots-vertical -->
+                          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-settings" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                            <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                         </svg>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end">
+                          <span class="dropdown-header">Actions</span>
+                          <a class="dropdown-item" href="javascript:void(0)">
+                            <!-- Download SVG icon from http://tabler-icons.io/i/settings -->
+                            <!-- <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"></path><circle cx="12" cy="12" r="3"></circle></svg> -->
+                            Backup now
+                          </a>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="empty" x-show="false">
               <div class="empty-img">
                 <img src="{{ url_for('static', filename='illustrations/undraw_quitting_time_dm8t.svg') }}" height="128" alt="">
               </div>
@@ -190,8 +246,7 @@
     </div>
   </div>
 </div>
-</div>
 {% endblock %}
 {% block script %}
-<!-- <script src="{{ url_for('static', filename='additional/js/main.js') }}"></script> -->
+<script src="{{ url_for('static', filename='additional/js/dashboard.js') }}"></script>
 {% endblock %}

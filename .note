@@ -15,6 +15,14 @@ example:
     2. .config/.auth_key ( auth key to login just like s3.openjournaltheme.com)
     3. .config/.bq_config.yml ( apps configuration )
 
+todo:
+    1. Can't use app if do not have storages
+    2. Config test
+    3. CLI
+
+note:
+    primary storage -> a storage that u want show the information about it in dashboard
+
 also it's really easy to apply multiple storage if it's as a file, example:
 
 ```
@@ -38,7 +46,7 @@ backups:
             - user:
             - password:
             - name:
-            
+
         - options:
             - save_locally:
             - interval:

@@ -1,7 +1,17 @@
 from flask import Blueprint, request, flash, redirect, url_for, session, render_template, jsonify
 from classes.database import Database
+from classes.storage import Storage
 
 backup = Blueprint('bqckup', __name__)
+
+@backup.get('/get_storages')
+def get_storages():
+    storages = Storage().list()
+    
+    if not storages:
+        return jsonify(message="No Storages found"), 404
+    
+    return jsonify(storages)
 
 @backup.get('/add')
 def view_add():
