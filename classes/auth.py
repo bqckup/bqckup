@@ -7,7 +7,7 @@ class AuthException(Exception): pass
 
 class Auth:
     def is_authorized() -> bool:
-        return session['name'] == 'Bqckup'
+        return session and session['name'] == 'Bqckup'
     
     def authorize(key: str) -> bool:
         legit = Path(

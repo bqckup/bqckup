@@ -5,23 +5,24 @@
         <div class="page-header">
             <div class="row">
                 <div class="col">
-                  <!-- Page pre-title -->
-                  <div class="page-pretitle">
-                    Bqckup
-                  </div>
-                  <h2 class="page-title">
-                    Add
-                  </h2>
+                    <!-- Page pre-title -->
+                    <div class="page-pretitle">
+                        Bqckup
+                    </div>
+                    <h2 class="page-title">
+                        Add
+                    </h2>
                 </div>
-                <div class="col-auto ms-auto d-print-none" style="width: {{ 'auto' if not session['need_update'] else '50%'}};height:1em;">
-                  <div class="text-end page-pretitle">
-                    Server Time
-                  </div>
-                  <h2 class="page-title">
-                    00:00:00
-                  </h2>
-                  </div>
-              </div>
+                <div class="col-auto ms-auto d-print-none"
+                    style="width: {{ 'auto' if not session['need_update'] else '50%'}};height:1em;">
+                    <div class="text-end page-pretitle">
+                        Server Time
+                    </div>
+                    <h2 class="page-title">
+                        00:00:00
+                    </h2>
+                </div>
+            </div>
         </div>
     </div>
     <div class="page-body">
@@ -44,38 +45,51 @@
                         <p class="card-subtitle" x-text="form.description"></p>
                     </div>
                     <div class="card-actions">
-                        <button class="btn" disabled x-show="step == 'database'">You can skip this step, if you do not need database backup</button>
-                      <button class="btn btn-light" :class="step == 'files' ? 'd-none' : ''" x-on:click="previous()"> Back </button>
-                      <button class="btn btn-primary" type="submit" :disabled="false" :class="step == 'configuration' ? 'd-none' : ''" x-on:click="next()"> Next </button>
+                        <button class="btn" disabled x-show="step == 'database'">You can skip this step, if you do not
+                            need database backup</button>
+                        <button class="btn btn-light" :class="step == 'files' ? 'd-none' : ''" x-on:click="previous()">
+                            Back </button>
+                        <button class="btn btn-primary" type="submit" :disabled="false"
+                            :class="step == 'configuration' ? 'd-none' : ''" x-on:click="next()"> Next </button>
                     </div>
-                  </div>
+                </div>
                 <div class="card-body">
                     <div x-show="step == 'files'" x-transition>
-                        <div class="mb-3">
-                            <label for="" class="form-label">Backup name</label>
-                            <input type="text" class="form-control" x-model.defer="payload.backup.name" placeholder="Backup name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="" class="form-label">Path</label>
-                            <textarea name="" id="" cols="30" rows="3" x-model.defer="payload.backup.path" class="form-control" required></textarea>
-                        </div>
+                        <form action="#" method="POST" x-ref="form_files">
+                            <div class="mb-3">
+                                <label for="" class="form-label">Backup name</label>
+                                <input type="text" class="form-control" x-model.defer="payload.backup.name"
+                                    placeholder="Backup name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="" class="form-label">Path</label>
+                                <textarea name="" id="" cols="30" rows="3" x-model.defer="payload.backup.path"
+                                    class="form-control" required></textarea>
+                            </div>
+                        </form>
                     </div>
                     <div x-show="step == 'database'" x-transition>
-                          <div class="alert alert-important alert-success alert-dismissible" role="alert" x-show="notifications.testingDatabaseSuccess">
+                        <div class="alert alert-important alert-success alert-dismissible" role="alert"
+                            x-show="notifications.testingDatabaseSuccess">
                             <div class="d-flex">
-                                <svg xmlns="http://www.w3.org/2000/svg" style="--tblr-icon-size: 1.5rem;" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <svg xmlns="http://www.w3.org/2000/svg" style="--tblr-icon-size: 1.5rem;" class="icon"
+                                    width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                                    fill="none" stroke-linecap="round" stroke-linejoin="round">
                                     <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                                     <path d="M5 12l5 5l10 -10"></path>
-                                 </svg>
+                                </svg>
                                 <div class="d-flex align-items-center ms-2">
                                     Connection success
                                 </div>
                             </div>
                             <a class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="close"></a>
-                          </div>
-                          <div class="alert alert-important alert-danger alert-dismissible" role="alert" x-show="notifications.testingDatabaseFailed">
+                        </div>
+                        <div class="alert alert-important alert-danger alert-dismissible" role="alert"
+                            x-show="notifications.testingDatabaseFailed">
                             <div class="d-flex">
-                                <svg xmlns="http://www.w3.org/2000/svg" style="--tblr-icon-size: 1.5rem;" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <svg xmlns="http://www.w3.org/2000/svg" style="--tblr-icon-size: 1.5rem;" class="icon"
+                                    width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                                    fill="none" stroke-linecap="round" stroke-linejoin="round">
                                     <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                                     <path d="M20 16l-4 4"></path>
                                     <path d="M7 12l5 5l-1.5 1.5a3.536 3.536 0 1 1 -5 -5l1.5 -1.5z"></path>
@@ -85,15 +99,15 @@
                                     <path d="M10 11l-2 2"></path>
                                     <path d="M13 14l-2 2"></path>
                                     <path d="M16 16l4 4"></path>
-                                 </svg>                                
-                                 <div class="d-flex align-items-center ms-2">
+                                </svg>
+                                <div class="d-flex align-items-center ms-2">
                                     Connection failed
                                 </div>
                             </div>
                             <a class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="close"></a>
-                          </div>
+                        </div>
                         <div class="mb-3">
-                            <label for="" class="form-label" >Database type</label>
+                            <label for="" class="form-label">Database type</label>
                             <select name="" id="" class="form-control" x-model.defer="payload.database.type">
                                 <option value="mysqli" selected>MySQL</option>
                                 <option value="postgre">PostGreSql</option>
@@ -101,24 +115,30 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="" class="form-label" >Database Host</label>
-                            <input type="text" class="form-control" placeholder="Database Host" x-model.defer="payload.database.host">
+                            <label for="" class="form-label">Database Host</label>
+                            <input type="text" class="form-control" placeholder="Database Host"
+                                x-model.defer="payload.database.host">
                         </div>
                         <div class="mb-3">
-                            <label for="" class="form-label" >Database User</label>
-                            <input type="text" class="form-control" placeholder="Database user" x-model.defer="payload.database.user">
+                            <label for="" class="form-label">Database User</label>
+                            <input type="text" class="form-control" placeholder="Database user"
+                                x-model.defer="payload.database.user">
                         </div>
                         <div class="mb-3">
                             <label for="" class="form-label">Database Password</label>
-                            <input type="password" class="form-control" placeholder="Database password" x-model.defer="payload.database.password">
+                            <input type="password" class="form-control" placeholder="Database password"
+                                x-model.defer="payload.database.password">
                         </div>
                         <div class="mb-3">
-                            <label for="" class="form-label" >Database Name</label>
-                            <input type="text" class="form-control" placeholder="Database name" x-model.defer="payload.database.name">
+                            <label for="" class="form-label">Database Name</label>
+                            <input type="text" class="form-control" placeholder="Database name"
+                                x-model.defer="payload.database.name">
                         </div>
                         <div class="mb-3">
                             <button class="btn btn-primary" x-on:click="testDatabaseConnection()">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24"
+                                    viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                    stroke-linecap="round" stroke-linejoin="round">
                                     <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                                     <path d="M7 12l5 5l-1.5 1.5a3.536 3.536 0 1 1 -5 -5l1.5 -1.5z"></path>
                                     <path d="M17 12l-5 -5l1.5 -1.5a3.536 3.536 0 1 1 5 5l-1.5 1.5z"></path>
@@ -126,7 +146,7 @@
                                     <path d="M18.5 5.5l2.5 -2.5"></path>
                                     <path d="M10 11l-2 2"></path>
                                     <path d="M13 14l-2 2"></path>
-                                 </svg>
+                                </svg>
                                 Test Connection
                             </button>
                         </div>
@@ -135,12 +155,15 @@
                         <div class="mb-3">
                             <label class="form-label">Schedule</label>
                             <div class="btn-group w-100" role="group">
-                              <input type="radio" class="btn-check" x-model.defer="payload.configuration.schedule" id="schedule-daily" autocomplete="off" checked="" value="daily">
-                              <label for="schedule-daily" type="button" class="btn">Daily</label>
-                              <input type="radio" class="btn-check" x-model.defer="payload.configuration.schedule" id="schedule-weekly" autocomplete="off">
-                              <label for="schedule-weekly" type="button" class="btn">Weekly</label>
-                              <input type="radio" class="btn-check" x-model.defer="payload.configuration.schedule" id="schedule-monthly" autocomplete="off">
-                              <label for="schedule-monthly" type="button" class="btn">Monthly</label>
+                                <input type="radio" class="btn-check" x-model.defer="payload.configuration.schedule"
+                                    id="schedule-daily" autocomplete="off" checked="" value="daily">
+                                <label for="schedule-daily" type="button" class="btn">Daily</label>
+                                <input type="radio" class="btn-check" x-model.defer="payload.configuration.schedule"
+                                    id="schedule-weekly" autocomplete="off">
+                                <label for="schedule-weekly" type="button" class="btn">Weekly</label>
+                                <input type="radio" class="btn-check" x-model.defer="payload.configuration.schedule"
+                                    id="schedule-monthly" autocomplete="off">
+                                <label for="schedule-monthly" type="button" class="btn">Monthly</label>
                             </div>
                         </div>
                         <div class="mb-3">
@@ -159,15 +182,15 @@
                         <div class="mb-3">
                             <label class="form-label">Options</label>
                             <label class="form-check">
-                              <input class="form-check-input" type="checkbox">
-                              <span class="form-check-label">
-                                Save file locally
-                              </span>
-                              <span class="form-check-description">
-                                Compressed files will be not deleted on your server
-                              </span>
+                                <input class="form-check-input" type="checkbox">
+                                <span class="form-check-label">
+                                    Save file locally
+                                </span>
+                                <span class="form-check-description">
+                                    Compressed files will be not deleted on your server
+                                </span>
                             </label>
-                          </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -182,8 +205,7 @@
         noCalendar: true,
         dateFormat: "H:i",
         defaultDate: "00:00",
-      });
+    });
 </script>
 <script src="{{ url_for('static', filename='js/bqckup_add_form.js') }}"></script>
 {% endblock %}
-

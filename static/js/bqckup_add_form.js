@@ -32,13 +32,16 @@ function bqckup_add() {
     next() {
       switch (this.step) {
         case "files":
-          if (
-            !this.payload.backup.name.length ||
-            !this.payload.backup.path.length
-          ) {
-            alert("Please complete the form to continue");
+          if (!this.$refs.form_files.checkValidity()) {
             return;
           }
+        // if (
+        //   !this.payload.backup.name.length ||
+        //   !this.payload.backup.path.length
+        // ) {
+        //   alert("Please complete the form to continue");
+        //   return;
+        // }
       }
       this.open();
     },
