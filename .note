@@ -1,0 +1,48 @@
+is it better to save the data as a file ? just like virtualmin
+WhY ????
+    - most of developer is too lazy to start the service ( service ojtbackup start ) then fill the form to setup a backup
+    - it's really simple for them to create 1 config ( file ) without turn on the service
+
+What about the validation such as test connection database and validate the path is exists or not ??
+    we can create test function like nginx ( nginx -t ) to validate if the config is valid and ready to use
+    also we can provide the cli feature, for example:
+        - bqckup --test-config (test config)
+        - bqckup --check-cloud-storage --name ojtbackup ( check storage s3 )
+        - bqckup --check-server-storage
+
+example:
+    1. .config/backups/name.yml ( Backup Config such as path, database, retention, etc)
+    2. .config/.auth_key ( auth key to login just like s3.openjournaltheme.com)
+    3. .config/.bq_config.yml ( apps configuration )
+
+also it's really easy to apply multiple storage if it's as a file, example:
+
+```
+storages:
+    ojtbackup:
+        - bucket: 
+        - key_id:
+        - key_secret:
+    openjournalthemeproduct:
+        - bucket: 
+        - key_id:
+        - key_secret:
+```
+
+and for the backup:
+```
+backups:
+    openjournaltheme.com:
+        - path:
+        - database:
+            - user:
+            - password:
+            - name:
+            
+        - options:
+            - save_locally:
+            - interval:
+            - time_to_backup:
+            - notification_email:
+```
+
