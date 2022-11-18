@@ -36,11 +36,6 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tabler-payments.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tabler-vendors.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/demo.min.css') }}">
-    <style>
-      body {
-      	display: none;
-      }
-    </style>
   </head>
   <body class="antialiased border-top-wide border-primary d-flex flex-column">
     <div class="flex-fill d-flex flex-column justify-content-center">
@@ -65,21 +60,14 @@
                   {% endif %}
                 {% endwith %}
               </div>
-              <div class="mb-3">
-                <label class="form-label">Username</label>
-                <input type="text" class="form-control" name="username" placeholder="Username" autocomplete="off" required>
-              </div>
-            <div class="mb-2">
+            <div class="mb-3">
               <label class="form-label">
-                Password
-                <!-- <span class="form-label-description">
-                  <a href="{{ url_for('auth.forgot_password') }}">I forgot password</a>
-                </span> -->
+                Key
               </label>
-              <input type="password" class="form-control" name="password" placeholder="Password" required>
+              <input type="key" class="form-control" name="key" placeholder="Key" required>
             </div>
-            <div class="form-footer">
-              <button type="submit" class="w-100 btn btn-primary btn-block">Sign in</button>
+            <div>
+              <button type="submit" class="btn btn-primary btn-block w-100">Sign in</button>
             </div>
           </div>
         </form>

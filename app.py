@@ -24,26 +24,10 @@ SECRET_KEY="secret_key"
 
 app = Flask(__name__)
 
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.session_protection = "basic"
-
-# user loader needed by flask_login
-@login_manager.user_loader
-def load_user(id):
-    from models import User
-
-    try:
-        user = User().get_by_id(id)
-    except:
-        return None
-    else:
-        return user
-
-app.config["SECRET_KEY"] = SECRET_KEY
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
-app.config["CACHE_TYPE"] = "SimpleCache"
-app.config["CACHE_DEFAULT_TIMEOUT"] = 300
+app.permanent_session_lifetime = timedelta(minutes=30)
+app.secret_key = SECRET_KEY
+app.cache_type = "SimpleCache"
+app.cache_default_timeout = 300
 
 app.register_blueprint(auth, url_prefix="/auth/")
 app.register_blueprint(mConfig, url_prefix="/config/")
@@ -56,19 +40,12 @@ cache = Cache(app)
 # ref : https://stackoverflow.com/a/43336023
 @app.context_processor
 def globalVariable():
-    currentUser = False
     currentUrl = request.url
     currentUrlSplit = request.url.split("/")
     currentTime = today24Format()
     currentVersion = config("VERSION")
 
-    if current_user.is_authenticated:
-        from models import User
-
-        currentUser = User().currentUser()
-
     return dict(
-        currentUser=currentUser,
         currentUrl=currentUrl,
         currentUrlSplit=currentUrlSplit,
         currentTime=currentTime,
@@ -78,14 +55,6 @@ def globalVariable():
 
 @app.errorhandler(500)
 def page_internal_error(e):
-    # import traceback
-    # traceback = traceback.format_exc()
-    # data = {
-    #     'target':'this.nugroho@gmail.com',
-    #     'subject':'Error OJTBackup',
-    #     'message':traceback
-    # }
-    # Mail(data).send()
     return render_template("500.html"), 500
 
 
@@ -256,37 +225,27 @@ def listFiles():
 
 @app.route("/logout", methods=["GET", "POST"])
 def logout():
-    if current_user.is_authenticated:
-        logout_user()
-        return redirect(url_for("auth.login"))
-    abort(401)
-
+    return 'logout'
 
 @app.route("/", methods=["GET"])
 @app.route("/index", methods=["GET"])
-@login_required
 # @cache.cached(timeout=60)
 def index():
-    from models import User
-    from core.ojtbackup import OJTBackup
-
-    user = User.get_by_id(current_user)
-
-    ojtbackup = OJTBackup()
-
+    from classes.auth import Auth
+    if not Auth.is_authorized():
+        return redirect(url_for('auth.login'))
     # backup_token = generate_token()
     # db_token = generate_token()
-    user_token = user.token
-    serverUsage = ojtbackup.getServerDiskUsage()
-    serverStorageFull = ojtbackup.serverStorageFull()
+    # serverUsage = ojtbackup.getServerDiskUsage()
+    # serverStorageFull = ojtbackup.serverStorageFull()
     backup_token = 'backup_token'
     db_token = 'db_token'
 
     if not AWS_S3_BUCKET:
         return redirect(url_for('mConfig.index'))
 
-    cloudUsage = ojtbackup.getCloudDiskUsage()
-    cloudStorageFull = ojtbackup.cloudStorageFull()
+    # cloudUsage = ojtbackup.getCloudDiskUsage()
+    # cloudStorageFull = ojtbackup.cloudStorageFull()
     
     _server_storage = Server().get_storage_information()
     
@@ -304,7 +263,7 @@ def index():
 
 # @csrf.exempt
 @app.route("/delete_backup", methods=["POST"])
-@login_required
+
 def delete_backup():
     from models import Backup, BackupDatabase, BackupLog, Configuration
 
@@ -327,7 +286,7 @@ def delete_backup():
 
 
 @app.route("/save_folder", methods=["POST"])
-@login_required
+
 def save_folder():
     from models import Backup, User
     from os import path
@@ -371,7 +330,7 @@ def save_folder():
 
 
 @app.route("/save_database", methods=["POST"])
-@login_required
+
 def save_database():
     from models import BackupDatabase
     import mysql.connector
@@ -406,7 +365,6 @@ def save_database():
 
 
 @app.route("/backup_now", methods=["GET"])
-@login_required
 def backup_now():
     data = request.args
 
@@ -434,7 +392,7 @@ def backup_now():
 
 # @csrf.exempt
 @app.route("/save_backup", methods=["POST"])
-@login_required
+
 def save_backup():
     from models import Backup, Configuration, User
 
@@ -465,7 +423,7 @@ def save_backup():
 
 
 @app.route("/add_backup", methods=["POST"])
-@login_required
+
 def save():
     from models import Backup, BackupDatabase, db, User
 
