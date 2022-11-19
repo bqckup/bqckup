@@ -8,5 +8,6 @@ with open("sample.yml", "r") as stream:
     finally:
         stream.close()
 
-for xx in x['storages']:
-    print(xx)
+print(x)
+# for xx in x['storages']:
+#     print(xx)

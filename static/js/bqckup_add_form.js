@@ -77,7 +77,7 @@ function bqckup_add() {
       this.$el.disabled = false;
     },
     payload: {
-      bqckup: {
+      backup: {
         name: "example_name",
         path: "example_path",
       },

@@ -1,6 +1,7 @@
 from flask import Blueprint, request, flash, redirect, url_for, session, render_template, jsonify
 from classes.database import Database
 from classes.storage import Storage
+from config import BQ_PATH
 
 backup = Blueprint('bqckup', __name__)
 
@@ -15,13 +16,35 @@ def get_storages():
 
 @backup.post('/save')
 def save():
-    import json
+    import json, sys, os, ruamel.yaml as yaml
     post = request.form
     backup = json.loads(post.get('backup'))
     database = json.loads(post.get('database'))
-    configuration = json.loads(post.get('configuration'))
+    options = json.loads(post.get('options'))
 
-
+    paths =  [p for p in backup['path'].split('\n') if len(p)]
+    with open(
+        os.path.join(
+            BQ_PATH,
+            '.config',
+            'bqckups',
+            f"{backup['name']}.yml"            
+        ),
+        "w+"
+    ) as stream:
+        content = {
+            "bqckup": {
+                'name': backup['name'],
+                'path': paths,
+                "database": database,
+                "options": options
+            }
+        }
+        
+        yaml = yaml.YAML()
+        yaml.indent(sequence=4, offset=2)
+        yaml.dump(content, stream)
+    
     return jsonify(message="Debug")
 
 @backup.get('/add')

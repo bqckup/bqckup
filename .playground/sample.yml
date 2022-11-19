@@ -1,14 +1,16 @@
-storages:
-  ojtbackup:
-    bucket: thisnugroho
-    access_key_id: 8bc2ce31a67416bc9a60abf126688319
-    region: auto
-    endpoint: https://4fe082a30832ef4bbdb0bb3a0c74123f.r2.cloudflarestorage.com
-    secret_access_key: bbd2ea387bb08c3adac2b60899f7232f2c2d803eac0a33f6c39b7a35760420e4
-
-  dedebackup:
-    bucket: thisnugroho
-    access_key_id: 8bc2ce31a67416bc9a60abf126688319
-    region: auto
-    endpoint: https://4fe082a30832ef4bbdb0bb3a0c74123f.r2.cloudflarestorage.com
-    secret_access_key: bbd2ea387bb08c3adac2b60899f7232f2c2d803eac0a33f6c39b7a35760420e4
+bqckup:
+  name: ""
+  path: /home/ubuntu/Project/bqckup
+  database:
+    host: localhost
+    user: root_db
+    password: coklatmanis
+    type: mysql
+    name: database name
+  options:
+    storage: ojtbackup
+    interval: daily
+    time: 00:00
+    retention: 14
+    save_locally: yes
+    notification_email: this.nugroho@gmail.com
