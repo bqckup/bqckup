@@ -20,6 +20,7 @@ function bqckup_add() {
       }
       let response = await request.json();
       this.storages = response;
+      this.payload.options.storage = this.storages[0];
     },
     open(step = false) {
       this.step = this.step == "files" ? "database" : "options";
@@ -42,11 +43,21 @@ function bqckup_add() {
       this.open(previousStep);
     },
     next() {
+      var invalidChars = /[ `!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~]/;
       switch (this.step) {
         case "files":
+          if (invalidChars.test(this.payload.backup.name)) {
+            return Swal.fire(
+              "Backup name is invalid",
+              "Backup name must not contains space or symbols",
+              "error"
+            );
+          }
           if (!this.$refs.form_files.checkValidity()) {
-            return alert(
-              "The form needs to be filled in to proceed to the next step"
+            return Swal.fire(
+              "Empty Data",
+              "The form needs to be filled in to proceed to the next step",
+              "error"
             );
           }
       }
@@ -54,7 +65,7 @@ function bqckup_add() {
     },
     async testDatabaseConnection() {
       if (!this.$refs.form_files.checkValidity()) {
-        return;
+        return Swal.fire("Empty Data", "Form data can not be empty", "error");
       }
       this.$el.disabled = true;
       let formData = new FormData();
@@ -70,7 +81,7 @@ function bqckup_add() {
         this.notifications.testingDatabaseFailed = true;
         console.error(respose.message);
         this.$el.disabled = false;
-        return;
+        return Swal.fire("Process Failed", response.message, "error");
       }
       this.notifications.testingDatabaseFailed = false;
       this.notifications.testingDatabaseSuccess = true;
@@ -78,7 +89,7 @@ function bqckup_add() {
     },
     payload: {
       backup: {
-        name: "example_name",
+        name: "backupname",
         path: "example_path",
       },
       database: {
@@ -90,16 +101,24 @@ function bqckup_add() {
       },
       options: {
         storage: "",
-        interval: "",
-        time: "",
-        retention: "",
-        save_locally: "yes",
+        interval: "daily",
+        time: "00:00",
+        retention: "7",
+        save_locally: "no",
         notification_email: "",
       },
     },
     async submit() {
+      this.$refs.buttonSave.disabled = true;
       let formData = new FormData();
       for (const _p in this.payload) {
+        if (_p == "options") {
+          this.payload[_p].save_locally =
+            this.payload[_p].save_locally === true ? "yes" : "no";
+          if (this.payload[_p].notification_email == "") {
+            delete this.payload[_p].notification_email;
+          }
+        }
         let dataEachStep = JSON.stringify(this.payload[_p]);
         formData.append(_p, dataEachStep);
       }
@@ -107,8 +126,24 @@ function bqckup_add() {
         method: "POST",
         body: formData,
       });
+      if (request.status != 200) {
+        console.error(request);
+        return Swal.fire(
+          "Process Failed",
+          "Failed to create bqckup, check console",
+          "error"
+        );
+      }
       let response = await request.json();
-      console.log(response);
+      this.$refs.buttonSave.disabled = false;
+      return Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: "Successfully create",
+        showConfirmButton: false,
+      }).then(() => {
+        window.location.href = "/";
+      });
     },
   };
 }

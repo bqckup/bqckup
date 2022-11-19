@@ -16,19 +16,20 @@ def get_storages():
 
 @backup.post('/save')
 def save():
-    import json, sys, os, ruamel.yaml as yaml
+    import json, uuid, os, ruamel.yaml as yaml
     post = request.form
     backup = json.loads(post.get('backup'))
     database = json.loads(post.get('database'))
     options = json.loads(post.get('options'))
 
     paths =  [p for p in backup['path'].split('\n') if len(p)]
+
     with open(
         os.path.join(
             BQ_PATH,
             '.config',
             'bqckups',
-            f"{backup['name']}.yml"            
+            f"{str(uuid.uuid4())}.yml"
         ),
         "w+"
     ) as stream:
@@ -45,7 +46,7 @@ def save():
         yaml.indent(sequence=4, offset=2)
         yaml.dump(content, stream)
     
-    return jsonify(message="Debug")
+    return jsonify(message="Success")
 
 @backup.get('/add')
 def view_add():

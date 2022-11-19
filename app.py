@@ -1,11 +1,11 @@
-from modules.docs import docs
-from modules.config import mConfig
+# from modules.docs import docs
+# from modules.config import mConfig
 from modules.auth import auth
 from modules.backup import backup
 from classes.server import Server
 from helpers import generate_token, initialization, splitNewLine, isNone, getDateFromUnix, getInt, convertDatetime, today24Format, timeSince, bytes_to
-from classes.s3 import s3
-from models import BackupQueue
+# from classes.s3 import s3
+# from models import BackupQueue
 from config import *
 import sys, logging, time, os
 from datetime import timedelta
@@ -13,8 +13,8 @@ from flask.json import jsonify
 from decouple import config
 from flask import Flask, render_template, request, flash, redirect, url_for, session, abort
 from flask_login import LoginManager, login_required, logout_user, current_user
-from flask_caching import Cache
-from playhouse.shortcuts import model_to_dict
+# from flask_caching import Cache
+# from playhouse.shortcuts import model_to_dict
 from classes.storage import Storage
 
 sys.path.insert(0, os.path.abspath(
@@ -31,8 +31,8 @@ app.secret_key = SECRET_KEY
 # app.cache_default_timeout = 300
 
 app.register_blueprint(auth, url_prefix="/auth/")
-app.register_blueprint(mConfig, url_prefix="/config/")
-app.register_blueprint(docs, url_prefix="/docs/")
+# app.register_blueprint(mConfig, url_prefix="/config/")
+# app.register_blueprint(docs, url_prefix="/docs/")
 app.register_blueprint(backup, url_prefix="/backup/")
 
 # cache = Cache(app)

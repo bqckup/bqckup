@@ -4,7 +4,7 @@ auth = Blueprint('auth', __name__)
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
-    from models import User
+    # from models import User
     if request.method == 'GET':
         return render_template('auth/login.html')
 

@@ -60,7 +60,7 @@
                                     <polyline points="9 6 15 12 9 18"></polyline>
                                  </svg>
                         </button>
-                        <button class="btn btn-primary" x-show="step == 'options'" x-on:click="submit">
+                        <button class="btn btn-primary" x-ref="buttonSave" x-show="step == 'options'" x-on:click="submit">
                             Save
                         </button>
                     </div>
@@ -72,10 +72,11 @@
                                 <label for="" class="form-label">Backup name</label>
                                 <input type="text" class="form-control" x-model.defer="payload.backup.name"
                                     placeholder="Backup name" required>
+                                <small class="form-text">Must not contain space or symbol</small>
                             </div>
                             <div class="mb-3">
                                 <label for="" class="form-label">Path</label>
-                                <textarea name="" id="" cols="30" rows="3" x-model.defer="payload.backup.path"
+                                <textarea cols="30" rows="3" x-model.defer="payload.backup.path"
                                     class="form-control" required></textarea>
                                     <span class="form-text">
                                         Use enter ⏎ if it's more than one path
@@ -181,19 +182,21 @@
                             <label class="form-label">Interval</label>
                             <div class="btn-group w-100" role="group">
                                 <input type="radio" class="btn-check" x-model.defer="payload.options.interval"
-                                    id="interval-daily" autocomplete="off" checked value="daily">
+                                    id="interval-daily" autocomplete="off" :checked="payload.options.interval == 'daily'" value="daily">
                                 <label for="interval-daily" type="button" class="btn">Daily</label>
+
                                 <input type="radio" class="btn-check" x-model.defer="payload.options.interval"
-                                    id="interval-weekly" autocomplete="off" value="weekly">
+                                    id="interval-weekly" autocomplete="off" :checked="payload.options.interval == 'weekly'" value="weekly">
                                 <label for="interval-weekly" type="button" class="btn">Weekly</label>
+
                                 <input type="radio" class="btn-check" x-model.defer="payload.options.interval"
-                                    id="interval-monthly" autocomplete="off" value="monthly">
+                                    id="interval-monthly" autocomplete="off" value="monthly" :checked="payload.options.interval == 'monthly'">
                                 <label for="interval-monthly" type="button" class="btn">Monthly</label>
                             </div>
                         </div>
                         <div class="mb-3">
                             <label for="" class="form-label">Time</label>
-                            <input class="timepicker form-control" x-model.defer="payload.options.time" type="text">
+                            <input class="timepicker form-control" x-model.defer="payload.options.time" required type="text">
                         </div>
                         <div class="mb-3">
                             <label for="" class="form-label">Email Notification</label>
@@ -202,7 +205,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="" class="form-label">File Retention</label>
-                            <input type="number" class="form-control" placeholder="Number of File Retention" x-mode.defer="retention">
+                            <input type="number" class="form-control" x-model.defer="payload.options.retention" placeholder="Number of File Retention" x-mode.defer="retention">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Options</label>
