@@ -5,7 +5,7 @@ from helpers import getInt
 from hurry.filesize import size, alternative
 from boto3.s3.transfer import TransferConfig
 from classes.progresspercentage import ProgressPercentage
-
+from classes.storage import Storage
 
 class s3(object):
     def __init__(self):
@@ -14,13 +14,14 @@ class s3(object):
 
     def clientInit(self):
         session = boto3.session.Session()
+        s3_config = Storage().get_primary_storage()
         try:
             self.client = session.client(
                 "s3",
-                region_name=AWS_REGION,
-                endpoint_url=AWS_S3_ENDPOINT,
-                aws_access_key_id=AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                region_name=s3_config['region'],
+                endpoint_url=s3_config['endpoint'],
+                aws_access_key_id=s3_config['access_key_id'],
+                aws_secret_access_key=s3_config['secret_access_key'],
             )
         except Exception as e:
             print(f"Failed to connect because : {e}") 

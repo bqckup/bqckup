@@ -15,6 +15,7 @@ from flask import Flask, render_template, request, flash, redirect, url_for, ses
 from flask_login import LoginManager, login_required, logout_user, current_user
 from flask_caching import Cache
 from playhouse.shortcuts import model_to_dict
+from classes.storage import Storage
 
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..")))
@@ -26,15 +27,15 @@ app = Flask(__name__)
 
 app.permanent_session_lifetime = timedelta(minutes=30)
 app.secret_key = SECRET_KEY
-app.cache_type = "SimpleCache"
-app.cache_default_timeout = 300
+# app.cache_type = "SimpleCache"
+# app.cache_default_timeout = 300
 
 app.register_blueprint(auth, url_prefix="/auth/")
 app.register_blueprint(mConfig, url_prefix="/config/")
 app.register_blueprint(docs, url_prefix="/docs/")
 app.register_blueprint(backup, url_prefix="/backup/")
 
-cache = Cache(app)
+# cache = Cache(app)
 
 # assign global variable
 # ref : https://stackoverflow.com/a/43336023
@@ -232,21 +233,13 @@ def logout():
 # @cache.cached(timeout=60)
 def index():
     from classes.auth import Auth
+    
     if not Auth.is_authorized():
         return redirect(url_for('auth.login'))
-    # backup_token = generate_token()
-    # db_token = generate_token()
-    # serverUsage = ojtbackup.getServerDiskUsage()
-    # serverStorageFull = ojtbackup.serverStorageFull()
-    backup_token = 'backup_token'
-    db_token = 'db_token'
 
-    if not AWS_S3_BUCKET:
+    if not Storage().get_primary_storage():
         return redirect(url_for('mConfig.index'))
 
-    # cloudUsage = ojtbackup.getCloudDiskUsage()
-    # cloudStorageFull = ojtbackup.cloudStorageFull()
-    
     _server_storage = Server().get_storage_information()
     
     server_storage = {
@@ -610,7 +603,7 @@ def clearFolderName(s):
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", debug=True, port=9393)
+    app.run(host="0.0.0.0", debug=True, port=9393)
 else:
     logging.basicConfig(
         filename="OJTBackup.log",

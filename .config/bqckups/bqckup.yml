@@ -1,7 +1,14 @@
 bqckup:
+  name: ""
   path: /home/ubuntu/Project/bqckup
-  storage: ojtbackup
+  database:
+    host: localhost
+    user: root_db
+    password: coklatmanis
+    type: mysql
+    name: database name
   options:
+    storage: ojtbackup
     interval: daily
     time: 00:00
     retention: 14

@@ -2,29 +2,36 @@ import os
 from classes.yml_parser import Yml_Parser
 from config import BQ_PATH
 
+class StorageException(Exception): pass
 class Storage:
     def __init__(self):
         self.config_path = os.path.join(BQ_PATH, '.config', 'storages.yml')
+        self.parsed_storage = Yml_Parser.parse(self.config_path)
 
-    def _parse_storage_config(self):
-        return Yml_Parser.parse(self.config_path)
+    def get_parsed_storage(self):
+        return self.parsed_storage
 
     def list(self) -> list:
-        parsed_config = self._parse_storage_config()
-        return list(parsed_config['storages'].keys())
+        return list(self.parsed_storage['storages'].keys())
+
+    def get_storage_detail(self, name: str) -> dict:
+        try:
+            return self.parsed_storage['storages'][name]
+        except:
+            raise StorageException(f"Storage {name} doesn't exists")
         
-    def get_primary_storage(self) -> str:
+    def get_primary_storage(self):
         storages = self.list()
         
         if len(storages) >= 1:
             return storages[0]
         
-        parsed_config = self._parse_storage_config()
+        parsed_config = self.parsed_storage
         
         for storage in storages:
             if 'primary' not in parsed_config['storages'][storage]:
                 continue
             if parsed_config['storages'][storage]['primary'].lower() == 'yes':
-                return storage
+                return parsed_config['storages'][storage]
             
         return None

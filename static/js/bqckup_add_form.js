@@ -22,7 +22,7 @@ function bqckup_add() {
       this.storages = response;
     },
     open(step = false) {
-      this.step = this.step == "files" ? "database" : "configuration";
+      this.step = this.step == "files" ? "database" : "options";
       if (step) {
         this.step = step;
       }
@@ -33,12 +33,12 @@ function bqckup_add() {
               description: "Setup your database",
             }
           : {
-              name: "Setup configuration",
-              description: "Setup your configuration",
+              name: "Setup options",
+              description: "Setup your bqckup options",
             };
     },
     previous() {
-      let previousStep = this.step == "configuration" ? "database" : "files";
+      let previousStep = this.step == "options" ? "database" : "files";
       this.open(previousStep);
     },
     next() {
@@ -77,7 +77,7 @@ function bqckup_add() {
       this.$el.disabled = false;
     },
     payload: {
-      backup: {
+      bqckup: {
         name: "example_name",
         path: "example_path",
       },
@@ -88,10 +88,27 @@ function bqckup_add() {
         user: "root_db",
         password: "coklatmanis",
       },
-      configuration: {
-        schedule: "",
+      options: {
+        storage: "",
+        interval: "",
+        time: "",
+        retention: "",
+        save_locally: "yes",
+        notification_email: "",
       },
     },
-    submit() {},
+    async submit() {
+      let formData = new FormData();
+      for (const _p in this.payload) {
+        let dataEachStep = JSON.stringify(this.payload[_p]);
+        formData.append(_p, dataEachStep);
+      }
+      let request = await fetch("/backup/save", {
+        method: "POST",
+        body: formData,
+      });
+      let response = await request.json();
+      console.log(response);
+    },
   };
 }

@@ -13,6 +13,17 @@ def get_storages():
     
     return jsonify(storages)
 
+@backup.post('/save')
+def save():
+    import json
+    post = request.form
+    backup = json.loads(post.get('backup'))
+    database = json.loads(post.get('database'))
+    configuration = json.loads(post.get('configuration'))
+
+
+    return jsonify(message="Debug")
+
 @backup.get('/add')
 def view_add():
     return render_template('add_bqckup.html')

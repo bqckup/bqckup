@@ -34,7 +34,7 @@
                 <a href="#" class="step-item" :class="step == 'database' ? 'active' : ''">
                     Setup Database
                 </a>
-                <a href="#" class="step-item" :class="step == 'files' ? 'configuration' : ''">
+                <a href="#" class="step-item" :class="step == 'files' ? 'options' : ''">
                     Setup Bqckup
                 </a>
             </div>
@@ -45,12 +45,24 @@
                         <p class="card-subtitle" x-text="form.description"></p>
                     </div>
                     <div class="card-actions">
-                        <button class="btn" disabled x-show="step == 'database'">You can skip this step, if you do not
-                            need database backup</button>
+                        <span class="text-warning me-2" x-show="step == 'database'">You can skip this step, if you do not
+                            need database backup</span>
                         <button class="btn btn-light" :class="step == 'files' ? 'd-none' : ''" x-on:click="previous()">
-                            Back </button>
-                        <button class="btn btn-primary" type="submit" :disabled="false"
-                            :class="step == 'configuration' ? 'd-none' : ''" x-on:click="next()"> Next </button>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-0" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                <path d="M9 11l-4 4l4 4m-4 -4h11a4 4 0 0 0 0 -8h-1"></path>
+                             </svg>
+                        </button>
+                        <button class="btn btn-primary" type="submit" :disabled="false" :class="step == 'options' ? 'd-none' : ''" x-on:click="next()">
+                                <span class="me-2">Next</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon me-0" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                    <polyline points="9 6 15 12 9 18"></polyline>
+                                 </svg>
+                        </button>
+                        <button class="btn btn-primary" x-show="step == 'options'" x-on:click="submit">
+                            Save
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
@@ -156,46 +168,46 @@
                             </div>
                         </form>
                     </div>
-                    <div x-show="step == 'configuration'">
+                    <div x-show="step == 'options'">
                         <div class="mb-3">
                             <label for="" class="form-label">Storage</label>
-                            <select class="form-control" x-model.defer="payload.configuration.storage">
+                            <select class="form-control" x-model.defer="payload.options.storage">
                                 <template x-for="storage in storages">
                                     <option :value="storage" x-text="storage"></option>
                                 </template>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Schedule</label>
+                            <label class="form-label">Interval</label>
                             <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" x-model.defer="payload.configuration.schedule"
-                                    id="schedule-daily" autocomplete="off" checked="" value="daily">
-                                <label for="schedule-daily" type="button" class="btn">Daily</label>
-                                <input type="radio" class="btn-check" x-model.defer="payload.configuration.schedule"
-                                    id="schedule-weekly" autocomplete="off">
-                                <label for="schedule-weekly" type="button" class="btn">Weekly</label>
-                                <input type="radio" class="btn-check" x-model.defer="payload.configuration.schedule"
-                                    id="schedule-monthly" autocomplete="off">
-                                <label for="schedule-monthly" type="button" class="btn">Monthly</label>
+                                <input type="radio" class="btn-check" x-model.defer="payload.options.interval"
+                                    id="interval-daily" autocomplete="off" checked="" value="daily">
+                                <label for="interval-daily" type="button" class="btn">Daily</label>
+                                <input type="radio" class="btn-check" x-model.defer="payload.options.interval"
+                                    id="interval-weekly" autocomplete="off">
+                                <label for="interval-weekly" type="button" class="btn">Weekly</label>
+                                <input type="radio" class="btn-check" x-model.defer="payload.options.interval"
+                                    id="interval-monthly" autocomplete="off">
+                                <label for="interval-monthly" type="button" class="btn">Monthly</label>
                             </div>
                         </div>
                         <div class="mb-3">
                             <label for="" class="form-label">Time</label>
-                            <input class="timepicker form-control" type="text">
+                            <input class="timepicker form-control" x-model.defer="payload.options.time" type="text">
                         </div>
                         <div class="mb-3">
                             <label for="" class="form-label">Email Notification</label>
-                            <input type="email" class="form-control" placeholder="E-Mail">
+                            <input type="email" class="form-control" placeholder="E-Mail" x-model.defer="payload.options.notification_email">
                             <small class="form-text">Leave it blank, if you do not need notification</small>
                         </div>
                         <div class="mb-3">
                             <label for="" class="form-label">File Retention</label>
-                            <input type="number" class="form-control" placeholder="Number of File Retention">
+                            <input type="number" class="form-control" placeholder="Number of File Retention" x-mode.defer="retention">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Options</label>
                             <label class="form-check">
-                                <input class="form-check-input" type="checkbox">
+                                <input class="form-check-input" type="checkbox" value="yes" x-model.defer="payload.options.save_locally">
                                 <span class="form-check-label">
                                     Save file locally
                                 </span>
