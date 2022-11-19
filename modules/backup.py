@@ -5,6 +5,11 @@ from config import BQ_PATH
 
 backup = Blueprint('bqckup', __name__)
 
+@backup.get('/list')
+def list():
+    
+    pass
+
 @backup.get('/get_storages')
 def get_storages():
     storages = Storage().list()

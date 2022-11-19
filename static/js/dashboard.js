@@ -5,10 +5,12 @@ function dashboard() {
       let request = await fetch("/backup/list");
       let response = await request.json();
       if (request.status >= 500) {
-        return alert("Faild to fetch backup, please check logs");
+        return alert("Failed to fetch backup, please check logs");
       }
       this.bqckups = response;
     },
-    init() {},
+    async init() {
+      this.fetchBqckups();
+    },
   };
 }
