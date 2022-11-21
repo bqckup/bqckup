@@ -27,6 +27,7 @@ class Bqckup:
             results[index]['file_name'] = file_name
             results[index]['last_backup'] = time_since(time.time(), log[5]).minutes
         print(results)
+        # TODO: fix this
         return results
     
     def get_last_log(self, name:str):
