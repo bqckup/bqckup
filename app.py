@@ -3,7 +3,7 @@
 from modules.auth import auth
 from modules.backup import backup
 from classes.server import Server
-from helpers import generate_token, initialization, splitNewLine, isNone, getDateFromUnix, getInt, convertDatetime, today24Format, timeSince, bytes_to
+from helpers import generate_token, initialization, splitNewLine, isNone, getInt, convertDatetime, today24Format, timeSince, bytes_to
 # from classes.s3 import s3
 # from models import BackupQueue
 from config import *
@@ -590,9 +590,9 @@ def jinjaIsNone(s):
     return isNone(s)
 
 
-@app.template_filter("getDateFromUnix")
-def jinjaGetDateFromUnix(s):
-    return getDateFromUnix(s, format="%d %B %Y | %H:%M")
+# @app.template_filter("getDateFromUnix")
+# def jinjaGetDateFromUnix(s):
+#     return getDateFromUnix(s, format="%d %B %Y | %H:%M")
 
 
 @app.template_filter("clearFolderName")

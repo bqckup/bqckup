@@ -34,6 +34,12 @@ class Log:
     def create_table(self) -> None:
         self.query('CREATE TABLE "logs" ( "id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT, "file_size" BIGINT, "file_path" TEXT, "description" TEXT, "created_at" INTEGER, type TEXT)')
     
+    def list(self, name: str):
+        self.create_connection()
+        result = self._cursor.execute(f"SELECT * FROM {self.__TABLE__} WHERE name = '{name}' ORDER BY created_at ASC").fetchall()
+        self._connection.close()
+        return result
+    
     def query(self, q: str):
         self.create_connection()
         result = self._cursor.execute(q)

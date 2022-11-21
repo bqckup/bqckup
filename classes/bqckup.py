@@ -5,6 +5,7 @@ from classes.yml_parser import Yml_Parser
 from classes.log import Log
 from config import BQ_PATH
 from classes.s3 import s3
+from helpers import get_date_from_unix, time_since
 
 class Bqckup:
     def __init__(self):
@@ -19,18 +20,22 @@ class Bqckup:
         for index, file in enumerate(files):
             file_name = os.path.basename(file)
             parsed_content = Yml_Parser.parse(file)
+            bqckup = parsed_content['bqckup']
+            log = self.get_last_log(bqckup['name'])
             results[index] = {}
+            results[index] = bqckup
             results[index]['file_name'] = file_name
-            results[index] = parsed_content['bqckup']
-        
+            results[index]['last_backup'] = time_since(time.time(), log[5]).minutes
+        print(results)
         return results
-            
-    def get_last_run(self):
-        pass
-
-    def get_next_run(self):
-        pass
     
+    def get_last_log(self, name:str):
+        logs = self.get_logs(name)
+        return logs[0] if logs else None
+    
+    def get_logs(self, name: str):
+        return Log().list(name)
+            
     def do_backup(self, backup_config: str):
         backup = Yml_Parser.parse(
             os.path.join(BQ_PATH,'.config','bqckups', backup_config)
@@ -86,7 +91,7 @@ class Bqckup:
         })
         
  
-        if backup['options']['save_locally'] != 'yes':
+        if not backup['options']['save_locally']:
             os.unlink(db_backup_path)
             os.unlink(file_path)
         

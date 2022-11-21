@@ -72,7 +72,7 @@ def zip(target, filePath, fileName):
     return fullPath
 
 
-def getDateFromUnix(unix, typeDate=False, format="%Y-%m-%d"):
+def get_date_from_unix(unix, typeDate=False, format="%Y-%m-%d"):
     if unix is None:
         return False
 
@@ -185,7 +185,7 @@ def convertDatetime(obj, format="%m/%d/%Y"):
 # date2 > date1
 # rd.days, hours, seconds, etc.
 # both unix
-def timeSince(date1, date2):
+def time_since(date1, date2):
     import dateutil.relativedelta
 
     dt1 = datetime.datetime.fromtimestamp(date1)
