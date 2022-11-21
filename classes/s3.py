@@ -8,20 +8,21 @@ from classes.progresspercentage import ProgressPercentage
 from classes.storage import Storage
 
 class s3(object):
-    def __init__(self):
+    def __init__(self, storage_name: str):
+        self.storage = Storage().get_storage_detail(storage_name)
+        self.root_folder_name = 'bqckup'
         self.clientInit()
-        self.bucket_name = AWS_S3_BUCKET
+        self.bucket_name = self.storage['bucket']
 
     def clientInit(self):
         session = boto3.session.Session()
-        s3_config = Storage().get_primary_storage()
         try:
             self.client = session.client(
                 "s3",
-                region_name=s3_config['region'],
-                endpoint_url=s3_config['endpoint'],
-                aws_access_key_id=s3_config['access_key_id'],
-                aws_secret_access_key=s3_config['secret_access_key'],
+                region_name=self.storage['region'],
+                endpoint_url=self.storage['endpoint'],
+                aws_access_key_id=self.storage['access_key_id'],
+                aws_secret_access_key=self.storage['secret_access_key'],
             )
         except Exception as e:
             print(f"Failed to connect because : {e}") 
@@ -94,6 +95,7 @@ class s3(object):
         format name : token_site.com_date.zip
     """
     def upload(self, pathFile, newFileName):
+        newFileName = os.path.join(self.root_folder_name, newFileName)
         config = TransferConfig(
             multipart_threshold=1024 * 25,
             max_concurrency=10,

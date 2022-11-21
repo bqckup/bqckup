@@ -2,7 +2,8 @@ import os, errno, datetime, logging, sys
 from os import path
 from datetime import date
 from pathlib import Path
-sys.path.append("..")
+# sys.path.append("..")
+
 """
 convert bytes to megabytes, etc.
        sample code:

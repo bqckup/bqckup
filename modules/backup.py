@@ -7,7 +7,6 @@ backup = Blueprint('bqckup', __name__)
 
 @backup.get('/list')
 def list():
-    
     pass
 
 @backup.get('/get_storages')

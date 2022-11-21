@@ -1,0 +1,16 @@
+bqckup:
+  name: backupname
+  path:
+    - /home/hp/Project/test_dir
+  database:
+    host: localhost
+    type: mysqli
+    name: mysql
+    user: root_db
+    password: coklatmanis
+  options:
+    storage: ojtbackup
+    interval: daily
+    time: 00:00
+    retention: '7'
+    save_locally: no

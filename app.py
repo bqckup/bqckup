@@ -233,6 +233,7 @@ def logout():
 # @cache.cached(timeout=60)
 def index():
     from classes.auth import Auth
+    from classes.bqckup import Bqckup
     
     if not Auth.is_authorized():
         return redirect(url_for('auth.login'))
@@ -251,6 +252,7 @@ def index():
     return render_template(
         "index.html",
         server_storage=server_storage,
+        bqckups=Bqckup().list(),
     )
 
 
