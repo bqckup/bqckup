@@ -71,8 +71,10 @@ def page_not_found(e):
 
 @app.before_request
 def before_request():
-    if not initialization():
-        return "Access blocked"
+    pass
+    from classes.auth import Auth
+    if not Auth.is_authorized() and ('login' not in request.path and 'static' not in request.path and '/' != request.path):
+        return jsonify(message="Access blocked"), 401
 
 
 @app.route("/get_link_download", methods=["GET"])
@@ -590,9 +592,10 @@ def jinjaIsNone(s):
     return isNone(s)
 
 
-# @app.template_filter("getDateFromUnix")
-# def jinjaGetDateFromUnix(s):
-#     return getDateFromUnix(s, format="%d %B %Y | %H:%M")
+@app.template_filter('time_since')
+def time_since(unix):
+    from helpers import time_since
+    return time_since(unix)
 
 
 @app.template_filter("clearFolderName")

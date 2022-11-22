@@ -80,7 +80,7 @@
   </div>
   <div class="page-body">
     <div class="container-xl">
-      <div class="row row-cards">
+      <div class="row row-cards d-none">
         <div class="col-sm-6 col-lg-3">
           <div class="card card-sm">
             <div class="card-body">
@@ -276,12 +276,14 @@
                             <span class="status-indicator-circle"></span>
                           </span>
                           <div> -->
-                            {{ bqckups[i]['name'] }}
+                            <a href="{{ url_for('bqckup.detail', backup_name=bqckups[i]['name']) }}">
+                              {{ bqckups[i]['name'] }}
+                            </a>
                           <!-- </div>
                         </div> -->
                       </td>
                       <td>{{ bqckups[i]['options']['storage'] }}</td>
-                      <td>1 Hours Ago</td>
+                      <td>{{ bqckups[i]['last_backup']|time_since }}</td>
                       <td>in 2 Hours</td>
                       <td>100 GB</td>
                       <td>

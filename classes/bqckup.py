@@ -5,7 +5,6 @@ from classes.yml_parser import Yml_Parser
 from classes.log import Log
 from config import BQ_PATH
 from classes.s3 import s3
-from helpers import get_date_from_unix, time_since
 
 class Bqckup:
     def __init__(self):
@@ -13,6 +12,15 @@ class Bqckup:
         
         if not os.path.exists(self.backup_config_path):
             os.makedirs(self.backup_config_path)
+            
+    def detail(self, name: str):
+        backups = self.list()
+        
+        for i in backups:
+            if backups[i]['name'] == name:
+                return backups[i]
+            
+        return None
     
     def list(self):
         files = File().get_file_list(self.backup_config_path)
@@ -25,9 +33,7 @@ class Bqckup:
             results[index] = {}
             results[index] = bqckup
             results[index]['file_name'] = file_name
-            results[index]['last_backup'] = time_since(time.time(), log[5]).minutes
-        print(results)
-        # TODO: fix this
+            results[index]['last_backup'] = log[5]
         return results
     
     def get_last_log(self, name:str):
@@ -45,6 +51,7 @@ class Bqckup:
 
         if not File().is_exists(tmp_path):
             os.makedirs(tmp_path)
+            
         file_path = os.path.join(tmp_path, f"{int(time.time())}.tar.gz")
         with tarfile.open(file_path, "w:gz") as tar:
             for path in backup['path']:
@@ -72,7 +79,7 @@ class Bqckup:
         
         Log().write({
             "name": backup['name'],
-            "file_size": 0,
+            "file_size": os.stat(file_path).st_size,
             "file_path": file_path,
             "description": "File Backup Success",
             "type": Log.FILES_BACKUP
@@ -85,7 +92,7 @@ class Bqckup:
         
         Log().write({
             "name": backup['name'],
-            "file_size": 0,
+            "file_size": os.stat(db_backup_path).st_size,
             "file_path": db_backup_path,
             "description": "Database Backup Success",
             "type": Log.DB_BACKUP

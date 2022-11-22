@@ -20,7 +20,7 @@ def get_storages():
 
 @backup.post('/save')
 def save():
-    import json, uuid, os, ruamel.yaml as yaml
+    import json, os, ruamel.yaml as yaml
     post = request.form
     backup = json.loads(post.get('backup'))
     database = json.loads(post.get('database'))
@@ -33,7 +33,7 @@ def save():
             BQ_PATH,
             '.config',
             'bqckups',
-            f"{str(uuid.uuid4())}.yml"
+            f"{backup['name']}.yml"
         ),
         "w+"
     ) as stream:
@@ -55,6 +55,12 @@ def save():
 @backup.get('/add')
 def view_add():
     return render_template('add_bqckup.html')
+
+@backup.get('/detail/<backup_name>')
+def detail(backup_name):
+    from classes.bqckup import Bqckup
+    backup = Bqckup().detail(backup_name)
+    return render_template('detail.html', backup=backup)
 
 @backup.post('/test_db_connection')
 def test_db_connection():
