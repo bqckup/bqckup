@@ -10,3 +10,8 @@ schedule = last backup diff with today
 if schedule == 1:
 	if current_time < schedule time:
 		do backup
+
+
+
+
+check is worker online 

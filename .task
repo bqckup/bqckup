@@ -1,0 +1,13 @@
+## Task
+- [ ] Job Manager
+- [ ] Backup now
+- [ ] Backup Detail Page
+    - [x] Overview
+    - [ ] Logs
+- [ ] Backup CLI
+    - Test Config
+    - Run now
+- [ ] Backup by Schedule
+- [ ] Get Next Run CRON
+- [ ] Self Backup
+    - 

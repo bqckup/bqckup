@@ -24,3 +24,4 @@ flask_caching
 mysql-connector-python
 pyyaml
 ruamel.yaml
+rq
