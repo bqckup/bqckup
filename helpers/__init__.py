@@ -3,6 +3,13 @@ from os import path
 from datetime import date, datetime
 from pathlib import Path
 
+# all in unix
+def difference_in_days(date1, date2):
+    date1 = datetime.fromtimestamp(date1)
+    date2 = datetime.fromtimestamp(date2)
+    delta = date1 - date2
+    return delta.days
+
 # dt = unix format
 def time_since(dt, default="now"):
     dt = datetime.fromtimestamp(dt)

@@ -102,7 +102,6 @@ function bqckup_add() {
       options: {
         storage: "",
         interval: "daily",
-        time: "00:00",
         retention: "7",
         save_locally: "no",
         notification_email: "",

@@ -12,6 +12,4 @@ if schedule == 1:
 		do backup
 
 
-
-
 check is worker online 

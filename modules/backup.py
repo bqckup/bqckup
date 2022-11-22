@@ -9,6 +9,12 @@ backup = Blueprint('bqckup', __name__)
 def list():
     pass
 
+@backup.post('/backup_now')
+def backup_now():
+    from classes.queue import Queue
+    name = request.form.gete('name')
+    queue = Queue()
+    
 @backup.get('/get_storages')
 def get_storages():
     storages = Storage().list()

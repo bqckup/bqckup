@@ -183,21 +183,27 @@
                             <div class="btn-group w-100" role="group">
                                 <input type="radio" class="btn-check" x-model.defer="payload.options.interval"
                                     id="interval-daily" autocomplete="off" :checked="payload.options.interval == 'daily'" value="daily">
-                                <label for="interval-daily" type="button" class="btn">Daily</label>
+                                <label for="interval-daily" type="button" class="btn">
+                                    Daily (Every Midnight)
+                                </label>
 
                                 <input type="radio" class="btn-check" x-model.defer="payload.options.interval"
                                     id="interval-weekly" autocomplete="off" :checked="payload.options.interval == 'weekly'" value="weekly">
-                                <label for="interval-weekly" type="button" class="btn">Weekly</label>
+                                <label for="interval-weekly" type="button" class="btn">
+                                    Weekly (Every weekend)
+                                </label>
 
                                 <input type="radio" class="btn-check" x-model.defer="payload.options.interval"
                                     id="interval-monthly" autocomplete="off" value="monthly" :checked="payload.options.interval == 'monthly'">
-                                <label for="interval-monthly" type="button" class="btn">Monthly</label>
+                                <label for="interval-monthly" type="button" class="btn">
+                                    Monthly (First day of the month)
+                                </label>
                             </div>
                         </div>
-                        <div class="mb-3">
+                        <!-- <div class="mb-3">
                             <label for="" class="form-label">Time</label>
                             <input class="timepicker form-control" x-model.defer="payload.options.time" required type="text">
-                        </div>
+                        </div> -->
                         <div class="mb-3">
                             <label for="" class="form-label">Email Notification</label>
                             <input type="email" class="form-control" placeholder="E-Mail" x-model.defer="payload.options.notification_email">
