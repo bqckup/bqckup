@@ -1,6 +1,6 @@
 ## Task
-- [ ] Job Manager
-- [ ] Backup now
+- [x] Job Manager
+- [x] Backup now
 - [ ] Backup Detail Page
     - [x] Overview
     - [ ] Logs
@@ -9,5 +9,7 @@
     - Run now
 - [ ] Backup by Schedule
 - [ ] Get Next Run CRON
+
+## New Task
 - [ ] Self Backup
-    - 
+- [ ] API Integration

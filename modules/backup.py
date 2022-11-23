@@ -1,19 +1,23 @@
-from flask import Blueprint, request, flash, redirect, url_for, session, render_template, jsonify
+from flask import Blueprint, request, render_template, jsonify
 from classes.database import Database
 from classes.storage import Storage
 from config import BQ_PATH
 
 backup = Blueprint('bqckup', __name__)
 
-@backup.get('/list')
-def list():
-    pass
-
-@backup.post('/backup_now')
-def backup_now():
-    from classes.queue import Queue
-    name = request.form.gete('name')
-    queue = Queue()
+@backup.get('/backup_now/<name>')
+def backup_now(name):
+    try:
+        from classes.queue import Queue
+        from classes.bqckup import Bqckup
+        queue = Queue()
+        bqckup = Bqckup()
+        backup = bqckup.detail(name)
+        queue.add(name, bqckup.do_backup, backup['file_name'])
+    except Exception as e:
+        return jsonify(error=True, message=f"Backup failed: {e}"), 500
+    else:
+        return jsonify(error=False, message=f"Backup Queued")
     
 @backup.get('/get_storages')
 def get_storages():

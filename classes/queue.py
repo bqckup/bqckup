@@ -6,12 +6,17 @@ class Queue:
         self._connection = Redis(REDIS_HOST, REDIS_PORT, REDIS_PASSWORD)
         self.queue = rQueue(connection=self._connection)
         
+        
+        
     def add(self, job_id: str, func, *args):
         if self.check_status(job_id) == 'deferred' or self.check_status(job_id) == 'started':
             print(f"{job_id} already running")
             return None
-
-        self.queue.enqueue(func, args, job_id=job_id)
+        print(func)
+        self.queue.enqueue(func, args=args, job_id=job_id)
     
     def check_status(self, job_id: str):
-        return self.queue.check_status()
+        jobs = self.queue.fetch_job(job_id=job_id)
+        if not jobs:
+            return None
+        return jobs.get_status()

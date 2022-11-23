@@ -1,7 +1,7 @@
 bqckup:
   name: backupname
   path:
-    - example_path
+    - /home/hp/Project/bqckup
   database:
     host: localhost
     type: mysqli

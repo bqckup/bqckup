@@ -5,6 +5,7 @@ from classes.yml_parser import Yml_Parser
 from classes.log import Log
 from config import BQ_PATH
 from classes.s3 import s3
+from helpers import difference_in_days
 
 class Bqckup:
     def __init__(self):
@@ -33,22 +34,52 @@ class Bqckup:
             results[index] = {}
             results[index] = bqckup
             results[index]['file_name'] = file_name
-            results[index]['last_backup'] = log[5]
+            results[index]['last_backup'] = log[5] if log else 0
         return results
     
     def get_last_log(self, name:str):
         logs = self.get_logs(name)
         return logs[0] if logs else None
-    
+        
     def get_logs(self, name: str):
         return Log().list(name)
+    
+    def backup(self):
+        backups = self.list()
+        for i in backups:
+            backup = backups[i]
+            last_log = self.get_last_log(backup['name'])
+            if last_log:
+                interval = backup['options']['interval']
+                last_backup = last_log[5] # 5 is Last Backup
+                last_backup = difference_in_days(last_backup, time.time())
+                
+                if interval == 'daily':
+                    to_compare = 1
+                elif interval == 'weekly':
+                    to_compare = 7
+                else:
+                    to_compare = 30 # monthly
+              
+                from datetime import datetime
+                # Not enough time has passed
+                if last_backup <= to_compare:
+                    print(f"\nBackup for {backup['name']} is not needed yet...")
+                    print(f"Current Date: {time.strftime('%d/%m/%Y', time.localtime())}")
+                    print(f"Last Backup: {datetime.fromtimestamp(last_log[5]).strftime('%d/%m/%Y')}")
+                    print(f"Day passed: {last_backup}")
+                    print(f"Interval: {interval}\n")
+                    return False
+                
+            # self.do_backup(backup['file_name'])
             
     def do_backup(self, backup_config: str):
         backup = Yml_Parser.parse(
             os.path.join(BQ_PATH,'.config','bqckups', backup_config)
         )['bqckup']
+        
         tmp_path = os.path.join(BQ_PATH, "tmp", f"{backup['name']}")
-
+        
         if not File().is_exists(tmp_path):
             os.makedirs(tmp_path)
             
