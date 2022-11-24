@@ -92,7 +92,7 @@ class Bqckup:
                 tar.add(path, arcname=os.path.basename(path))
             tar.close()
         
-        db_backup_path = os.path.join(tmp_path, f"{backup['database']['name']}.sql.gz")
+        db_backup_path = os.path.join(tmp_path, f"{int(time.time())}.sql.gz")
         
         Database().export(
             db_backup_path,

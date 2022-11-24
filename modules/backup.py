@@ -1,9 +1,17 @@
 from flask import Blueprint, request, render_template, jsonify
 from classes.database import Database
 from classes.storage import Storage
+from classes.s3 import s3
 from config import BQ_PATH
 
 backup = Blueprint('bqckup', __name__)
+
+@backup.post('/get_download_link')
+def get_download_link():    
+    link = s3().getLinkDownload(request.form['file'])
+    if not link:
+        return jsonify(error=True, message="Failed to get download link")
+    return jsonify(error=False, url=link)
 
 @backup.get('/backup_now/<name>')
 def backup_now(name):
@@ -69,8 +77,10 @@ def view_add():
 @backup.get('/detail/<backup_name>')
 def detail(backup_name):
     from classes.bqckup import Bqckup
+    from classes.log import Log
     backup = Bqckup().detail(backup_name)
-    return render_template('detail.html', backup=backup)
+    logs = Log().list(backup_name)
+    return render_template('detail.html', logs=logs,  backup=backup)
 
 @backup.post('/test_db_connection')
 def test_db_connection():

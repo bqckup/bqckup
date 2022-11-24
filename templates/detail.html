@@ -1,5 +1,5 @@
 {% extends "base.html" %} {% block content %}
-<div class="page-wrapper">
+<div class="page-wrapper" x-data="backupDetail">
     <div class="container-xl">
         <div class="page-header">
             <div class="row">
@@ -103,19 +103,6 @@
                                             </div>
                                             <div class="datagrid-item">
                                                 <div class="datagrid-title">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-alarm" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                                                        <circle cx="12" cy="13" r="7"></circle>
-                                                        <polyline points="12 10 12 13 14 13"></polyline>
-                                                        <line x1="7" y1="4" x2="4.25" y2="6"></line>
-                                                        <line x1="17" y1="4" x2="19.75" y2="6"></line>
-                                                     </svg>
-                                                    Time
-                                                </div>
-                                                <div class="datagrid-content">{{ backup['options']['time'] }}</div>
-                                            </div>
-                                            <div class="datagrid-item">
-                                                <div class="datagrid-title">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-dots-circle-horizontal" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                                                         <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                                                         <circle cx="12" cy="12" r="9"></circle>
@@ -155,12 +142,13 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            {% for log in logs %}
                                             <tr>
-                                                <td>Compressed.zip</td>
-                                                <td>22-03-2022 11:20:00 (7 Hours Ago)</td>
-                                                <td>100 Mb</td>
+                                                <td>{{ log[3] }}</td>
+                                                <td>{{ log[5]|tSince }}</td>
+                                                <td>{{ log[2]|humanReadableSize }}</td>
                                                 <td>
-                                                    <a href="#" class="btn btn-primary btn-sm">
+                                                    <a href="#" class="btn btn-primary btn-sm" @click="download">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-download" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                                                             <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                                                             <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path>
@@ -171,6 +159,7 @@
                                                     </a>
                                                 </td>
                                             </tr>
+                                            {% endfor %}
                                         </tbody>
                                    </table>
                                 </div>
@@ -182,4 +171,7 @@
         </div>
     </div>
 </div>
-{% endblock %} {% block script %} {% endblock %}
+{% endblock %} 
+{% block script %}
+<script src="{{ url_for('static', filename='js/backup-detail.js') }}"></script>
+{% endblock %}

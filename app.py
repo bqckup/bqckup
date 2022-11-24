@@ -516,10 +516,6 @@ def tSince(s):
     return timeSince(s)
 
 
-@app.template_filter("convertDate")
-def convDate(v):
-    return convertDatetime(v, "%d %B %Y")
-
 
 @app.template_filter("getUsage")
 def getUsageByBackup(token):

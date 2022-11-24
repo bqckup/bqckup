@@ -20,6 +20,8 @@ def login():
             return redirect(url_for('index'))
         
         flash(f"Authentication failed", "error")
+        return redirect(url_for('auth.login'))
+        
             
     
 @auth.get('/logout')
