@@ -263,7 +263,6 @@
                     <th>Storage</th>
                     <th>Last Run</th>
                     <th>Next Run</th>
-                    <th>Size</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -283,9 +282,8 @@
                         </div> -->
                       </td>
                       <td>{{ bqckups[i]['options']['storage'] }}</td>
-                      <td>{{ bqckups[i]['last_backup']|time_since }}</td>
+                      <td>{{ '-' if not bqckups[i]['last_backup'] else bqckups[i]['last_backup']|time_since }}</td>
                       <td>in 2 Hours</td>
-                      <td>100 GB</td>
                       <td>
                         <div class="dropdown">
                           <a href="#" class="btn-action" data-bs-toggle="dropdown" aria-expanded="false">

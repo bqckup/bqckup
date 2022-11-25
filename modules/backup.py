@@ -6,11 +6,14 @@ from config import BQ_PATH
 
 backup = Blueprint('bqckup', __name__)
 
+# filename is object name
 @backup.post('/get_download_link')
-def get_download_link():    
-    link = s3().getLinkDownload(request.form['file'])
+def get_download_link(): 
+    link = s3(storage_name=request.form.get('storage_name')).getLinkDownload(request.form.get('file_name'))
+    
     if not link:
         return jsonify(error=True, message="Failed to get download link")
+    
     return jsonify(error=False, url=link)
 
 @backup.get('/backup_now/<name>')
@@ -77,9 +80,8 @@ def view_add():
 @backup.get('/detail/<backup_name>')
 def detail(backup_name):
     from classes.bqckup import Bqckup
-    from classes.log import Log
     backup = Bqckup().detail(backup_name)
-    logs = Log().list(backup_name)
+    logs = Bqckup().get_logs(backup_name)
     return render_template('detail.html', logs=logs,  backup=backup)
 
 @backup.post('/test_db_connection')

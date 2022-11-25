@@ -583,6 +583,10 @@ def jinjaSplitNewLine(s):
     return splitNewLine(s)
 
 
+@app.template_filter('getBaseName')
+def getBaseName(path) -> str:
+    return os.path.basename(path)
+
 @app.template_filter("isNone")
 def jinjaIsNone(s):
     return isNone(s)

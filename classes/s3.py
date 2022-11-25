@@ -135,7 +135,7 @@ class s3(object):
                     "Key": fileName,
                     "ResponseContentDisposition": f"attachment; filename = {fileName}",
                 },
-                ExpiresIn=3600,
+                ExpiresIn=86400,# One Day
             )
         except Exception as e:
             print("Get link download failed, reason {}".format(e))

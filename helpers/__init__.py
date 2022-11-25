@@ -121,6 +121,9 @@ def getInt(s):
     arr = re.findall(r"\d+", s)
     return int(arr[0])
 
+def get_today(format="%Y-%m-%d"):
+    return date.today().strftime(format)
+
 
 def getOlderFiles(path, fromDays):
     now = date.today().strftime("%Y-%m-%d")

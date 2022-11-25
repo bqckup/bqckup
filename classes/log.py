@@ -1,6 +1,5 @@
 import sqlite3, os, logging, time
 from config import BQ_PATH
-from contextlib import closing
 
 class Log:
     __TABLE__ = 'logs' # Also DB name
@@ -23,7 +22,7 @@ class Log:
         self._cursor = self._connection.cursor()
     
     def write(self, data: dict) -> None:
-        query = f"INSERT INTO {self.__TABLE__} (name, file_size, file_path, description, created_at, type) VALUES ('{data['name']}', '{data['file_size']}', '{data['file_path']}', '{data['description']}', '{int(time.time())}', '{data['type']}');"
+        query = f"INSERT INTO {self.__TABLE__} (name, file_size, file_path, description, created_at, type, storage, object_name) VALUES ('{data['name']}', '{data['file_size']}', '{data['file_path']}', '{data['description']}', '{int(time.time())}', '{data['type']}', '{data['storage']}', '{data['object_name']}');"
         return self.query(query)
 
     """
@@ -32,13 +31,13 @@ class Log:
          - files
     """
     def create_table(self) -> None:
-        self.query('CREATE TABLE "logs" ( "id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT, "file_size" BIGINT, "file_path" TEXT, "description" TEXT, "created_at" INTEGER, type TEXT)')
+        self.query('CREATE TABLE "logs" ( "id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT, "file_size" BIGINT, "file_path" TEXT, "description" TEXT, "created_at" INTEGER, "type" TEXT, "storage" TEXT, "object_name" TEXT )')
     
     def list(self, name: str):
         self.create_connection()
-        result = self._cursor.execute(f"SELECT * FROM {self.__TABLE__} WHERE name = '{name}' ORDER BY created_at ASC").fetchall()
+        logs = self._cursor.execute(f"SELECT * FROM {self.__TABLE__} WHERE name = '{name}' ORDER BY created_at ASC").fetchall()
         self._connection.close()
-        return result
+        return logs
     
     def query(self, q: str):
         self.create_connection()

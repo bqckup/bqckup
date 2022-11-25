@@ -5,7 +5,8 @@ from classes.yml_parser import Yml_Parser
 from classes.log import Log
 from config import BQ_PATH
 from classes.s3 import s3
-from helpers import difference_in_days
+from helpers import difference_in_days, get_today
+from datetime import datetime
 
 class Bqckup:
     def __init__(self):
@@ -26,6 +27,7 @@ class Bqckup:
     def list(self):
         files = File().get_file_list(self.backup_config_path)
         results = {}
+        
         for index, file in enumerate(files):
             file_name = os.path.basename(file)
             parsed_content = Yml_Parser.parse(file)
@@ -35,7 +37,20 @@ class Bqckup:
             results[index] = bqckup
             results[index]['file_name'] = file_name
             results[index]['last_backup'] = log[5] if log else 0
+            results[index]['next_backup'] = False
+            
         return results
+    
+    def get_next_backup(self, name: str):
+        detail = self.detail(name)
+        
+        if detail['options']['interval'] == 'weekly':
+            intervalNumber = 7
+        elif detail['options']['interval'] == 'monthly':
+            intervalNumber = 30
+        else:
+            intervalNumber = 1
+            
     
     def get_last_log(self, name:str):
         logs = self.get_logs(name)
@@ -61,17 +76,17 @@ class Bqckup:
                 else:
                     to_compare = 30 # monthly
               
-                from datetime import datetime
+                
                 # Not enough time has passed
                 if last_backup <= to_compare:
                     print(f"\nBackup for {backup['name']} is not needed yet...")
                     print(f"Current Date: {time.strftime('%d/%m/%Y', time.localtime())}")
                     print(f"Last Backup: {datetime.fromtimestamp(last_log[5]).strftime('%d/%m/%Y')}")
-                    print(f"Day passed: {last_backup}")
+                    print(f"Day passed: { 0 if last_backup < 0 else last_backup }")
                     print(f"Interval: {interval}\n")
                     return False
                 
-            # self.do_backup(backup['file_name'])
+            self.do_backup(backup['file_name'])
             
     def do_backup(self, backup_config: str):
         backup = Yml_Parser.parse(
@@ -93,6 +108,7 @@ class Bqckup:
             tar.close()
         
         db_backup_path = os.path.join(tmp_path, f"{int(time.time())}.sql.gz")
+        log = Log()
         
         Database().export(
             db_backup_path,
@@ -102,34 +118,39 @@ class Bqckup:
         )
         
         _s3 = s3(storage_name=backup['options']['storage'])
-
+        
+        backupFolder = f"{backup['name']}/{get_today()}"
+        
         _s3.upload(
             file_path,
-            f"{backup['name']}/{os.path.basename(file_path)}"
+            f"{backupFolder}/{os.path.basename(file_path)}"
         )
         
-        Log().write({
+        log.write({
             "name": backup['name'],
             "file_size": os.stat(file_path).st_size,
             "file_path": file_path,
             "description": "File Backup Success",
-            "type": Log.FILES_BACKUP
+            "type": log.FILES_BACKUP,
+            "object_name": f"{_s3.root_folder_name}/{backupFolder}/{os.path.basename(file_path)}",
+            "storage": backup['options']['storage']
         })
 
         _s3.upload(
             db_backup_path,
-            f"{backup['name']}/{os.path.basename(db_backup_path)}"
+            f"{backupFolder}/{os.path.basename(db_backup_path)}"
         )
         
-        Log().write({
+        log.write({
             "name": backup['name'],
             "file_size": os.stat(db_backup_path).st_size,
             "file_path": db_backup_path,
             "description": "Database Backup Success",
-            "type": Log.DB_BACKUP
+            "type": log.DB_BACKUP,
+            "object_name": f"{_s3.root_folder_name}/{backupFolder}/{os.path.basename(db_backup_path)}",
+            "storage": backup['options']['storage']
         })
         
- 
         if not backup['options']['save_locally']:
             os.unlink(db_backup_path)
             os.unlink(file_path)
