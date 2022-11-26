@@ -10,6 +10,6 @@ bqckup:
     password: coklatmanis
   options:
     storage: ojtbackup
-    interval: daily
+    interval: weekly 
     retention: '7'
     save_locally: no

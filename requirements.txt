@@ -25,3 +25,4 @@ mysql-connector-python
 pyyaml
 ruamel.yaml
 rq
+typer

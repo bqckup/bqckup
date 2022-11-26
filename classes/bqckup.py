@@ -51,7 +51,6 @@ class Bqckup:
         else:
             intervalNumber = 1
             
-    
     def get_last_log(self, name:str):
         logs = self.get_logs(name)
         return logs[0] if logs else None
@@ -97,7 +96,8 @@ class Bqckup:
         
         if not File().is_exists(tmp_path):
             os.makedirs(tmp_path)
-            
+         
+        print("Compressing files ... ")    
         file_path = os.path.join(tmp_path, f"{int(time.time())}.tar.gz")
         with tarfile.open(file_path, "w:gz") as tar:
             for path in backup['path']:
@@ -110,6 +110,7 @@ class Bqckup:
         db_backup_path = os.path.join(tmp_path, f"{int(time.time())}.sql.gz")
         log = Log()
         
+        print("Exporting Database ...\n")
         Database().export(
             db_backup_path,
             db_user=backup['database']['user'],
@@ -119,41 +120,50 @@ class Bqckup:
         
         _s3 = s3(storage_name=backup['options']['storage'])
         
+        list_folder = _s3.list(f"{_s3.root_folder_name}/{backup['name']}/", '/')
+        
+        if list_folder.get('KeyCount') >=  int(backup['options']['retention']):
+            last_folder_prefix = list_folder.get("CommonPrefixes")[0].get("Prefix")
+            last_folder = _s3.list(last_folder_prefix)
+            for obj in last_folder.get("Contents"):
+                _s3.delete(obj.get("Key"))
+                        
         backupFolder = f"{backup['name']}/{get_today()}"
+        try:
+            _s3.upload(
+                file_path,
+                f"{backupFolder}/{os.path.basename(file_path)}"
+            )
+            _s3.upload(
+                db_backup_path,
+                f"{backupFolder}/{os.path.basename(db_backup_path)}"
+            )
+        except Exception as e:
+            print(f"Bqckup failed, {e}")
+        else:
+            log.write({
+                "name": backup['name'],
+                "file_size": os.stat(file_path).st_size,
+                "file_path": file_path,
+                "description": "File Backup Success",
+                "type": log.FILES_BACKUP,
+                "object_name": f"{_s3.root_folder_name}/{backupFolder}/{os.path.basename(file_path)}",
+                "storage": backup['options']['storage']
+            })
+            
+            log.write({
+                "name": backup['name'],
+                "file_size": os.stat(db_backup_path).st_size,
+                "file_path": db_backup_path,
+                "description": "Database Backup Success",
+                "type": log.DB_BACKUP,
+                "object_name": f"{_s3.root_folder_name}/{backupFolder}/{os.path.basename(db_backup_path)}",
+                "storage": backup['options']['storage']
+            })
         
-        _s3.upload(
-            file_path,
-            f"{backupFolder}/{os.path.basename(file_path)}"
-        )
-        
-        log.write({
-            "name": backup['name'],
-            "file_size": os.stat(file_path).st_size,
-            "file_path": file_path,
-            "description": "File Backup Success",
-            "type": log.FILES_BACKUP,
-            "object_name": f"{_s3.root_folder_name}/{backupFolder}/{os.path.basename(file_path)}",
-            "storage": backup['options']['storage']
-        })
-
-        _s3.upload(
-            db_backup_path,
-            f"{backupFolder}/{os.path.basename(db_backup_path)}"
-        )
-        
-        log.write({
-            "name": backup['name'],
-            "file_size": os.stat(db_backup_path).st_size,
-            "file_path": db_backup_path,
-            "description": "Database Backup Success",
-            "type": log.DB_BACKUP,
-            "object_name": f"{_s3.root_folder_name}/{backupFolder}/{os.path.basename(db_backup_path)}",
-            "storage": backup['options']['storage']
-        })
-        
-        if not backup['options']['save_locally']:
-            os.unlink(db_backup_path)
-            os.unlink(file_path)
+            if not backup['options']['save_locally']:
+                os.unlink(db_backup_path)
+                os.unlink(file_path)
         
     def remove(self):
         pass

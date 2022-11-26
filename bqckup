@@ -1,0 +1,17 @@
+#!/home/hp/Project/bqckup/venv/bin/python3
+import typer
+from classes.bqckup import Bqckup
+
+app = typer.Typer()
+
+
+@app.command()
+def test_config():
+    pass
+
+@app.command()
+def run():
+    Bqckup().backup()
+    
+if __name__ == "__main__":
+    app()

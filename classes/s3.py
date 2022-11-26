@@ -79,12 +79,11 @@ class s3(object):
 
         return usage
 
+
     # prefix for filtering
-    def list(self, prefix=""):
+    def list(self, prefix="", Delimiter=""):
         try:
-            files = self.client.list_objects_v2(Bucket=self.bucket_name, Prefix=prefix)[
-                "Contents"
-            ]
+            files = self.client.list_objects_v2(Bucket=self.bucket_name, Prefix=prefix, Delimiter=Delimiter)
         except KeyError:
             return []  # empty array
         else:
@@ -143,13 +142,3 @@ class s3(object):
             raise Exception("Msg : %s\n " % e)
         else:
             return link
-
-    # fileName = siteName
-    def deleteOldFiles(self, fileName, days=3):
-        files = self.list(prefix=fileName)
-        getLastModified = lambda obj: int(obj['LastModified'].strftime('%s'))
-        fileSorted = [obj['Key'] for obj in sorted(files, key=getLastModified)]
-        if fileSorted:
-            for f in fileSorted[:2]:
-                self.delete(f)
-        
