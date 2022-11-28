@@ -1,4 +1,4 @@
-BQ_PATH="/home/hp/Project/bqckup"
+BQ_PATH="/home/nugroho/Projects/bqckup"
 REDIS_HOST="localhost"
 REDIS_PORT=6379
 REDIS_PASSWORD=""

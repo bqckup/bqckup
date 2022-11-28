@@ -10,6 +10,8 @@ function dashboard() {
       }
       return Swal.fire("Success", response.message, "success");
     },
-    init() {},
+    init() {
+      currentTimeInit();
+    },
   };
 }

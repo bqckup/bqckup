@@ -58,6 +58,24 @@ class Bqckup:
     def get_logs(self, name: str):
         return Log().list(name)
     
+    def self_backup(self):
+        from classes.file import File
+        self_backup_config = os.path.join(BQ_PATH, '.self_backup')
+        if not File().is_exists(self_backup_config):
+            return False
+        
+        if not File().get_content(self_backup_config):
+            return False
+        
+        folder_to_backup= {'.config', 'database'}
+        
+        for folder in folder_to_backup:
+            """
+                - Using Primary storage ( get storage primary )
+                - Upload with file name ???
+            """
+            pass
+        
     def backup(self):
         backups = self.list()
         for i in backups:
