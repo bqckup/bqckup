@@ -61,26 +61,43 @@
           </div>
           <div class="hr-text hr-text-center hr-text-spaceless">Configuration</div>
           <div class="card-body">
-            <div x-show="!showFormConfig" x-transition>
+            <div x-show="keySetup && !showFormConfig">
+                <div class="mb-3">
+                    <div class="form-label">Key</div>
+                    <input type="text" class="form-control">
+                    <small class="form-text">Used for login</small>
+                </div>
+            </div>
+            <div x-show="!showFormConfig && !keySetup" x-transition>
+                <div class="mb-3">
+                    <div class="alert alert-info">
+                        <p>
+                            It's compatible with any S3 protocol
+                        </p>
+                        <small class="text-muted">
+                            Read more <a href="https://docs.min.io/docs/minio-client-complete-guide.html#s3">here</a>
+                        </small>
+                    </div>
+                </div>
                 <div class="mb-3">
                     <div class="form-label">Name</div>
-                    <input type="text" class="form-control">
+                    <input type="text" class="form-control" placeholder="Storage name">
                 </div>
                 <div class="mb-3">
                     <div class="form-label">Region</div>
-                    <input type="text" class="form-control">
+                    <input type="text" class="form-control" placeholder="Storage Region">
                 </div>
                 <div class="mb-3">
                     <div class="form-label">Client ID</div>
-                    <input type="text" class="form-control">
+                    <input type="text" class="form-control" placeholder="Client Key ID">
                 </div>
                 <div class="mb-3">
                     <div class="form-label">Client Secret</div>
-                    <input type="text" class="form-control">
+                    <input type="text" class="form-control" placeholder="Client Key Secret">
                 </div>
                 <div class="mb-3">
                     <div class="form-label">Endpoint URL</div>
-                    <input type="text" class="form-control">
+                    <input type="text" class="form-control" placeholder="Endpoint URL">
                 </div>
                 <div class="text-end">
                     <a class="form-text" @click="showFormConfig = true">
@@ -90,18 +107,17 @@
             </div>
             <div x-show="showFormConfig" x-transition>
                 <div class="mb-3">
+                    <div class="alert alert-info">
+                        Config is a YML file
+                    </div>
+                </div>
+                <div class="mb-3">
                     <div class="form-label">Storage Config</div>
                     <input type="file" class="form-control">
-                    <small class="form-text">
-                        Please upload your storage config file ( yml )
-                    </small>
                 </div>
                 <div class="mb-3">
                     <div class="form-label">Backup Config</div>
                     <input type="file" class="form-control">
-                    <small class="form-text">
-                        Please upload your storage config file ( yml )
-                    </small>
                 </div>
                 <div class="text-end">
                     <a class="form-text" @click="showFormConfig = false">
@@ -121,7 +137,7 @@
           </div>
           <div class="col">
             <div class="btn-list justify-content-end">
-              <a href="#" class="btn btn-primary">
+              <a href="#" class="btn btn-primary" @click="keySetup = false;">
                 Continue
               </a>
             </div>

@@ -68,6 +68,14 @@ def before_request():
 def setup():
     return render_template('wizard.html')
 
+"""
+Create key
+Validate the config is it success connected to s3
+"""
+@app.post('/setup/save')
+def save_setup():
+    pass
+
 @app.get("/do_update")
 def do_update():
     pass
