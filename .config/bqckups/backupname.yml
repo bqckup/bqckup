@@ -11,5 +11,5 @@ bqckup:
   options:
     storage: ojtbackup
     interval: weekly 
-    retention: '7'
+    retention: 7
     save_locally: no

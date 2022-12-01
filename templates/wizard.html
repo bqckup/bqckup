@@ -1,0 +1,138 @@
+<html lang="en"><head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Bqckup Configuration</title>
+    <meta name="msapplication-TileColor" content="">
+    <meta name="theme-color" content="">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
+    <meta name="description" content="Tabler comes with tons of well-designed components and features. Start your adventure with Tabler and make your dashboard great again. For free!">
+    <meta name="twitter:image:src" content="https://preview.tabler.io/static/og.png">
+    <meta name="twitter:site" content="@tabler_ui">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Tabler: Premium and Open Source dashboard template with responsive and high quality UI.">
+    <meta name="twitter:description" content="Tabler comes with tons of well-designed components and features. Start your adventure with Tabler and make your dashboard great again. For free!">
+    <meta property="og:image" content="https://preview.tabler.io/static/og.png">
+    <meta property="og:image:width" content="1280">
+    <meta property="og:image:height" content="640">
+    <meta property="og:site_name" content="Tabler">
+    <meta property="og:type" content="object">
+    <meta property="og:title" content="Tabler: Premium and Open Source dashboard template with responsive and high quality UI.">
+    <meta property="og:url" content="https://preview.tabler.io/static/og.png">
+    <meta property="og:description" content="Tabler comes with tons of well-designed components and features. Start your adventure with Tabler and make your dashboard great again. For free!">
+    <!-- CSS files -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tabler.min.css') }}">
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+      @import url('https://rsms.me/inter/inter.css');
+      :root {
+      	--tblr-font-sans-serif: Inter, -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;
+      }
+      [x-cloak] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body class="border-top-wide border-primary d-flex flex-column theme-light">
+    <script src="{{ url_for('static', filename='js/demo-theme.min.js') }}"></script>
+    <div class="page page-center" x-data="setupWizard" x-cloak>
+      <div class="container container-tight py-4">
+        <div class="text-center my-4">
+          <a href="." class="navbar-brand"><img src="{{ url_for('static', filename='img/logo-bqckup.png') }}" height="40" alt="">
+            <span class="ps-2" style="font-size: 17pt;">
+                Bqckup
+            </span>
+        </a>
+        </div>
+        <div class="card card-md">
+          <div class="card-body text-center p-sm-4">
+            <!-- <img src="{{ url_for('static', filename='img/undraw_setup_wizard_re_nday.svg') }}" height="120" class="mb-n2" alt=""> -->
+            <h1 >First Setup</h1>
+            <p class="text-muted">
+                Please complete the form below, before using bqckup
+            </p>
+          </div>
+          <div class="hr-text hr-text-center hr-text-spaceless">Configuration</div>
+          <div class="card-body">
+            <div x-show="!showFormConfig" x-transition>
+                <div class="mb-3">
+                    <div class="form-label">Name</div>
+                    <input type="text" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <div class="form-label">Region</div>
+                    <input type="text" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <div class="form-label">Client ID</div>
+                    <input type="text" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <div class="form-label">Client Secret</div>
+                    <input type="text" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <div class="form-label">Endpoint URL</div>
+                    <input type="text" class="form-control">
+                </div>
+                <div class="text-end">
+                    <a class="form-text" @click="showFormConfig = true">
+                        Already have config
+                    </a>
+                </div>
+            </div>
+            <div x-show="showFormConfig" x-transition>
+                <div class="mb-3">
+                    <div class="form-label">Storage Config</div>
+                    <input type="file" class="form-control">
+                    <small class="form-text">
+                        Please upload your storage config file ( yml )
+                    </small>
+                </div>
+                <div class="mb-3">
+                    <div class="form-label">Backup Config</div>
+                    <input type="file" class="form-control">
+                    <small class="form-text">
+                        Please upload your storage config file ( yml )
+                    </small>
+                </div>
+                <div class="text-end">
+                    <a class="form-text" @click="showFormConfig = false">
+                        Create manually
+                    </a>
+                </div>
+            </div>
+          </div>
+        </div>
+        <div class="row align-items-center mt-3">
+          <div class="col-4">
+            <div class="progress d-none">
+              <div class="progress-bar" style="width: 25%" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100" aria-label="25% Complete">
+                <span class="visually-hidden">25% Complete</span>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="btn-list justify-content-end">
+              <a href="#" class="btn btn-primary">
+                Continue
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Libs JS -->
+    <!-- Tabler Core -->
+    <script src="{{ url_for('static', filename='js/tabler.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/demo.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/setup-wizard.js') }}"></script>
+  
+</body></html>

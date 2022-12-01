@@ -32,21 +32,20 @@ class Log(BaseModel):
     status = IntegerField()
     
     
-    def update_status(self, id: int, status: int):
-        return self.update(status=status).where(self.id == id).execute()
+    def update_status(self, id: int, status: int, description: str):
+        return self.update(status=status, description=description).where(self.id == id).execute()
     
     def write(self, data: dict):
         return self.create( name=data['name'], file_path=data['file_path'], file_size=data['file_size'], description=data['description'], created_at=int(time.time()), type=data['type'], storage=data['storage'], object_name=data['object_name'], status=self.__ON_PROGRESS__ )    
-        return self
 
-if __name__ == '__main__':
-    xx = Log().write({
-        "name":"test",
-        "file_path":"test",
-        "file_size":123,
-        "description":"test",
-        "type":"test",
-        "storage":"test",
-        "object_name":"test"
-    })
-    Log().update_status(xx, Log.__SUCCESS__)
+# if __name__ == '__main__':
+#     xx = Log().write({
+#         "name":"test",
+#         "file_path":"test",
+#         "file_size":123,
+#         "description":"test",
+#         "type":"test",
+#         "storage":"test",
+#         "object_name":"test"
+#     })
+#     Log().update_status(xx, Log.__SUCCESS__)

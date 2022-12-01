@@ -64,12 +64,16 @@ def before_request():
         return jsonify(message="Access blocked"), 401
 
 
-@app.route("/do_update", methods=["GET"])
+@app.get('/setup')
+def setup():
+    return render_template('wizard.html')
+
+@app.get("/do_update")
 def do_update():
     pass
 
-@app.route("/", methods=["GET"])
-@app.route("/index", methods=["GET"])
+@app.get("/")
+@app.get("/index")
 # @cache.cached(timeout=60)
 def index():
     from classes.auth import Auth
@@ -112,6 +116,10 @@ def humanReadableSize(s):
 
     return size(s, system=alternative)
 
+
+@app.template_filter('get_base_name')
+def get_base_name(path):
+    return os.path.basename(path)
 
 @app.template_filter('time_since')
 def time_since(unix):

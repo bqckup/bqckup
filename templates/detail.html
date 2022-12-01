@@ -132,12 +132,12 @@
                                     </div>
                                 </div>
                                 <div class="tab-pane" id="tab-log">
-                                    {% if not logs|length %}
+                                    {% if not logs %}
                                         <div class="mt-3 alert alert-important alert-primary">
                                             There is no logs yet
                                         </div>
                                     {% endif %}
-                                   <table class="table table-vcenter w-100 {{ 'd-none' if not logs|length else '' }}">
+                                   <table class="table table-vcenter w-100 {{ 'd-none' if not logs else '' }}">
                                         <thead>
                                             <tr>
                                                 <th>File name</th>
@@ -150,12 +150,12 @@
                                         <tbody>
                                             {% for log in logs %}
                                             <tr>
-                                                <td>{{ log[3]|getBaseName }}</td>
-                                                <td>{{ log[5]|tSince }}</td>
-                                                <td>{{ log[2]|humanReadableSize }}</td>
-                                                <td>{{ log[6] }}</td>
+                                                <td>{{ log.file_path|get_base_name }}</td>
+                                                <td>{{ log.created_at|tSince }}</td>
+                                                <td>{{ log.file_size|humanReadableSize }}</td>
+                                                <td>{{ log.description }}</td>
                                                 <td>
-                                                    <a href="#" class="btn btn-primary btn-sm" @click="downloadFile('{{ log[8] }}', '{{ log[7] }}')">
+                                                    <a href="#" class="btn btn-primary btn-sm" @click="downloadFile('{{ log.object_name }}', '{{ log.storage }}')">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-download" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                                                             <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                                                             <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path>

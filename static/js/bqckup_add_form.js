@@ -89,15 +89,15 @@ function bqckup_add() {
     },
     payload: {
       backup: {
-        name: "backupname",
-        path: "example_path",
+        name: "",
+        path: "",
       },
       database: {
         host: "localhost",
         type: "mysqli",
         name: "mysql",
-        user: "root_db",
-        password: "coklatmanis",
+        user: "",
+        password: "",
       },
       options: {
         storage: "",
