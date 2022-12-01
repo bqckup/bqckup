@@ -11,21 +11,29 @@ def difference_in_days(date1, date2):
     return delta.days
 
 # dt = unix format
-def time_since(dt, default="now"):
+def time_since(dt, default="now", reverse=False):
     dt = datetime.fromtimestamp(dt)
     now = datetime.now()
     diff = now - dt
+    days = diff.days
+    
+    if reverse:
+        days = abs(days)
+        
     periods = (
-        (diff.days / 365, "year", "years"),
-        (diff.days / 30, "month", "months"),
-        (diff.days / 7, "week", "weeks"),
-        (diff.days, "day", "days"),
+        (days / 365, "year", "years"),
+        (days / 30, "month", "months"),
+        (days / 7, "week", "weeks"),
+        (days, "day", "days"),
         (diff.seconds / 3600, "hour", "hours"),
         (diff.seconds / 60, "minute", "minutes"),
         (diff.seconds, "second", "seconds"),
     )
+    
     for period, singular, plural in periods:
         if period >= 1:
+            if reverse:
+                return "In %d %s " % (period, singular if period == 1 else plural)
             return "%d %s ago" % (period, singular if period == 1 else plural)
     return default
 
@@ -228,18 +236,6 @@ def timesince(dt, default="now"):
         if period >= 1:
             return "%d %s ago" % (period, singular if period == 1 else plural)
     return default
-# Ref : https://stackoverflow.com/a/6574453/12875745
-# date2 > date1
-# rd.days, hours, seconds, etc.
-# both unix
-def _time_since(date1, date2):
-    import dateutil.relativedelta
-
-    dt1 = datetime.fromtimestamp(date1)
-    dt2 = datetime.fromtimestamp(date2)
-    rd = dateutil.relativedelta.relativedelta(dt1, dt2)
-    return rd
-
 
 # unix -> date obj
 def toDateObject(unix):

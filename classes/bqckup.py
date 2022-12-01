@@ -3,10 +3,10 @@ from classes.database import Database
 from classes.tar import Tar
 from classes.file import File
 from classes.yml_parser import Yml_Parser
-from classes.log import Log
+from models.log import Log
 from config import BQ_PATH
 from classes.s3 import s3
-from helpers import difference_in_days, get_today
+from helpers import difference_in_days, get_today, time_since
 from datetime import datetime
 
 class Bqckup:
@@ -25,6 +25,13 @@ class Bqckup:
             
         return None
     
+    def _interval_in_number(self, interval: str) -> int:
+        if interval == 'weekly':
+            return 7
+        elif interval == 'monthly':
+            return 30
+        return 1
+    
     def list(self):
         files = File().get_file_list(self.backup_config_path)
         results = {}
@@ -38,19 +45,16 @@ class Bqckup:
             results[index] = bqckup
             results[index]['file_name'] = file_name
             results[index]['last_backup'] = log[5] if log else 0
+            
+            # Next Backup
             results[index]['next_backup'] = False
+            if results[index]['last_backup']:
+                next_backup_in_date = datetime.fromtimestamp(results[index]['last_backup'] + (self._interval_in_number(bqckup['options']['interval']) * 86400)).strftime('%d/%m/%Y 00:00:00')
+                results[index]['next_backup'] = time_since(datetime.strptime(next_backup_in_date, '%d/%m/%Y %H:%M:%S').timestamp(), time.time(), reverse=True)
+            
+                
             
         return results
-    
-    def get_next_backup(self, name: str):
-        detail = self.detail(name)
-        
-        if detail['options']['interval'] == 'weekly':
-            intervalNumber = 7
-        elif detail['options']['interval'] == 'monthly':
-            intervalNumber = 30
-        else:
-            intervalNumber = 1
             
     def get_last_log(self, name:str):
         logs = self.get_logs(name)
@@ -186,87 +190,6 @@ class Bqckup:
                 print(f"\nBackup for {backup.get('name')} is done!\n")
         except Exception as e:
             print(f"[{backup.get('name')}] Error: {e}")
-            
- 
-
-    def _do_backup(self, backup_config: str):
-        backup = Yml_Parser.parse(
-            os.path.join(BQ_PATH,'.config','bqckups', backup_config)
-        )['bqckup']
-        
-        tmp_path = os.path.join(BQ_PATH, "tmp", f"{backup['name']}")
-        
-        if not os.path.exists(tmp_path):
-            os.makedirs(tmp_path)
-         
-        print("Compressing files ... ")    
-        file_path = os.path.join(tmp_path, f"{int(time.time())}.tar.gz")
-        with tarfile.open(file_path, "w:gz") as tar:
-            for path in backup['path']:
-                if not File().is_exists(path):
-                    print(f"Skipped, {path} not found")
-                    continue
-                tar.add(path, arcname=os.path.basename(path))
-            tar.close()
-        
-        db_backup_path = os.path.join(tmp_path, f"{int(time.time())}.sql.gz")
-        log = Log()
-        
-        print("Exporting Database ...\n")
-        Database().export(
-            db_backup_path,
-            db_user=backup['database']['user'],
-            db_password=backup['database']['password'],
-            db_name=backup['database']['name']
-        )
-        
-        _s3 = s3(storage_name=backup['options']['storage'])
-        
-        list_folder = _s3.list(f"{_s3.root_folder_name}/{backup['name']}/", '/')
-        
-        if list_folder.get('KeyCount') >=  int(backup['options']['retention']):
-            last_folder_prefix = list_folder.get("CommonPrefixes")[0].get("Prefix")
-            last_folder = _s3.list(last_folder_prefix)
-            for obj in last_folder.get("Contents"):
-                _s3.delete(obj.get("Key"))
-                        
-        backupFolder = f"{backup['name']}/{get_today()}"
-        
-        try:
-            _s3.upload(
-                file_path,
-                f"{backupFolder}/{os.path.basename(file_path)}"
-            )
-            _s3.upload(
-                db_backup_path,
-                f"{backupFolder}/{os.path.basename(db_backup_path)}"
-            )
-        except Exception as e:
-            print(f"Bqckup failed, {e}")
-        else:
-            log.write({
-                "name": backup['name'],
-                "file_size": os.stat(file_path).st_size,
-                "file_path": file_path,
-                "description": "File Backup Success",
-                "type": log.FILES_BACKUP,
-                "object_name": f"{_s3.root_folder_name}/{backupFolder}/{os.path.basename(file_path)}",
-                "storage": backup['options']['storage']
-            })
-            
-            log.write({
-                "name": backup['name'],
-                "file_size": os.stat(db_backup_path).st_size,
-                "file_path": db_backup_path,
-                "description": "Database Backup Success",
-                "type": log.DB_BACKUP,
-                "object_name": f"{_s3.root_folder_name}/{backupFolder}/{os.path.basename(db_backup_path)}",
-                "storage": backup['options']['storage']
-            })
-        
-            if not backup['options']['save_locally']:
-                os.unlink(db_backup_path)
-                os.unlink(file_path)
-        
+    
     def remove(self):
         pass

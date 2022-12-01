@@ -1,9 +1,9 @@
 #!/home/hp/Project/bqckup/venv/bin/python3
 import typer
 from classes.bqckup import Bqckup
+from config import BQ_PATH
 
 app = typer.Typer()
-
 
 @app.command()
 def test_config():
@@ -12,6 +12,13 @@ def test_config():
 @app.command()
 def run():
     Bqckup().backup()
+    
+@app.command()
+def gui_active():
+    import os
+    os.system(
+        f"{BQ_PATH}/venv/bin/python3 {BQ_PATH}/app.py"
+    )
     
 if __name__ == "__main__":
     app()

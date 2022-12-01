@@ -283,7 +283,13 @@
                       </td>
                       <td>{{ bqckups[i]['options']['storage'] }}</td>
                       <td>{{ '-' if not bqckups[i]['last_backup'] else bqckups[i]['last_backup']|time_since }}</td>
-                      <td>in 2 Hours</td>
+                      <td>
+                        {% if not bqckups[i]['next_backup'] %}
+                          <span class="badge bg-warning">On Progress</span>
+                        {% else %}
+                          {{ bqckups[i]['next_backup'] }}
+                        {% endif %}
+                      </td>
                       <td>
                         <div class="dropdown">
                           <a href="#" class="btn-action" data-bs-toggle="dropdown" aria-expanded="false">
