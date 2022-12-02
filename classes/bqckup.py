@@ -16,6 +16,9 @@ class Bqckup:
         if not os.path.exists(self.backup_config_path):
             os.makedirs(self.backup_config_path)
             
+    def validate_config(self):
+        pass
+            
     def detail(self, name: str):
         backups = self.list()
         

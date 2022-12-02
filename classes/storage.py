@@ -8,6 +8,9 @@ class Storage:
         self.config_path = os.path.join(BQ_PATH, '.config', 'storages.yml')
         self.parsed_storage = Yml_Parser.parse(self.config_path)
 
+    def validate_config(self):
+        pass
+
     def get_parsed_storage(self):
         return self.parsed_storage
 

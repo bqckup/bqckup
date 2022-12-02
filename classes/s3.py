@@ -13,7 +13,7 @@ class s3(object):
         self.root_folder_name = 'bqckup'
         self.clientInit()
         self.bucket_name = self.storage['bucket']
-
+        
     def clientInit(self):
         session = boto3.session.Session()
         try:

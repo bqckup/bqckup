@@ -3,8 +3,6 @@ function setupWizard() {
     keySetup: true,
     showFormConfig: false,
     key: null,
-    configBackup: null,
-    configStorage: null,
     clientIdKey: null,
     clientSecretKey: null,
     region: null,
@@ -30,10 +28,18 @@ function setupWizard() {
           "error"
         );
       }
+      // Validate storage name
+      if (/\s/g.test(this.storageName)) {
+        return Swal.fire(
+          "Empty Data",
+          "Storage name can not contains space",
+          "error"
+        );
+      }
       formData.append("key", this.key);
       formData.append("name", this.storageName);
-      formData.append("config_bqckup", this.configBackup);
-      formData.append("config_storage", this.configStorage);
+      formData.append("config_bqckup", this.$refs.configBackup.files[0]);
+      formData.append("config_storage", this.$refs.configStorage.files[0]);
       formData.append("client_id", this.clientIdKey);
       formData.append("client_secret", this.clientSecretKey);
       formData.append("region", this.region);
@@ -43,24 +49,22 @@ function setupWizard() {
         method: "POST",
         body: formData,
       });
+      let response = await request.json();
       if (request.status == 200) {
         return Swal.fire({
           icon: "success",
           title: "Success",
-          text: "Successfully create",
+          text: response.message,
           showConfirmButton: false,
         }).then(() => {
           window.location.href = "/";
         });
       }
-      return Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Failed to create",
-        showConfirmButton: false,
-      }).then(() => {
-        window.location.reload();
-      });
+      return Swal.fire(
+        response.message,
+        "Check your data and try again",
+        "error"
+      );
     },
 
     init() {},

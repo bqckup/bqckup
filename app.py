@@ -1,6 +1,7 @@
 from modules.auth import auth
 from modules.backup import backup
 from classes.server import Server
+from classes.s3 import s3
 from helpers import today24Format, timeSince, bytes_to
 from config import *
 import sys, logging, os, ruamel.yaml as rYaml
@@ -62,7 +63,8 @@ def page_not_found(e):
 def before_request():
     pass
     from classes.auth import Auth
-    if not Auth.is_authorized() and ('login' not in request.path and 'static' not in request.path and '/' != request.path):
+    allowed_path = ['login', 'static', 'setup']
+    if not Auth.is_authorized() and (request.path in allowed_path and '/' != request.path):
         return jsonify(message="Access blocked"), 401
 
 
@@ -81,24 +83,16 @@ def save_setup():
         with open(os.path.join(BQ_PATH, '.key'), 'w+') as f:
             f.write(request.form.get('key'))
             f.close()
-        
+            
         # Storage config
-        config_storage = request.files.get('config_storage')
-        if config_storage:
-            if not config_storage.filename.endswith('.yml'):
-                return jsonify(message="Config storage must be .yml file"), 400
-            config_storage.save(os.path.join(BQ_PATH, '.config', 'storages.yml'))
         
-        # Backup config
-        config_backup = request.files.get('config_bqckup')
-        if config_backup:
-            for cb in config_backup:
-                if not cb.filename.endswith('.yml'):
-                    return jsonify(message="Backup config must be .yml file"), 400
-                cb.save(os.path.join(BQ_PATH, '.config', 'bqckups', secure_filename(cb.filename)))
-                cb.save(os.path.join(BQ_PATH, '.config', secure_filename(cb.filename)))
-        
-        if not config_backup:
+        if len(request.files.getlist('config_storage')) > 0:
+            for cs in request.files.getlist('config_storage'):
+                if not cs.filename.endswith('.yml'):
+                    return jsonify(message="Config storage must be .yml file"), 400
+                cs.save(os.path.join(BQ_PATH, '.config', 'storages.yml'))
+                
+        if len(request.files.getlist('config_storage')) <= 0:
             with open(os.path.join(BQ_PATH, '.config', 'storages.yml'), 'w+') as f:
                 config_content = {
                     "storages": {
@@ -116,6 +110,20 @@ def save_setup():
                 yaml.indent(sequence=4, offset=2)
                 yaml.dump(config_content, f)
             
+        # Test connection    
+        try:
+            _s3 = s3(storage_name=request.form.get('name'))
+            _s3.list()
+        except Exception as e:
+            return jsonify(message="Failed to connect to your s3 account"), 500
+        
+        # Backup config
+        if len(request.files.getlist('config_bqckup')) > 0:
+            for cb in request.files.getlist('config_bqckup'):
+                if not cb.filename.endswith('.yml'):
+                    return jsonify(message="Backup config must be .yml file"), 400
+                cb.save(os.path.join(BQ_PATH, '.config', 'bqckups', secure_filename(cb.filename)))
+                
         return jsonify(message=f"Success"), 200
     except Exception as e:
         return jsonify(message=f"Failed to save config, {str(e)}"), 500

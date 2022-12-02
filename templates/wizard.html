@@ -112,11 +112,11 @@
             <div x-show="showFormConfig" x-transition>
                 <div class="mb-3">
                     <div class="form-label">Storage Config</div>
-                    <input type="file" class="form-control" accept=".yml" x-model="configStorage">
+                    <input type="file" class="form-control" accept=".yml" x-ref="configStorage">
                 </div>
                 <div class="mb-3">
                     <div class="form-label">Backup Config</div>
-                    <input type="file" class="form-control" accept=".yml" multiple x-model="configBackup">
+                    <input type="file" class="form-control" accept=".yml" multiple x-ref="configBackup">
                     <small class="form-text">Press CTRL if it's more than one file</small>
                 </div>
                 <div class="text-end">
@@ -137,6 +137,9 @@
           </div>
           <div class="col">
             <div class="btn-list justify-content-end">
+              <a href="#" x-show="!keySetup" class="btn" @click="keySetup = true;showFormConfig = false;" x-transition>
+                Back
+              </a>
               <a href="#" class="btn btn-primary" @click="next()">
                 Continue
               </a>
