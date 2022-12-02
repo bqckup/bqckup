@@ -3,12 +3,14 @@ from modules.backup import backup
 from classes.server import Server
 from helpers import today24Format, timeSince, bytes_to
 from config import *
-import sys, logging, os
+import sys, logging, os, ruamel.yaml as rYaml
 from datetime import timedelta
 from flask.json import jsonify
 from decouple import config
 from flask import Flask, render_template, request, redirect, url_for
 from classes.storage import Storage
+from werkzeug.utils import secure_filename
+
 
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..")))
@@ -74,7 +76,53 @@ Validate the config is it success connected to s3
 """
 @app.post('/setup/save')
 def save_setup():
-    pass
+    # Write security key
+    try:
+        with open(os.path.join(BQ_PATH, '.key'), 'w+') as f:
+            f.write(request.form.get('key'))
+            f.close()
+        
+        # Storage config
+        config_storage = request.files.get('config_storage')
+        if config_storage:
+            if not config_storage.filename.endswith('.yml'):
+                return jsonify(message="Config storage must be .yml file"), 400
+            config_storage.save(os.path.join(BQ_PATH, '.config', 'storages.yml'))
+        
+        # Backup config
+        config_backup = request.files.get('config_bqckup')
+        if config_backup:
+            for cb in config_backup:
+                if not cb.filename.endswith('.yml'):
+                    return jsonify(message="Backup config must be .yml file"), 400
+                cb.save(os.path.join(BQ_PATH, '.config', 'bqckups', secure_filename(cb.filename)))
+                cb.save(os.path.join(BQ_PATH, '.config', secure_filename(cb.filename)))
+        
+        if not config_backup:
+            with open(os.path.join(BQ_PATH, '.config', 'storages.yml'), 'w+') as f:
+                config_content = {
+                    "storages": {
+                        request.form.get('name'): {
+                            "bucket": request.form.get('bucket'),
+                            "access_key_id": request.form.get('client_id'),
+                            "secret_access_key": request.form.get('client_secret'),
+                            "region": request.form.get('region'),
+                            "endpoint": request.form.get('endpoint_url'),
+                            "primary": "yes"
+                        }
+                    }
+                }
+                yaml = rYaml.YAML()
+                yaml.indent(sequence=4, offset=2)
+                yaml.dump(config_content, f)
+            
+        return jsonify(message=f"Success"), 200
+    except Exception as e:
+        return jsonify(message=f"Failed to save config, {str(e)}"), 500
+        
+        
+        
+    
 
 @app.get("/do_update")
 def do_update():

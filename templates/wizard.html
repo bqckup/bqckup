@@ -64,7 +64,7 @@
             <div x-show="keySetup && !showFormConfig">
                 <div class="mb-3">
                     <div class="form-label">Key</div>
-                    <input type="text" class="form-control">
+                    <input type="password" class="form-control" x-model="key">
                     <small class="form-text">Used for login</small>
                 </div>
             </div>
@@ -81,23 +81,27 @@
                 </div>
                 <div class="mb-3">
                     <div class="form-label">Name</div>
-                    <input type="text" class="form-control" placeholder="Storage name">
+                    <input type="text" class="form-control" placeholder="Storage name" x-model="storageName">
                 </div>
                 <div class="mb-3">
+                  <div class="form-label">Bucket</div>
+                  <input type="text" class="form-control" placeholder="Bucket Name" x-model="bucket">
+              </div>
+                <div class="mb-3">
                     <div class="form-label">Region</div>
-                    <input type="text" class="form-control" placeholder="Storage Region">
+                    <input type="text" class="form-control" placeholder="Storage Region" x-model="region">
                 </div>
                 <div class="mb-3">
                     <div class="form-label">Client ID</div>
-                    <input type="text" class="form-control" placeholder="Client Key ID">
+                    <input type="text" class="form-control" placeholder="Client Key ID" x-model="clientIdKey">
                 </div>
                 <div class="mb-3">
                     <div class="form-label">Client Secret</div>
-                    <input type="text" class="form-control" placeholder="Client Key Secret">
+                    <input type="text" class="form-control" placeholder="Client Key Secret" x-model="clientSecretKey">
                 </div>
                 <div class="mb-3">
                     <div class="form-label">Endpoint URL</div>
-                    <input type="text" class="form-control" placeholder="Endpoint URL">
+                    <input type="text" class="form-control" placeholder="Endpoint URL" x-model="endpointURL">
                 </div>
                 <div class="text-end">
                     <a class="form-text" @click="showFormConfig = true">
@@ -107,17 +111,13 @@
             </div>
             <div x-show="showFormConfig" x-transition>
                 <div class="mb-3">
-                    <div class="alert alert-info">
-                        Config is a YML file
-                    </div>
-                </div>
-                <div class="mb-3">
                     <div class="form-label">Storage Config</div>
-                    <input type="file" class="form-control">
+                    <input type="file" class="form-control" accept=".yml" x-model="configStorage">
                 </div>
                 <div class="mb-3">
                     <div class="form-label">Backup Config</div>
-                    <input type="file" class="form-control">
+                    <input type="file" class="form-control" accept=".yml" multiple x-model="configBackup">
+                    <small class="form-text">Press CTRL if it's more than one file</small>
                 </div>
                 <div class="text-end">
                     <a class="form-text" @click="showFormConfig = false">
@@ -137,7 +137,7 @@
           </div>
           <div class="col">
             <div class="btn-list justify-content-end">
-              <a href="#" class="btn btn-primary" @click="keySetup = false;">
+              <a href="#" class="btn btn-primary" @click="next()">
                 Continue
               </a>
             </div>
@@ -147,6 +147,7 @@
     </div>
     <!-- Libs JS -->
     <!-- Tabler Core -->
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="{{ url_for('static', filename='js/tabler.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/demo.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/setup-wizard.js') }}"></script>
