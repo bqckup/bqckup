@@ -31,10 +31,12 @@ class Log(BaseModel):
     object_name = TextField()
     status = IntegerField()
     
-    
-    def update_status(self, id: int, status: int, description: str):
-        return self.update(status=status, description=description).where(self.id == id).execute()
-    
+    # TODO: Fix this duplicate query
+    def update_status(self, id: int, status: int, description=False):
+        self.update(status=status).where(self.id == id).execute()
+        if description:
+            self.update(description=description).where(self.id == id).execute()    
+            
     def write(self, data: dict):
         return self.create( name=data['name'], file_path=data['file_path'], file_size=data['file_size'], description=data['description'], created_at=int(time.time()), type=data['type'], storage=data['storage'], object_name=data['object_name'], status=self.__ON_PROGRESS__ )    
 
