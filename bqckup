@@ -10,8 +10,8 @@ def test_config():
     pass
 
 @app.command()
-def run():
-    Bqckup().backup()
+def run(force:bool = False):
+    Bqckup().backup(force=force)
     
 @app.command()
 def gui_active():
