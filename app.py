@@ -61,12 +61,11 @@ def page_not_found(e):
 
 @app.before_request
 def before_request():
-    pass
     from classes.auth import Auth
+    
     allowed_path = ['login', 'static', 'setup']
     if not Auth.is_authorized() and (request.path in allowed_path and '/' != request.path):
         return jsonify(message="Access blocked"), 401
-
 
 @app.get('/setup')
 def setup():
@@ -115,6 +114,7 @@ def save_setup():
             _s3 = s3(storage_name=request.form.get('name'))
             _s3.list()
         except Exception as e:
+            print(e)
             return jsonify(message="Failed to connect to your s3 account"), 500
         
         # Backup config

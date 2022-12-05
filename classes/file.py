@@ -9,9 +9,11 @@ class File:
     def is_exists(self, path: str):
         return os.path.exists(path)
     
-    def create_file(self, path: str):
-        pass
-        # return with open(path, 'w+').close()
+    def create_file(self, path: str, content=False):
+        f = open(path, "w")
+        if content:
+            f.write(content)
+        f.close()
         
     def get_content(self, path: str):
         return Path(path).read_text()

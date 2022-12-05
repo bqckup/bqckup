@@ -10,4 +10,4 @@ REDIS_PASSWORD=""
 """"
 Backup Config
 """
-SELF_BACKUP=True
+CONFIG_BACKUP=True
