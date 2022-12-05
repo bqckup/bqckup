@@ -1,8 +1,9 @@
 storages:
-  asd:
-    bucket: asdad
-    access_key_id: asdad
-    secret_access_key: adasdad
-    region: asda
-    endpoint: adsad
+  bqckupstorage:
+    bucket: thisnugroho
+    access_key_id: 8bc2ce31a67416bc9a60abf126688319
+    secret_access_key: bbd2ea387bb08c3adac2b60899f7232f2c2d803eac0a33f6c39b7a35760420e4
+    region: auto
+    endpoint: https://4fe082a30832ef4bbdb0bb3a0c74123f.r2.cloudflarestorage.com
     primary: yes
+# This file is created with bqckup.com. Tool for create seamless bqckup for your website

@@ -9,7 +9,8 @@ bqckup:
     user: root_db
     password: coklatmanis
   options:
-    storage: ojtbackup
+    storage: bqckupstorage
     interval: weekly 
     retention: 7
     save_locally: no
+# This file is created with bqckup.com. Tool for create seamless bqckup for your website
