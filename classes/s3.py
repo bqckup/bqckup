@@ -93,7 +93,7 @@ class s3(object):
         No directoris/folders in s3
         format name : token_site.com_date.zip
     """
-    def upload(self, pathFile, newFileName):
+    def upload(self, pathFile, newFileName, showProgress=True):
         newFileName = os.path.join(self.root_folder_name, newFileName)
         config = TransferConfig(
             multipart_threshold=1024 * 25,
@@ -107,7 +107,7 @@ class s3(object):
                 self.bucket_name,
                 newFileName,
                 Config=config,
-                Callback=ProgressPercentage(pathFile),
+                Callback=ProgressPercentage(pathFile) if showProgress else None,
             )
         except Exception as errorMsg:
             print(
