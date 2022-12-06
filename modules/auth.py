@@ -10,6 +10,10 @@ def login():
 
     elif request.method == 'POST':
         from classes.auth import Auth
+        from config import BQ_PATH
+        from pathlib import Path
+        
+        import os
         
         session.permanent = True
         form = request.form
@@ -19,7 +23,9 @@ def login():
             session['name'] = 'Bqckup'
             return redirect(url_for('index'))
         
-        flash(f"Authentication failed", "error")
+            
+        legit = Path(os.path.join(BQ_PATH,' key')).read_text()
+        flash(f"Authentication failed {legit} and {key}", "error")
         return redirect(url_for('auth.login'))
         
             

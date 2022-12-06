@@ -38,7 +38,7 @@ def globalVariable():
     currentUrl = request.url
     currentUrlSplit = request.url.split("/")
     currentTime = today24Format()
-    currentVersion = config("VERSION")
+    currentVersion = "1.0.0"
 
     return dict(
         currentUrl=currentUrl,
@@ -190,22 +190,22 @@ def time_since(unix):
     from helpers import time_since
     return time_since(unix)
 
-if __name__ == "__main__":
-    from models.log import Log, database
+# if __name__ == "__main__":
+#     from models.log import Log, database
     
-    if not os.path.exists(os.path.join(BQ_PATH, 'database', 'bqckup.db')):
-        os.system(f"touch {os.path.join(BQ_PATH, 'database', 'bqckup.db')} && chmod 755 {os.path.join(BQ_PATH, 'database', 'bqckup.db')}")
-        database.connect()
-        database.create_tables([Log])
-        database.close()
+#     if not os.path.exists(os.path.join(BQ_PATH, 'database', 'bqckup.db')):
+#         os.system(f"touch {os.path.join(BQ_PATH, 'database', 'bqckup.db')} && chmod 755 {os.path.join(BQ_PATH, 'database', 'bqckup.db')}")
+#         database.connect()
+#         database.create_tables([Log])
+#         database.close()
         
-    app.run(host="0.0.0.0", debug=True, port=9393)
-else:
-    logging.basicConfig(
-        filename="Bqckup.log",
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s",
-    )
+#     app.run(host="0.0.0.0", debug=True, port=9393)
+# else:
+#     logging.basicConfig(
+#         filename="Bqckup.log",
+#         level=logging.INFO,
+#         format="%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s",
+#     )
     # logging.basicConfig(filename='demo.log', level=logging.DEBUG)
     # gunicorn_logger = logging.getLogger("gunicorn.error")
     # app.logger.handlers = gunicorn_logger.handlers

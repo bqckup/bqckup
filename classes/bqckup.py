@@ -65,6 +65,9 @@ class Bqckup:
     
     def backup(self, force:bool = False):
         backups = self.list()
+        if not backups:
+            print("No backups found")
+            return
         for i in backups:
             backup = backups[i]
             last_log = self.get_last_log(backup['name'])

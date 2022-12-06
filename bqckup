@@ -1,24 +1,29 @@
 #!/home/hp/Project/bqckup/venv/bin/python3
-import typer
+import typer, os
 from classes.bqckup import Bqckup
 from config import BQ_PATH
 
-app = typer.Typer()
+bq = typer.Typer()
 
-@app.command()
+@bq.command()
 def test_config():
     pass
 
-@app.command()
+@bq.command()
 def run(force:bool = False):
     Bqckup().backup(force=force)
     
-@app.command()
+@bq.command()
 def gui_active():
-    import os
-    os.system(
-        f"{BQ_PATH}/venv/bin/python3 {BQ_PATH}/app.py"
-    )
+    from gevent.pywsgi import WSGIServer
+    from app import app
+    http_server = WSGIServer(('0.0.0.0', 9393), app)
+    http_server.serve_forever()
+    
+    
+@bq.command()
+def start_worker():
+    pass
     
 if __name__ == "__main__":
-    app()
+    bq()

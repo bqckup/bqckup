@@ -1,4 +1,4 @@
-BQ_PATH="/home/hp/Project/bqckup"
+BQ_PATH="/etc/bqckup"
 
 """
 Redis Credentials

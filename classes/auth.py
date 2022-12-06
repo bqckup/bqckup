@@ -16,9 +16,9 @@ class Auth:
         legit = Path(
             os.path.join(
                 BQ_PATH,
-                '.key'
+                'key'
             )
         ).read_text()
-
+        
         return key == legit
         
