@@ -52,7 +52,7 @@ def save():
     with open(
         os.path.join(
             BQ_PATH,
-            '.config',
+            'config',
             'bqckups',
             f"{backup['name']}.yml"
         ),

@@ -88,10 +88,10 @@ def save_setup():
             for cs in request.files.getlist('config_storage'):
                 if not cs.filename.endswith('.yml'):
                     return jsonify(message="Config storage must be .yml file"), 400
-                cs.save(os.path.join(BQ_PATH, '.config', 'storages.yml'))
+                cs.save(os.path.join(BQ_PATH, 'config', 'storages.yml'))
                 
         if len(request.files.getlist('config_storage')) <= 0:
-            with open(os.path.join(BQ_PATH, '.config', 'storages.yml'), 'w+') as f:
+            with open(os.path.join(BQ_PATH, 'config', 'storages.yml'), 'w+') as f:
                 config_content = {
                     "storages": {
                         request.form.get('name'): {
@@ -121,7 +121,7 @@ def save_setup():
             for cb in request.files.getlist('config_bqckup'):
                 if not cb.filename.endswith('.yml'):
                     return jsonify(message="Backup config must be .yml file"), 400
-                cb.save(os.path.join(BQ_PATH, '.config', 'bqckups', secure_filename(cb.filename)))
+                cb.save(os.path.join(BQ_PATH, 'config', 'bqckups', secure_filename(cb.filename)))
                 
         return jsonify(message=f"Success"), 200
     except Exception as e:

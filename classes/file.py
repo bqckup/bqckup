@@ -19,7 +19,7 @@ class File:
         return Path(path).read_text()
     
     def get_file_list(self, path: str):
-        bqckups_dir = os.path.join(BQ_PATH, '.config', 'bqckups')
+        bqckups_dir = os.path.join(BQ_PATH, 'config', 'bqckups')
         return [os.path.join(bqckups_dir, f) for f in os.listdir(path) if os.path.isfile(os.path.join(bqckups_dir, f))]
     
     def get_list(self, path: str):

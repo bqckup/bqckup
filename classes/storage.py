@@ -5,7 +5,7 @@ from config import BQ_PATH
 class StorageException(Exception): pass
 class Storage:
     def __init__(self):
-        self.config_path = os.path.join(BQ_PATH, '.config', 'storages.yml')
+        self.config_path = os.path.join(BQ_PATH, 'config', 'storages.yml')
         self.parsed_storage = Yml_Parser.parse(self.config_path)
 
     def validate_config(self):

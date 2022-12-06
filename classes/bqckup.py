@@ -11,7 +11,7 @@ from datetime import datetime
 
 class Bqckup:
     def __init__(self):
-        self.backup_config_path = os.path.join(BQ_PATH, ".config", "bqckups")
+        self.backup_config_path = os.path.join(BQ_PATH, "config")
         
         if not os.path.exists(self.backup_config_path):
             os.makedirs(self.backup_config_path)
@@ -92,7 +92,7 @@ class Bqckup:
     # Upload
     def do_backup(self, backup_config):
         try:
-            bqckup_config_location = os.path.join(BQ_PATH,'.config','bqckups', backup_config)
+            bqckup_config_location = os.path.join(BQ_PATH,'config','bqckups', backup_config)
             backup = Yml_Parser.parse(bqckup_config_location)['bqckup']
             backup_folder = f"{backup.get('name')}/{get_today()}"
             
@@ -164,7 +164,7 @@ class Bqckup:
                 # bqckup config
                 if CONFIG_BACKUP:
                     _s3.upload(bqckup_config_location, f"config/{backup.get('name')}.yml", False)
-                    _s3.upload(os.path.join(BQ_PATH, '.config', 'storages.yml'), 'config/storages.yml', False)
+                    _s3.upload(os.path.join(BQ_PATH, 'config', 'storages.yml'), 'config/storages.yml', False)
 
                 if os.path.exists(compressed_file):
                     print(f"\nUploading {compressed_file}\n")
