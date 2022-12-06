@@ -99,8 +99,6 @@ class Bqckup:
                 print(f"Backup for {backup.get('name')} is already running...")
                 return False
             
-            File().create_file(f"{tmp_path}/.running")
-            
             if not File().is_exists(tmp_path):
                 os.makedirs(tmp_path)
                 
@@ -183,8 +181,6 @@ class Bqckup:
                         os.unlink(compressed_file)
                         os.unlink(sql_path)
                     
-                    os.system(f"rm {tmp_path}/.running")
-                    
                     print(f"\nBackup for {backup.get('name')} is done!\n")
                     Log().update_status(log_compressed_files.id, Log.__SUCCESS__, "File Backup Success")
                     Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success")
@@ -199,7 +195,6 @@ class Bqckup:
             if 'log_database' in locals():
                 Log().update_status(log_database.id, Log.__FAILED__, f"Database Backup Failed: {e}")
                 
-            os.unlink(f"{tmp_path}/.running")
             print(f"[{backup.get('name')}] Error: {e}.")
     
     def remove(self):

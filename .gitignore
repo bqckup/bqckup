@@ -2,3 +2,6 @@ __pycache__/
 venv/
 tmp/
 database/
+*.spec
+dist/
+build/
