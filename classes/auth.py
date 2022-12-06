@@ -20,5 +20,5 @@ class Auth:
             )
         ).read_text()
         
-        return key == legit
+        return key.strip() == legit.strip()
         

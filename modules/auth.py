@@ -6,6 +6,8 @@ auth = Blueprint('auth', __name__)
 def login():
     # from models import User
     if request.method == 'GET':
+        if not os.path.exists(os.path.join(BQ_PATH, 'config', 'storages.yml')):
+            return redirect(url_for('setup'))
         return render_template('auth/login.html')
 
     elif request.method == 'POST':
@@ -24,7 +26,7 @@ def login():
             return redirect(url_for('index'))
         
             
-        legit = Path(os.path.join(BQ_PATH,' key')).read_text()
+        legit = Path(os.path.join(BQ_PATH, 'key')).read_text()
         flash(f"Authentication failed {legit} and {key}", "error")
         return redirect(url_for('auth.login'))
         

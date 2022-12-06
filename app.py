@@ -7,7 +7,6 @@ from config import *
 import sys, logging, os, ruamel.yaml as rYaml
 from datetime import timedelta
 from flask.json import jsonify
-from decouple import config
 from flask import Flask, render_template, request, redirect, url_for
 from classes.storage import Storage
 from werkzeug.utils import secure_filename
@@ -146,8 +145,9 @@ def index():
     if not Auth.is_authorized():
         return redirect(url_for('auth.login'))
 
-    if not Storage().get_primary_storage():
-        return redirect(url_for('mConfig.index'))
+
+    if not os.path.exists(os.path.join(BQ_PATH, 'config', 'storages.yml')) or not Storage().get_primary_storage():
+        return redirect(url_for('setup'))
 
     _server_storage = Server().get_storage_information()
     
