@@ -1,0 +1,15 @@
+## Task
+- [x] Job Manager
+- [x] Backup now
+- [ ] Backup Detail Page
+    - [x] Overview
+    - [ ] Logs
+- [ ] Backup CLI
+    - Test Config
+    - Run now
+- [ ] Backup by Schedule
+- [ ] Get Next Run CRON
+
+## New Task
+- [ ] Self Backup
+- [ ] API Integration

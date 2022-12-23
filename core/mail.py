@@ -1,11 +1,6 @@
 import smtplib, sys
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-# from ..helpers.helper import  getAppPath
-# sys.path.insert(0, getAppPath())
-# sys.path.append("..")
-from models import Configuration, MailLog
-
 class Mail(object):
     def __init__(self, data = False):
         self.data = data

@@ -1,0 +1,184 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-wrapper" x-data="backupDetail">
+    <div class="container-xl">
+        <div class="page-header">
+            <div class="row">
+                <div class="col">
+                    <!-- Page pre-title -->
+                    <div class="page-pretitle">
+                        Bqckup
+                    </div>
+                    <h2 class="page-title">
+                        {{ backup['name'] }}
+                    </h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="page-body">
+        <div class="container-xl">
+            <div class="row">
+                <div class="col-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <ul class="nav nav-tabs card-header-tabs" data-bs-toggle="tabs">
+                                <li class="nav-item">
+                                    <a href="#tab-overview" class="nav-link active" data-bs-toggle="tab">
+                                        <!-- Download SVG icon from http://tabler-icons.io/i/home -->
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="24" height="24"
+                                            viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                            <circle cx="12" cy="12" r="2"></circle>
+                                            <path
+                                                d="M22 12c-2.667 4.667 -6 7 -10 7s-7.333 -2.333 -10 -7c2.667 -4.667 6 -7 10 -7s7.333 2.333 10 7">
+                                            </path>
+                                        </svg>
+                                        Overview
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="#tab-log" class="nav-link" data-bs-toggle="tab">
+                                        <!-- Download SVG icon from http://tabler-icons.io/i/user -->
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="24" height="24"
+                                            viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                            <line x1="9" y1="6" x2="20" y2="6"></line>
+                                            <line x1="9" y1="12" x2="20" y2="12"></line>
+                                            <line x1="9" y1="18" x2="20" y2="18"></line>
+                                            <line x1="5" y1="6" x2="5" y2="6.01"></line>
+                                            <line x1="5" y1="12" x2="5" y2="12.01"></line>
+                                            <line x1="5" y1="18" x2="5" y2="18.01"></line>
+                                        </svg>
+                                        Logs
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="card-body">
+                            <div class="tab-content">
+                                <div class="tab-pane active show" id="tab-overview">
+                                    <div>
+                                        <div class="datagrid mb-3">
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-server" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                                        <rect x="3" y="4" width="18" height="8" rx="3"></rect>
+                                                        <rect x="3" y="12" width="18" height="8" rx="3"></rect>
+                                                        <line x1="7" y1="8" x2="7" y2="8.01"></line>
+                                                        <line x1="7" y1="16" x2="7" y2="16.01"></line>
+                                                     </svg>
+                                                    Storage
+                                                </div>
+                                                <div class="datagrid-content">{{ backup['options']['storage'] }}</div>
+                                            </div>
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-files" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                                        <path d="M15 3v4a1 1 0 0 0 1 1h4"></path>
+                                                        <path d="M18 17h-7a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h4l5 5v7a2 2 0 0 1 -2 2z"></path>
+                                                        <path d="M16 17v2a2 2 0 0 1 -2 2h-7a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h2"></path>
+                                                     </svg>
+                                                    Total Size
+                                                </div>
+                                                <div class="datagrid-content">100 Mb</div>
+                                            </div>
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                                        <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4"></path>
+                                                        <circle cx="18" cy="18" r="4"></circle>
+                                                        <path d="M15 3v4"></path>
+                                                        <path d="M7 3v4"></path>
+                                                        <path d="M3 11h16"></path>
+                                                        <path d="M18 16.496v1.504l1 1"></path>
+                                                     </svg>
+                                                    Schedule
+                                                </div>
+                                                <div class="datagrid-content">{{ backup['options']['interval'] }}</div>
+                                            </div>
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-dots-circle-horizontal" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                                        <circle cx="12" cy="12" r="9"></circle>
+                                                        <line x1="8" y1="12" x2="8" y2="12.01"></line>
+                                                        <line x1="12" y1="12" x2="12" y2="12.01"></line>
+                                                        <line x1="16" y1="12" x2="16" y2="12.01"></line>
+                                                     </svg>
+                                                    Save Locally
+                                                </div>
+                                                <div class="datagrid-content">{{ "Yes" if backup['options']['save_locally'] else "No" }}</div>
+                                            </div>
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-list-numbers" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                                        <path d="M11 6h9"></path>
+                                                        <path d="M11 12h9"></path>
+                                                        <path d="M12 18h8"></path>
+                                                        <path d="M4 16a2 2 0 1 1 4 0c0 .591 -.5 1 -1 1.5l-3 2.5h4"></path>
+                                                        <path d="M6 10v-6l-2 2"></path>
+                                                     </svg>
+                                                    File Retention
+                                                </div>
+                                                <div class="datagrid-content">{{ backup['options']['retention'] }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane" id="tab-log">
+                                    {% if not logs %}
+                                        <div class="mt-3 alert alert-important alert-primary">
+                                            There is no logs yet
+                                        </div>
+                                    {% endif %}
+                                   <table class="table table-vcenter w-100 {{ 'd-none' if not logs else '' }}">
+                                        <thead>
+                                            <tr>
+                                                <th>File name</th>
+                                                <th>Created at</th>
+                                                <th>Size</th>
+                                                <th>Description</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for log in logs %}
+                                            <tr>
+                                                <td>{{ log.file_path|get_base_name }}</td>
+                                                <td>{{ log.created_at|tSince }}</td>
+                                                <td>{{ log.file_size|humanReadableSize }}</td>
+                                                <td>{{ log.description }}</td>
+                                                <td>
+                                                    <a href="#" class="btn btn-primary btn-sm" @click="downloadFile('{{ log.object_name }}', '{{ log.storage }}')">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-download" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                                            <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path>
+                                                            <polyline points="7 11 12 16 17 11"></polyline>
+                                                            <line x1="12" y1="4" x2="12" y2="16"></line>
+                                                         </svg>
+                                                        Download
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                   </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
+{% block script %}
+<script src="{{ url_for('static', filename='js/backup-detail.js') }}"></script>
+{% endblock %}

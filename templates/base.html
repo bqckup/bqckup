@@ -24,32 +24,33 @@
   <meta name="MobileOptimized" content="320" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <!-- Libs CSS -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hover-min.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='libs/jqvmap/dist/jqvmap.min.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='libs/selectize/dist/css/selectize.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='libs/fullcalendar/core/main.min.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='libs/fullcalendar/daygrid/main.min.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='libs/fullcalendar/timegrid/main.min.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='libs/fullcalendar/list/main.min.css') }}">
+  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/hover-min.css') }}"> -->
+  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='libs/jqvmap/dist/jqvmap.min.css') }}"> -->
+  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='libs/selectize/dist/css/selectize.css') }}"> -->
+  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='libs/fullcalendar/core/main.min.css') }}"> -->
+  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='libs/fullcalendar/daygrid/main.min.css') }}"> -->
+  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='libs/fullcalendar/timegrid/main.min.css') }}"> -->
+  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='libs/fullcalendar/list/main.min.css') }}"> -->
   <link rel="stylesheet" href="{{ url_for('static', filename='libs/flatpickr/dist/flatpickr.min.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='libs/nouislider/distribute/nouislider.min.css') }}">
-  <link href="https://api.mapbox.com/mapbox-gl-js/v1.8.0/mapbox-gl.css" rel="stylesheet" />
+  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='libs/nouislider/distribute/nouislider.min.css') }}"> -->
+  <!-- <link href="https://api.mapbox.com/mapbox-gl-js/v1.8.0/mapbox-gl.css" rel="stylesheet" /> -->
   <!-- Tabler Core -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tabler.min.css') }}">
   <!-- Tabler Plugins -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tabler-flags.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tabler-payments.min.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/tabler-buttons.min.css') }}">
+  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/tabler-buttons.min.css') }}"> -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/demo.min.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='libs/countdown/css/jquery.countdown.css') }}">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/timepicker/1.3.5/jquery.timepicker.min.css">
+
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='libs/countdown/css/jquery.countdown.css') }}"> -->
   {% block stylesheet %}
   {% endblock stylesheet %}
   <style>
-    body {
-      display: none;
-    }
-  </style>
-  <style>
+    [x-cloak] { display: none !important; }
+    
     .animation-bounce {
       animation: bounce 1s infinite;
     }
@@ -70,75 +71,50 @@
   </style>
 </head>
 
-<body class="antialiased">
+<body>
+  <script src="{{ url_for('static', filename='js/demo-theme.min.js') }}"></script>
   <div class="page">
-    <header class="navbar navbar-expand-md navbar-light">
+    <header class="navbar navbar-expand-md navbar-light d-print-none">
       <div class="container-xl">
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
-        <a href="" class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pr-0 pr-md-3">
-          Bqckup <span style="font-size:.7em;">&nbsp;🚀</span>
-        </a>
+        <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
+          <a href=".">
+            Bqckup 🚀
+          </a>
+        </h1>
         <div class="navbar-nav flex-row order-md-last">
-          <!-- <div class="nav-item dropdown d-none d-md-flex me-3">
-            <a href="#" class="nav-link px-0 hvr-icon-wobble-vertical" data-bs-toggle="dropdown" tabindex="-1">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon hvr-icon" width="24" height="24" viewBox="0 0 24 24"
-                stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" />
-                <path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
-                <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
-              </svg>
-              <span class="badge bg-red"></span>
+          <div class="d-none d-md-flex">
+            <a href="?theme=dark" class="nav-link px-0 hide-theme-dark" data-bs-toggle="tooltip" data-bs-placement="bottom" aria-label="Enable dark mode" data-bs-original-title="Enable dark mode">
+              <!-- Download SVG icon from http://tabler-icons.io/i/moon -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path></svg>
             </a>
-            <div class="dropdown-menu dropdown-menu-right dropdown-menu-card">
-              <div class="card">
-                <div class="card-body">
-                  Notification (Coming soon)
-                </div>
-              </div>
-            </div>
-          </div> -->
+            <a href="?theme=light" class="nav-link px-0 hide-theme-light" data-bs-toggle="tooltip" data-bs-placement="bottom" aria-label="Enable light mode" data-bs-original-title="Enable light mode">
+              <!-- Download SVG icon from http://tabler-icons.io/i/sun -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><circle cx="12" cy="12" r="4"></circle><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"></path></svg>
+            </a>
+            
+          </div>
           <div class="nav-item dropdown">
-            <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown">
-              <div class="d-none d-xl-block pl-2">
-                <div>{{ currentUser.name }}</div>
-                <div class="mt-1 small text-muted">Administrator</div>
+            <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Open user menu">
+              <svg xmlns="http://www.w3.org/2000/svg" class="ms-3" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <circle cx="12" cy="10" r="3"></circle>
+                  <path d="M6.168 18.849a4 4 0 0 1 3.832 -2.849h4a4 4 0 0 1 3.834 2.855"></path>
+              </svg>
+              <div class="d-none d-xl-block ps-2">
+                <div>{{ session['name'] }}</div>
               </div>
             </a>
-            <div class="dropdown-menu dropdown-menu-right">
-              <a class="dropdown-item" href="#">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-user dropdown-item-icon"
-                  width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                  <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"></path>
-                </svg>
-                Profile
-              </a>
-              <!-- <a class="dropdown-item" href="#">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24"
-                  viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
-                  stroke-linejoin="round">
-                  <path stroke="none" d="M0 0h24v24H0z" />
-                  <path d="M9 7 h-3a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-3" />
-                  <path d="M9 15h3l8.5 -8.5a1.5 1.5 0 0 0 -3 -3l-8.5 8.5v3" />
-                  <line x1="16" y1="5" x2="19" y2="8" />
-                </svg>
-                Another action
-              </a> -->
+            <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+              <a href="#" class="dropdown-item">Status</a>
+              <a href="#" class="dropdown-item">Profile</a>
+              <a href="#" class="dropdown-item">Feedback</a>
               <div class="dropdown-divider"></div>
-              <a class="dropdown-item" href="{{ url_for('logout') }}">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-logout dropdown-item-icon"
-                  width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                  <path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"></path>
-                  <path d="M7 12h14l-3 -3m0 6l3 -3"></path>
-                </svg>
-                Logout
-              </a>
+              <a href="./settings.html" class="dropdown-item">Settings</a>
+              <a href="{{ url_for('auth.logout') }}" class="dropdown-item">Logout</a>
             </div>
           </div>
         </div>
@@ -164,8 +140,8 @@
                 </span>
               </a>
             </li>
-            <li class="nav-item {{ 'active' if 'config' in currentUrl else '' }}">
-              <a class="nav-link" href="{{ url_for('mConfig.index') }}">
+            <li class="nav-item d-none {{ 'active' if 'config' in currentUrl else '' }}">
+              <a class="nav-link" href="#">
                 <span class="nav-link-icon d-md-none d-lg-inline-block"><svg xmlns="http://www.w3.org/2000/svg"
                     class="icon icon-tabler icon-tabler-settings" width="24" height="24" viewBox="0 0 24 24"
                     stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -238,26 +214,8 @@
                 </div>
               </div>
             </li>
-            <!-- <li class="nav-item {{ 'active' if 'docs' in currentUrl else '' }}">
-              <a class="nav-link" href="{{ url_for('docs.index') }}" role="button" aria-expanded="false">
-                <span class="nav-link-icon d-md-none d-lg-inline-block"><svg xmlns="http://www.w3.org/2000/svg"
-                    class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
-                    fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" />
-                    <polyline points="14 3 14 8 19 8" />
-                    <path d="M17 21H7a2 2 0 0 1 -2 -2V5a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
-                    <line x1="9" y1="9" x2="10" y2="9" />
-                    <line x1="9" y1="13" x2="15" y2="13" />
-                    <line x1="9" y1="17" x2="15" y2="17" />
-                  </svg>
-                </span>
-                <span class="nav-link-title">
-                  Docs
-                </span>
-              </a>
-            </li> -->
           </ul>
-          <div class="my-2 my-md-0 flex-grow-1 flex-md-grow-0 order-first order-md-last">
+          <div class="d-none my-2 my-md-0 flex-grow-1 flex-md-grow-0 order-first order-md-last">
             <h3 class="text-primary">
               Package : Ultra Premium ✨ </h3>
           </div>
@@ -275,13 +233,6 @@
               <!-- <li class="list-inline-item"><a href="./docs/index.html" class="link-secondary">Documentation</a></li>
               <li class="list-inline-item"><a href="./faq.html" class="link-secondary">FAQ</a></li> -->
             </ul>
-          </div>
-          <div class="col-12 col-lg-auto mt-3 mt-lg-0">
-            Server time :
-            <span id="current_time"
-              style="font-weight:normal;background: #e1e1e1;padding: 0 10px;border-radius: .5em;color: #838c96;">
-              Loading...
-            </span>
           </div>
         </div>
       </div>
@@ -404,30 +355,22 @@
   </div>
   <!-- Libs JS -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js"></script>
+  <!-- <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js"></script> -->
   <script src="{{ url_for('static', filename='libs/apexcharts/dist/apexcharts.min.js') }}"></script>
-  <script src="{{ url_for('static', filename='libs/jqvmap/dist/jquery.vmap.min.js') }}"></script>
-  <script src="{{ url_for('static', filename='libs/jqvmap/dist/maps/jquery.vmap.world.js') }}"></script>
-  <script src="{{ url_for('static', filename='libs/jqvmap/dist/maps/jquery.vmap.usa.js') }}"></script>
-  <script src="{{ url_for('static', filename='libs/jqvmap/dist/maps/continents/jquery.vmap.europe.js') }}"></script>
-  <script src="{{ url_for('static', filename='libs/peity/jquery.peity.min.js') }}"></script>
+  <!-- <script src="{{ url_for('static', filename='libs/jqvmap/dist/jquery.vmap.min.js') }}"></script> -->
+  <!-- <script src="{{ url_for('static', filename='libs/jqvmap/dist/maps/jquery.vmap.world.js') }}"></script> -->
+  <!-- <script src="{{ url_for('static', filename='libs/jqvmap/dist/maps/jquery.vmap.usa.js') }}"></script> -->
+  <!-- <script src="{{ url_for('static', filename='libs/jqvmap/dist/maps/continents/jquery.vmap.europe.js') }}"></script> -->
+  <!-- <script src="{{ url_for('static', filename='libs/peity/jquery.peity.min.js') }}"></script> -->
   <script src="{{ url_for('static', filename='js/tabler.min.js') }}"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.3/dist/jquery.validate.min.js"></script>
-  <script src="{{ url_for('static', filename='libs/countdown/js/jquery.plugin.js') }}"></script>
-  <script src="{{ url_for('static', filename='libs/countdown/js/jquery.countdown.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/jquery.form.min.js') }}"></script>
+
+  <!-- <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.3/dist/jquery.validate.min.js"></script> -->
+  <!-- <script src="{{ url_for('static', filename='libs/countdown/js/jquery.plugin.js') }}"></script> -->
+  <!-- <script src="{{ url_for('static', filename='libs/countdown/js/jquery.countdown.js') }}"></script> -->
+  <!-- <script src="{{ url_for('static', filename='js/jquery.form.min.js') }}"></script> -->
   <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="{{ url_for('static', filename='libs/flatpickr/dist/flatpickr.min.js') }}"></script>
-  <script src="{{ url_for('static', filename='additional/js/OJTBackup.js') }}"></script>
-
-
-  {% block script %}
-  {% endblock %}
-
-  <!-- Tabler Core -->
   <script>
-    document.body.style.display = "block";
-
     let year = parseInt("{{ currentTime['year'] }}");
     let month = parseInt("{{ currentTime['month'] }}");
     let day = parseInt("{{ currentTime['day'] }}");
@@ -439,16 +382,11 @@
       var d = new Date(year, month, day, hour, minute, second);
       setInterval(function () {
         d.setSeconds(d.getSeconds() + 1);
-        $("#current_time").text(
-          d.getHours() + ":" + d.getMinutes() + ":" + d.getSeconds()
-        );
+        document.getElementById('time').innerHTML =  d.getHours() + ":" + d.getMinutes() + ":" + d.getSeconds()
       }, 1000);
     }
-    $(document).ready(function (e) {
-      currentTimeInit();
-
-    })
   </script>
+  {% block script %}
+  {% endblock %}
 </body>
-
 </html>

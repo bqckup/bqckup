@@ -1,13 +1,66 @@
 import os, errno, datetime, logging, sys
-from os import getcwd, path
-from datetime import date
+from os import path
+from datetime import date, datetime
+from pathlib import Path
 
-sys.path.append("..")
+# all in unix
+def difference_in_days(date1, date2):
+    date1 = datetime.fromtimestamp(date1)
+    date2 = datetime.fromtimestamp(date2)
+    delta = date1 - date2
+    return delta.days
 
+# dt = unix format
+def time_since(dt, default="now", reverse=False):
+    dt = datetime.fromtimestamp(dt)
+    now = datetime.now()
+    diff = now - dt
+    days = diff.days
+    
+    if reverse:
+        days = abs(days)
+        
+    periods = (
+        (days / 365, "year", "years"),
+        (days / 30, "month", "months"),
+        (days / 7, "week", "weeks"),
+        (days, "day", "days"),
+        (diff.seconds / 3600, "hour", "hours"),
+        (diff.seconds / 60, "minute", "minutes"),
+        (diff.seconds, "second", "seconds"),
+    )
+    
+    for period, singular, plural in periods:
+        if period >= 1:
+            if reverse:
+                return "In %d %s " % (period, singular if period == 1 else plural)
+            return "%d %s ago" % (period, singular if period == 1 else plural)
+    return default
+
+
+"""
+convert bytes to megabytes, etc.
+       sample code:
+           print('mb= ' + str(bytesto(314575262000000, 'm')))
+       sample output: 
+           mb= 300002347.946
+"""
+def bytes_to(to, bytes, bsize=1024):
+    a = {'k' : 1, 'm': 2, 'g' : 3, 't' : 4, 'p' : 5, 'e' : 6 }
+    r = float(bytes)
+    
+    for i in range(a[to]):
+        r = r / bsize
+
+    return round(r)
+
+def read_file_content(file_path):
+    if not path.exists(file_path):
+        raise Exception(f"Failed to read file, {file_path} is doesn't exists")
+    return Path(file_path).read_text()
 
 def splitNewLine(string):
     return string.splitlines()
-
 
 # get default path app
 def getAppPath():
@@ -15,10 +68,10 @@ def getAppPath():
 
 
 def date_diff(d1, d2, returnFormat=False):
-    if not isinstance(d1, datetime.datetime):
+    if not isinstance(d1, datetime):
         d1 = toDateObject(d1)
 
-    if not isinstance(d2, datetime.datetime):
+    if not isinstance(d2, datetime):
         d2 = toDateObject(d2)
 
     if returnFormat == "unix":
@@ -54,14 +107,14 @@ def zip(target, filePath, fileName):
     return fullPath
 
 
-def getDateFromUnix(unix, typeDate=False, format="%Y-%m-%d"):
+def get_date_from_unix(unix, typeDate=False, format="%Y-%m-%d"):
     if unix is None:
         return False
 
     unix = int(unix)
     if not typeDate:
-        return datetime.datetime.fromtimestamp(unix).strftime(format)
-    return datetime.datetime.fromtimestamp(unix).strftime("{}".format(typeDate))
+        return datetime.fromtimestamp(unix).strftime(format)
+    return datetime.fromtimestamp(unix).strftime("{}".format(typeDate))
 
 
 def getInt(s):
@@ -75,6 +128,9 @@ def getInt(s):
 
     arr = re.findall(r"\d+", s)
     return int(arr[0])
+
+def get_today(format="%Y-%m-%d"):
+    return date.today().strftime(format)
 
 
 def getOlderFiles(path, fromDays):
@@ -90,7 +146,7 @@ def getOlderFiles(path, fromDays):
 
             # in second
             lastModifiedTime = os.stat(f).st_mtime
-            readableModifiedTime = datetime.datetime.fromtimestamp(lastModifiedTime)
+            readableModifiedTime = datetime.fromtimestamp(lastModifiedTime)
             readableModifiedTime = readableModifiedTime.strftime("%Y-%m-%d | %H:%M:%S")
             d, _ = readableModifiedTime.split("|")
             nOfDays = numberOfDays(now, d)
@@ -121,7 +177,7 @@ def deletePastFiles(path, fromDays):
 
 def firstDateNextMonth(date):
     y, m, d = date.split("-")
-    dt = datetime.datetime(int(y), int(m), int(d))
+    dt = datetime(int(y), int(m), int(d))
     theDate = (dt.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
     return theDate.strftime("%Y-%m-%d")
 
@@ -156,33 +212,38 @@ def generate_token(length=20):
 
 # date = dateobject
 def convertDate(date):
-    return datetime.datetime.strptime(date, "%m/%d/%Y")
+    return datetime.strptime(date, "%m/%d/%Y")
 
 
 def convertDatetime(obj, format="%m/%d/%Y"):
     return obj.strftime(format)
 
 
-# Ref : https://stackoverflow.com/a/6574453/12875745
-# date2 > date1
-# rd.days, hours, seconds, etc.
-# both unix
-def timeSince(date1, date2):
-    import dateutil.relativedelta
 
-    dt1 = datetime.datetime.fromtimestamp(date1)
-    dt2 = datetime.datetime.fromtimestamp(date2)
-    rd = dateutil.relativedelta.relativedelta(dt1, dt2)
-    return rd
-
+def timesince(dt, default="now"):
+    now = datetime.now()
+    diff = now - dt
+    periods = (
+        (diff.days / 365, "year", "years"),
+        (diff.days / 30, "month", "months"),
+        (diff.days / 7, "week", "weeks"),
+        (diff.days, "day", "days"),
+        (diff.seconds / 3600, "hour", "hours"),
+        (diff.seconds / 60, "minute", "minutes"),
+        (diff.seconds, "second", "seconds"),
+    )
+    for period, singular, plural in periods:
+        if period >= 1:
+            return "%d %s ago" % (period, singular if period == 1 else plural)
+    return default
 
 # unix -> date obj
 def toDateObject(unix):
 
     if isinstance(unix, str):
-        return datetime.datetime.strptime(unix, "%Y-%m-%d %H:%M:%S")
+        return datetime.strptime(unix, "%Y-%m-%d %H:%M:%S")
 
-    date = datetime.datetime.fromtimestamp(unix)
+    date = datetime.fromtimestamp(unix)
     return date
 
 
@@ -196,7 +257,7 @@ def toUnix(obj):
 
 # add (n) days to a date
 def addDays(date, n):
-    if not isinstance(date, datetime.date):
+    if not isinstance(date, date):
         if isinstance(date, str) and date.isnumeric():
             date = int(date)
 
@@ -204,16 +265,16 @@ def addDays(date, n):
             import time
 
             date = int(time.time())
-            date = datetime.datetime.fromtimestamp(date)
+            date = datetime.fromtimestamp(date)
 
         if isinstance(date, int):
-            date = datetime.datetime.fromtimestamp(date)
+            date = datetime.fromtimestamp(date)
 
     return date + datetime.timedelta(n)
 
 
 def today24Format(combined=False):
-    now = datetime.datetime.now()
+    now = datetime.now()
     if combined:
         return now.strftime("%m/%d/%Y, %H:%M:%S")
 

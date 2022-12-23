@@ -69,11 +69,10 @@ var ajax_options = {
 };
 
 $(".time_picker").flatpickr({
-  allowInput: true,
   enableTime: true,
   noCalendar: true,
   dateFormat: "H:i",
-  time_24hr: true,
+  time_24hr: false,
   defaultDate: "00:00",
 });
 

@@ -5,22 +5,24 @@ from helpers import getInt
 from hurry.filesize import size, alternative
 from boto3.s3.transfer import TransferConfig
 from classes.progresspercentage import ProgressPercentage
-
+from classes.storage import Storage
 
 class s3(object):
-    def __init__(self):
+    def __init__(self, storage_name: str):
+        self.storage = Storage().get_storage_detail(storage_name)
+        self.root_folder_name = 'bqckup'
         self.clientInit()
-        self.bucket_name = AWS_S3_BUCKET
-
+        self.bucket_name = self.storage['bucket']
+        
     def clientInit(self):
         session = boto3.session.Session()
         try:
             self.client = session.client(
                 "s3",
-                region_name=AWS_REGION,
-                endpoint_url=AWS_S3_ENDPOINT,
-                aws_access_key_id=AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                region_name=self.storage['region'],
+                endpoint_url=self.storage['endpoint'],
+                aws_access_key_id=self.storage['access_key_id'],
+                aws_secret_access_key=self.storage['secret_access_key'],
             )
         except Exception as e:
             print(f"Failed to connect because : {e}") 
@@ -77,12 +79,11 @@ class s3(object):
 
         return usage
 
+
     # prefix for filtering
-    def list(self, prefix=""):
+    def list(self, prefix="", Delimiter=""):
         try:
-            files = self.client.list_objects_v2(Bucket=self.bucket_name, Prefix=prefix)[
-                "Contents"
-            ]
+            files = self.client.list_objects_v2(Bucket=self.bucket_name, Prefix=prefix, Delimiter=Delimiter)
         except KeyError:
             return []  # empty array
         else:
@@ -92,7 +93,8 @@ class s3(object):
         No directoris/folders in s3
         format name : token_site.com_date.zip
     """
-    def upload(self, pathFile, newFileName):
+    def upload(self, pathFile, newFileName, showProgress=True):
+        newFileName = os.path.join(self.root_folder_name, newFileName)
         config = TransferConfig(
             multipart_threshold=1024 * 25,
             max_concurrency=10,
@@ -105,7 +107,7 @@ class s3(object):
                 self.bucket_name,
                 newFileName,
                 Config=config,
-                Callback=ProgressPercentage(pathFile),
+                Callback=ProgressPercentage(pathFile) if showProgress else None,
             )
         except Exception as errorMsg:
             print(
@@ -123,17 +125,16 @@ class s3(object):
             )
             raise Exception("Msg : {}\n".format(errorMsg))
 
-    def getLinkDownload(self, Key, fileName=False):
-        fileName = fileName if fileName else Key
+    def getLinkDownload(self, fileName=False):
         try:
             link = self.client.generate_presigned_url(
                 ClientMethod="get_object",
                 Params={
                     "Bucket": self.bucket_name,
-                    "Key": Key,
+                    "Key": fileName,
                     "ResponseContentDisposition": f"attachment; filename = {fileName}",
                 },
-                ExpiresIn=3600,
+                ExpiresIn=86400,# One Day
             )
         except Exception as e:
             print("Get link download failed, reason {}".format(e))
@@ -141,13 +142,3 @@ class s3(object):
             raise Exception("Msg : %s\n " % e)
         else:
             return link
-
-    # fileName = siteName
-    def deleteOldFiles(self, fileName, days=3):
-        files = self.list(prefix=fileName)
-        getLastModified = lambda obj: int(obj['LastModified'].strftime('%s'))
-        fileSorted = [obj['Key'] for obj in sorted(files, key=getLastModified)]
-        if fileSorted:
-            for f in fileSorted[:2]:
-                self.delete(f)
-        
