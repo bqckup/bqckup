@@ -315,13 +315,13 @@
                 </tbody>
               </table>
             </div>
-            <div class="empty" x-show="false">
+            <div class="empty" x-show="{{ 'true' if not bqckups else 'false' }}">
               <div class="empty-img">
                 <img src="{{ url_for('static', filename='illustrations/undraw_quitting_time_dm8t.svg') }}" height="128" alt="">
               </div>
               <p class="empty-title">No Bqckup Found</p>
               <p class="empty-subtitle text-muted">
-                You just need simply add bqckup by clicking this button (not good)
+                To create a backup, you can easily do so by clicking this button
               </p>
               <div class="empty-action">
                 <a href="{{ url_for('bqckup.view_add') }}" class="btn btn-primary">
