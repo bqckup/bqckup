@@ -1,6 +1,6 @@
-```
 ## How to Build
 Build menggunakan lirbary `pyinstaller`
+
 ```shell
 pyinstaller bqckup --onefile --add-data 'templates:templates' --add-data 'static:static'
 ```
