@@ -1,6 +1,7 @@
 from modules.auth import auth
 from modules.backup import backup
 from classes.server import Server
+from classes.bqckup import Bqckup
 from classes.s3 import s3
 from helpers import today24Format, timeSince, bytes_to
 from config import *
@@ -78,7 +79,7 @@ Validate the config is it success connected to s3
 def save_setup():
     # Write security key
     try:
-        with open(os.path.join(BQ_PATH, '.key'), 'w+') as f:
+        with open(os.path.join(BQ_PATH, 'key'), 'w+') as f:
             f.write(request.form.get('key'))
             f.close()
             
@@ -121,7 +122,7 @@ def save_setup():
             for cb in request.files.getlist('config_bqckup'):
                 if not cb.filename.endswith('.yml'):
                     return jsonify(message="Backup config must be .yml file"), 400
-                cb.save(os.path.join(BQ_PATH, 'config', 'bqckups', secure_filename(cb.filename)))
+                cb.save(os.path.join(Bqckup().backup_config_path, secure_filename(cb.filename)))
                 
         return jsonify(message=f"Success"), 200
     except Exception as e:
@@ -190,23 +191,29 @@ def time_since(unix):
     from helpers import time_since
     return time_since(unix)
 
-# if __name__ == "__main__":
-#     from models.log import Log, database
-    
-#     if not os.path.exists(os.path.join(BQ_PATH, 'database', 'bqckup.db')):
-#         os.system(f"touch {os.path.join(BQ_PATH, 'database', 'bqckup.db')} && chmod 755 {os.path.join(BQ_PATH, 'database', 'bqckup.db')}")
-#         database.connect()
-#         database.create_tables([Log])
-#         database.close()
+def initialization():
+    from models.log import Log, database
+    db_path = os.path.join(BQ_PATH, 'database', 'bqckup.db')
+    if not os.path.exists(db_path):
+        os.system(f"mkdir -p {os.path.join(BQ_PATH, 'config')}")
+        os.system(f"mkdir -p {os.path.join(BQ_PATH, 'database')}")
+        os.system(f"touch {db_path}")
+        os.system(f"chmod 755 {db_path}")
+        database.connect()
+        database.create_tables([Log])
+        database.close()
+
+if __name__ == "__main__":
+    initialization()
         
-#     app.run(host="0.0.0.0", debug=True, port=9393)
-# else:
-#     logging.basicConfig(
-#         filename="Bqckup.log",
-#         level=logging.INFO,
-#         format="%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s",
-#     )
-    # logging.basicConfig(filename='demo.log', level=logging.DEBUG)
-    # gunicorn_logger = logging.getLogger("gunicorn.error")
-    # app.logger.handlers = gunicorn_logger.handlers
-    # app.logger.setLevel(gunicorn_logger.level)
+    app.run(host="0.0.0.0", debug=True, port=9393)
+else:
+    logging.basicConfig(
+        filename="/var/log/Bqckup.log",
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s",
+    )
+    logging.basicConfig(filename='demo.log', level=logging.DEBUG)
+    gunicorn_logger = logging.getLogger("gunicorn.error")
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
