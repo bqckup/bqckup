@@ -1,13 +1,13 @@
-#!/home/hp/Project/bqckup/venv/bin/python3
-import typer, os
+#!/etc/bqckup/venv/bin/python3
+import typer, getpass
 from classes.bqckup import Bqckup
 from config import BQ_PATH
 
 bq = typer.Typer()
 
-@bq.command()
-def test_config():
-    pass
+# @bq.command()
+# def test_config():
+#     pass
 
 @bq.command()
 def run(force:bool = False):
@@ -16,14 +16,23 @@ def run(force:bool = False):
 @bq.command()
 def gui_active():
     from gevent.pywsgi import WSGIServer
-    from app import app
+
     http_server = WSGIServer(('0.0.0.0', 9393), app)
     http_server.serve_forever()
     
     
-@bq.command()
-def start_worker():
-    pass
+# @bq.command()
+# def start_worker():
+#     pass
     
 if __name__ == "__main__":
-    bq()
+    if getpass.getuser() != 'root':
+        print("Please run this script as root user")
+    else:
+        from app import app, initialization
+        try:
+            initialization()
+        except Exception as e:
+            print(f"Failed to initialize, {str(e)}")
+        else:
+            bq()
