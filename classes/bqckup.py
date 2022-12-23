@@ -11,7 +11,7 @@ from datetime import datetime
 
 class Bqckup:
     def __init__(self):
-        self.backup_config_path = os.path.join(BQ_PATH, "config")
+        self.backup_config_path = os.path.join(BQ_PATH, "sites")
         
         if not os.path.exists(self.backup_config_path):
             os.makedirs(self.backup_config_path)
@@ -92,7 +92,7 @@ class Bqckup:
     # Upload
     def do_backup(self, backup_config):
         try:
-            bqckup_config_location = os.path.join(BQ_PATH,'config','bqckups', backup_config)
+            bqckup_config_location = os.path.join(self.backup_config_path, backup_config)
             backup = Yml_Parser.parse(bqckup_config_location)['bqckup']
             backup_folder = f"{backup.get('name')}/{get_today()}"
             
@@ -125,21 +125,21 @@ class Bqckup:
             
             Log().update(file_size=os.stat(compressed_file).st_size).where(Log.id == log_compressed_files.id).execute()
             
-            # Database export
             sql_path = os.path.join(tmp_path, f"{int(time.time())}.sql.gz")
-            
-            log_database = Log().write({
-                "name": backup['name'],
-                "file_size": 0,
-                "file_path": sql_path,
-                "description": "Database Backup is in Progress",
-                "type": Log.__DATABASE__,
-                "object_name": f"{_s3.root_folder_name}/{backup_folder}/{os.path.basename(sql_path)}",
-                "storage": backup['options']['storage']
-            })
-            
             if backup.get('database'):
                 print("Exporting database...\n")
+                 # Database export
+                
+                log_database = Log().write({
+                    "name": backup['name'],
+                    "file_size": 0,
+                    "file_path": sql_path,
+                    "description": "Database Backup is in Progress",
+                    "type": Log.__DATABASE__,
+                    "object_name": f"{_s3.root_folder_name}/{backup_folder}/{os.path.basename(sql_path)}",
+                    "storage": backup['options']['storage']
+                })
+                
                 Database().export(
                     sql_path,
                     db_user=backup.get('database').get('user'),
@@ -150,43 +150,44 @@ class Bqckup:
                 Log().update(file_size=os.stat(sql_path).st_size).where(Log.id == log_database.id).execute()
             
                 # Cleaning Old Folder
-                list_folder = _s3.list(
-                    f"{_s3.root_folder_name}/{backup.get('name')}/",
-                    '/'
+            list_folder = _s3.list(
+                f"{_s3.root_folder_name}/{backup.get('name')}/",
+                '/'
+            )
+            
+            if list_folder.get('KeyCount') >= int(backup.get('options').get('retention')):
+                last_folder_prefix = list_folder.get('CommonPrefixes')[0].get('Prefix')
+                last_folder = _s3.list(last_folder_prefix)
+                for obj in last_folder.get("Contents"):
+                    _s3.delete(obj.get("Key"))
+            
+            # bqckup config
+            if CONFIG_BACKUP:
+                _s3.upload(bqckup_config_location, f"config/{backup.get('name')}.yml", False)
+                _s3.upload(os.path.join(BQ_PATH, 'config', 'storages.yml'), 'config/storages.yml', False)
+
+            if os.path.exists(compressed_file):
+                print(f"\nUploading {compressed_file}\n")
+                _s3.upload(
+                    compressed_file,
+                    f"{backup_folder}/{os.path.basename(compressed_file)}"
                 )
                 
-                if list_folder.get('KeyCount') >= backup.get('options').get('retention'):
-                    last_folder_prefix = list_folder.get('CommonPrefixes')[0].get('Prefix')
-                    last_folder = _s3.list(last_folder_prefix)
-                    for obj in last_folder.get("Contents"):
-                        _s3.delete(obj.get("Key"))
+            if os.path.exists(sql_path):
+                print(f"\n\nUploading {sql_path}\n")
+                _s3.upload(
+                    sql_path,
+                    f"{backup_folder}/{os.path.basename(sql_path)}"
+                )
                 
-                # bqckup config
-                if CONFIG_BACKUP:
-                    _s3.upload(bqckup_config_location, f"config/{backup.get('name')}.yml", False)
-                    _s3.upload(os.path.join(BQ_PATH, 'config', 'storages.yml'), 'config/storages.yml', False)
-
-                if os.path.exists(compressed_file):
-                    print(f"\nUploading {compressed_file}\n")
-                    _s3.upload(
-                        compressed_file,
-                        f"{backup_folder}/{os.path.basename(compressed_file)}"
-                    )
-                    
-                if os.path.exists(sql_path):
-                    print(f"\n\nUploading {sql_path}\n")
-                    _s3.upload(
-                        sql_path,
-                        f"{backup_folder}/{os.path.basename(sql_path)}"
-                    )
-                    
-                    if not backup.get('options').get('save_locally'):
-                        os.unlink(compressed_file)
-                        os.unlink(sql_path)
-                    
-                    print(f"\nBackup for {backup.get('name')} is done!\n")
-                    Log().update_status(log_compressed_files.id, Log.__SUCCESS__, "File Backup Success")
-                    Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success")
+                if not backup.get('options').get('save_locally'):
+                    os.unlink(compressed_file)
+                    os.unlink(sql_path)
+                
+                Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success")
+                
+            Log().update_status(log_compressed_files.id, Log.__SUCCESS__, "File Backup Success")
+            print(f"\nBackup for {backup.get('name')} is done!\n")
         except Exception as e:
             import traceback
             traceback.print_exc()
