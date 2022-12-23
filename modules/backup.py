@@ -1,5 +1,6 @@
 from flask import Blueprint, request, render_template, jsonify
 from classes.database import Database
+from classes.bqckup import Bqckup
 from classes.storage import Storage
 from classes.s3 import s3
 from config import BQ_PATH
@@ -51,9 +52,7 @@ def save():
 
     with open(
         os.path.join(
-            BQ_PATH,
-            'config',
-            'bqckups',
+          Bqckup().backup_config_path,
             f"{backup['name']}.yml"
         ),
         "w+"
@@ -62,10 +61,12 @@ def save():
             "bqckup": {
                 'name': backup['name'],
                 'path': paths,
-                "database": database,
                 "options": options
             }
         }
+        
+        if database['user']:
+            content['bqckup']['database'] = database
         
         yaml = yaml.YAML()
         yaml.indent(sequence=4, offset=2)
