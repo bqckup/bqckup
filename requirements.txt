@@ -27,3 +27,4 @@ ruamel.yaml
 rq
 typer
 gevent
+pyinstaller
