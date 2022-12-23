@@ -1,3 +1,5 @@
+import os
+from config import BQ_PATH
 from flask import Blueprint, request, flash, redirect, url_for, session, render_template
 
 auth = Blueprint('auth', __name__)
@@ -12,10 +14,8 @@ def login():
 
     elif request.method == 'POST':
         from classes.auth import Auth
-        from config import BQ_PATH
         from pathlib import Path
         
-        import os
         
         session.permanent = True
         form = request.form
