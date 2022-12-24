@@ -73,7 +73,7 @@ class Bqckup:
             last_log = self.get_last_log(backup['name'])
             if last_log:
                 interval = backup['options']['interval']
-                last_backup = last_log.created_at # 5 is Last Backup
+                last_backup = last_log.created_at
                 last_backup = difference_in_days(time.time(), last_backup)
                 to_compare = self._interval_in_number(interval)
                 
