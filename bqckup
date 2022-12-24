@@ -1,27 +1,26 @@
-#!/etc/bqckup/venv/bin/python3
+#! /home/hp/Project/bqckup/venv/bin/python3
+
 import typer, getpass
 from classes.bqckup import Bqckup
-from config import BQ_PATH
 
-bq = typer.Typer()
+bq_cli = typer.Typer()
 
-# @bq.command()
+# @bq_cli.command()
 # def test_config():
 #     pass
 
-@bq.command()
+@bq_cli.command()
 def run(force:bool = False):
     Bqckup().backup(force=force)
     
-@bq.command()
+@bq_cli.command()
 def gui_active():
     from gevent.pywsgi import WSGIServer
 
     http_server = WSGIServer(('0.0.0.0', 9393), app)
     http_server.serve_forever()
     
-    
-# @bq.command()
+# @bq_cli.command()
 # def start_worker():
 #     pass
     
@@ -35,4 +34,4 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Failed to initialize, {str(e)}")
         else:
-            bq()
+            bq_cli()
