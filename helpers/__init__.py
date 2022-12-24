@@ -3,12 +3,19 @@ from os import path
 from datetime import date, datetime
 from pathlib import Path
 
-# all in unix
-def difference_in_days(date1, date2):
+"""
+    all format with linux
+    for example ( converted date )
+    date1 = 2020-01-01 23:59:00
+    date2 = 2020-01-02 00:00:00
+    it will count as 1 day
+"""
+def difference_in_days(date1: int, date2: int) -> int:
     date1 = datetime.fromtimestamp(date1)
     date2 = datetime.fromtimestamp(date2)
-    delta = date1 - date2
-    return delta.days
+    day1 = date1.date().day
+    day2 = date2.date().day
+    return day1 - day2
 
 # dt = unix format
 def time_since(dt, default="now", reverse=False):
