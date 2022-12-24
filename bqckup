@@ -5,9 +5,9 @@ from classes.bqckup import Bqckup
 
 bq_cli = typer.Typer()
 
-# @bq_cli.command()
-# def test_config():
-#     pass
+@bq_cli.command()
+def test_config():
+    Bqckup().validate_config('ojtPlugin')
 
 @bq_cli.command()
 def run(force:bool = False):
