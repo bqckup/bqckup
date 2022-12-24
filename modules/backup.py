@@ -93,7 +93,7 @@ def test_db_connection():
             credentials={
                 'user': post.get('user'),
                 'host': post.get('host'),
-                'user': post.get('user'),
+                'password': post.get('password'),
                 'name': post.get('name')
             }
         )
