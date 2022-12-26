@@ -2,8 +2,17 @@
 
 import typer, getpass
 from classes.bqckup import Bqckup
+from classes.config import Config
 
 bq_cli = typer.Typer()
+
+# @bq_cli.command()
+# def check_update():
+#     pass
+
+# @bq_cli.command()
+#     def version():
+#         pass
 
 @bq_cli.command()
 def test_config():
@@ -17,12 +26,9 @@ def run(force:bool = False):
 def gui_active():
     from gevent.pywsgi import WSGIServer
 
-    http_server = WSGIServer(('0.0.0.0', 9393), app)
+    http_server = WSGIServer(('0.0.0.0', int(Config().read('web', 'port'))), app)
     http_server.serve_forever()
     
-# @bq_cli.command()
-# def start_worker():
-#     pass
     
 if __name__ == "__main__":
     if getpass.getuser() != 'root':

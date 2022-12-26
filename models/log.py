@@ -1,7 +1,7 @@
 from peewee import *
 import os, time, sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from config import BQ_PATH
+from constant import BQ_PATH
 
 database = SqliteDatabase(
     os.path.join(BQ_PATH, 'database', 'bqckup.db'),

@@ -1,5 +1,5 @@
 import os
-from config import BQ_PATH
+from constant import BQ_PATH
 from flask import Blueprint, request, flash, redirect, url_for, session, render_template
 
 auth = Blueprint('auth', __name__)

@@ -3,9 +3,10 @@ from classes.database import Database
 from classes.storage import Storage
 from classes.tar import Tar
 from classes.file import File
+from classes.config import Config
 from classes.yml_parser import Yml_Parser
 from models.log import Log
-from config import BQ_PATH, CONFIG_BACKUP
+from constant import BQ_PATH
 from classes.s3 import s3
 from helpers import difference_in_days, get_today, time_since
 from datetime import datetime
@@ -41,6 +42,8 @@ class Bqckup:
                 "host": config.get('database').get('host'),
                 "name": config.get('database').get('name')
             })
+            
+        print("All OK !")
             
     def detail(self, name: str):
         backups = self.list()
@@ -191,7 +194,7 @@ class Bqckup:
                     _s3.delete(obj.get("Key"))
             
             # bqckup config
-            if CONFIG_BACKUP:
+            if Config().get('bqckup', 'config_backup'):
                 _s3.upload(bqckup_config_location, f"config/{backup.get('name')}.yml", False)
                 _s3.upload(os.path.join(BQ_PATH, 'config', 'storages.yml'), 'config/storages.yml', False)
 

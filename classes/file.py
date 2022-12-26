@@ -1,5 +1,4 @@
 import os
-from config import BQ_PATH
 from pathlib import Path
 
 class File:
