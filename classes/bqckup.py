@@ -36,6 +36,9 @@ class Bqckup:
             
         # validate database
         if config.get('database'):
+            if config.get('database').get('type') not in Database().SUPPORTED_DATABASE:
+                raise ConfigExceptions(f"Database type {config.get('database').get('type')} not supported")
+            
             Database(type=config.get('database').get('type')).test_connection({
                 "user": config.get('database').get('user'),
                 "password": config.get('database').get('password'),
