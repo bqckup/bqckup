@@ -12,4 +12,5 @@ class Config:
             return self.config_parser[section][key]
         except Exception as e:
             print(f"Failed to read config, {str(e)}")
+            print(f"Check if {self.config_path} exists and has the correct format")
             return None
