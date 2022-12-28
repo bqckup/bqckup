@@ -69,6 +69,9 @@ def before_request():
 
 @app.get('/setup')
 def setup():
+    if os.path.exists(os.path.join(BQ_PATH, 'config', 'storages.yml')):
+        return redirect(url_for('index'))
+    
     return render_template('wizard.html')
 
 """
