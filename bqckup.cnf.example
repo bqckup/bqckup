@@ -2,12 +2,7 @@
 port=9393
 
 [auth]
-password=coklatmanis
+password=bqckup
 
 [bqckup]
 config_backup=1
-
-[redis]
-redis_host=localhost
-redis_port=6379
-redis_password=''
