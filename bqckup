@@ -1,8 +1,9 @@
-#! /home/hp/Project/bqckup/venv/bin/python3
+#! /etc/bqckup/venv/bin/python3
 
 import typer, getpass
 from classes.bqckup import Bqckup
 from classes.config import Config
+from classes.server import Server
 
 bq_cli = typer.Typer()
 
@@ -25,9 +26,14 @@ def run(force:bool = False):
 @bq_cli.command()
 def gui_active():
     from gevent.pywsgi import WSGIServer
-
-    http_server = WSGIServer(('0.0.0.0', int(Config().read('web', 'port'))), app)
-    http_server.serve_forever()
+    try:        
+        port = int(Config().read('web', 'port'))
+        http_server = WSGIServer(('0.0.0.0', port), app)
+        print(f"\nListening to http://{Server().ip()}:{port}\n", flush=True)
+        http_server.serve_forever()
+    except Exception as e:
+        print(f"Failed to start web server, {str(e)}")
+        
     
     
 if __name__ == "__main__":
