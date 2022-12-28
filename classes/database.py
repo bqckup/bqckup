@@ -10,6 +10,8 @@ should be compatible with to other database type
 """
 class Database:
     # mysqli is temporary
+    SUPPORTED_DATABASE = ("mysql", "postgresql", "sqlite")
+    
     def __init__(self, type = "mysql"):
         self.type = type.lower()
         

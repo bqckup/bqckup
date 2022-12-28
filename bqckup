@@ -1,29 +1,40 @@
-#!/etc/bqckup/venv/bin/python3
+#! /etc/bqckup/venv/bin/python3
+
 import typer, getpass
 from classes.bqckup import Bqckup
-from config import BQ_PATH
+from classes.config import Config
+from classes.server import Server
 
-bq = typer.Typer()
+bq_cli = typer.Typer()
 
-# @bq.command()
-# def test_config():
+# @bq_cli.command()
+# def check_update():
 #     pass
 
-@bq.command()
+# @bq_cli.command()
+#     def version():
+#         pass
+
+@bq_cli.command()
+def test_config():
+    Bqckup().validate_config('ojtPlugin')
+
+@bq_cli.command()
 def run(force:bool = False):
     Bqckup().backup(force=force)
     
-@bq.command()
+@bq_cli.command()
 def gui_active():
     from gevent.pywsgi import WSGIServer
-
-    http_server = WSGIServer(('0.0.0.0', 9393), app)
-    http_server.serve_forever()
+    try:        
+        port = int(Config().read('web', 'port'))
+        http_server = WSGIServer(('0.0.0.0', port), app)
+        print(f"\nListening to http://{Server().ip()}:{port}\n", flush=True)
+        http_server.serve_forever()
+    except Exception as e:
+        print(f"Failed to start web server, {str(e)}")
+        
     
-    
-# @bq.command()
-# def start_worker():
-#     pass
     
 if __name__ == "__main__":
     if getpass.getuser() != 'root':
@@ -35,4 +46,4 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Failed to initialize, {str(e)}")
         else:
-            bq()
+            bq_cli()

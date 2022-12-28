@@ -1,9 +1,8 @@
 import os, sys, boto3
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from config import *
 from helpers import getInt
 from hurry.filesize import size, alternative
 from boto3.s3.transfer import TransferConfig
+from botocore.config import Config
 from classes.progresspercentage import ProgressPercentage
 from classes.storage import Storage
 
@@ -23,6 +22,11 @@ class s3(object):
                 endpoint_url=self.storage['endpoint'],
                 aws_access_key_id=self.storage['access_key_id'],
                 aws_secret_access_key=self.storage['secret_access_key'],
+                config=Config(
+                    retries = dict(
+                        max_attempts = 5
+                    )
+                )
             )
         except Exception as e:
             print(f"Failed to connect because : {e}") 
@@ -39,21 +43,7 @@ class s3(object):
         if getInt(current["free"]) <= int(limit):
             return True
         return False
-        #     # TODO: with config ( send mail)
-        #     sendMail = False
-        #     if sendMail:
-        #         from models import User
-        #         from core.mail import Mail
-
-        #         user = User().get()
-        #         if user.email:
-        #             data = {
-        #                 "target": user.email,
-        #                 "subject": "Server disk full !",
-        #                 "message": f"Your server disk is {current['free']} left",
-        #             }
-
-        #         Mail(data).send()
+        
 
     def getCloudDiskUsage(self, prefix=""):
         files = self.list(prefix)

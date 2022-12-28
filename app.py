@@ -4,7 +4,7 @@ from classes.server import Server
 from classes.bqckup import Bqckup
 from classes.s3 import s3
 from helpers import today24Format, timeSince, bytes_to
-from config import *
+from constant import BQ_PATH
 import sys, logging, os, ruamel.yaml as rYaml
 from datetime import timedelta
 from flask.json import jsonify
@@ -69,6 +69,9 @@ def before_request():
 
 @app.get('/setup')
 def setup():
+    if os.path.exists(os.path.join(BQ_PATH, 'config', 'storages.yml')):
+        return redirect(url_for('index'))
+    
     return render_template('wizard.html')
 
 """

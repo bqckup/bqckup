@@ -13,7 +13,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-  <title>{{ title_bar }} | Bqckup</title>
+  <title>Bqckup</title>
   <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
   <meta name="msapplication-TileColor" content="#206bc4" />
   <meta name="theme-color" content="#206bc4" />
@@ -79,7 +79,7 @@
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
-        <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
+        <h1 class="navbar-brand d-none-navbar-horizontal pe-0 pe-md-3">
           <a href=".">
             Bqckup 🚀
           </a>
@@ -109,11 +109,6 @@
               </div>
             </a>
             <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-              <a href="#" class="dropdown-item">Status</a>
-              <a href="#" class="dropdown-item">Profile</a>
-              <a href="#" class="dropdown-item">Feedback</a>
-              <div class="dropdown-divider"></div>
-              <a href="./settings.html" class="dropdown-item">Settings</a>
               <a href="{{ url_for('auth.logout') }}" class="dropdown-item">Logout</a>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import os
 from classes.yml_parser import Yml_Parser
-from config import BQ_PATH
+from constant import BQ_PATH
 
 class StorageException(Exception): pass
 class Storage:

@@ -28,3 +28,4 @@ rq
 typer
 gevent
 pyinstaller
+peewee

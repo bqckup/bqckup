@@ -1,7 +1,5 @@
-import os
-from pathlib import Path
-from config import BQ_PATH
 from flask import session
+from classes.config import Config
 
 class AuthException(Exception): pass
 
@@ -13,12 +11,6 @@ class Auth:
             return False
     
     def authorize(key: str) -> bool:
-        legit = Path(
-            os.path.join(
-                BQ_PATH,
-                'key'
-            )
-        ).read_text()
-        
+        legit = Config().read('auth', 'password')
         return key.strip() == legit.strip()
         

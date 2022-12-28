@@ -1,13 +1,18 @@
 import os, time
 from classes.database import Database
+from classes.storage import Storage
 from classes.tar import Tar
 from classes.file import File
+from classes.config import Config
 from classes.yml_parser import Yml_Parser
 from models.log import Log
-from config import BQ_PATH, CONFIG_BACKUP
+from constant import BQ_PATH
 from classes.s3 import s3
 from helpers import difference_in_days, get_today, time_since
 from datetime import datetime
+
+class ConfigExceptions(Exception):
+    pass
 
 class Bqckup:
     def __init__(self):
@@ -16,8 +21,32 @@ class Bqckup:
         if not os.path.exists(self.backup_config_path):
             os.makedirs(self.backup_config_path)
             
-    def validate_config(self):
-        pass
+    def validate_config(self, name: str) -> None:
+        config = self.detail(name)
+        
+        if not config:
+            raise ConfigExceptions(f"Backup {name} not found")
+
+        Storage().get_storage_detail(config.get('options').get('storage'))
+        
+        # validate files
+        for path in config.get('path'):
+            if not os.path.exists(path):
+                raise ConfigExceptions(f"Path {path} not found")
+            
+        # validate database
+        if config.get('database'):
+            if config.get('database').get('type') not in Database().SUPPORTED_DATABASE:
+                raise ConfigExceptions(f"Database type {config.get('database').get('type')} not supported")
+            
+            Database(type=config.get('database').get('type')).test_connection({
+                "user": config.get('database').get('user'),
+                "password": config.get('database').get('password'),
+                "host": config.get('database').get('host'),
+                "name": config.get('database').get('name')
+            })
+            
+        print("All OK !")
             
     def detail(self, name: str):
         backups = self.list()
@@ -70,22 +99,28 @@ class Bqckup:
             return
         for i in backups:
             backup = backups[i]
+            self.validate_config(backup['name'])
             last_log = self.get_last_log(backup['name'])
+            
             if last_log:
                 interval = backup['options']['interval']
-                last_backup = last_log.created_at # 5 is Last Backup
+                last_backup = last_log.created_at
                 last_backup = difference_in_days(time.time(), last_backup)
                 to_compare = self._interval_in_number(interval)
                 
                 # Not enough time has passed
                 if not force and last_backup < to_compare:
-                    print(f"\nBackup for {backup['name']} is not needed yet...")
+                    print("\n=========================================")
+                    print(f"Backup Name: {backup['name']}")
                     print(f"Current Date: {time.strftime('%d/%m/%Y %H:%M:%S', time.localtime())}")
                     print(f"Last Backup: {datetime.fromtimestamp(last_log.created_at).strftime('%d/%m/%Y %H:%M:%S')}")
                     print(f"Next bqckup: {datetime.fromtimestamp(last_log.created_at + (to_compare * 86400)).strftime('%d/%m/%Y 00:00:00')}")
                     print(f"Day passed: {last_backup}")
-                    print(f"Interval: {interval}\n")
-                    return False
+                    print(f"Interval: {interval}")
+                    print(f"\nBackup for {backup['name']} is not needed yet...")
+                    print("=========================================\n")
+                    print(f"Visit: https://bqckup.com\n")
+                    continue
                 
             self.do_backup(backup['file_name'])
     
@@ -162,7 +197,7 @@ class Bqckup:
                     _s3.delete(obj.get("Key"))
             
             # bqckup config
-            if CONFIG_BACKUP:
+            if Config().get('bqckup', 'config_backup'):
                 _s3.upload(bqckup_config_location, f"config/{backup.get('name')}.yml", False)
                 _s3.upload(os.path.join(BQ_PATH, 'config', 'storages.yml'), 'config/storages.yml', False)
 

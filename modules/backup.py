@@ -3,7 +3,7 @@ from classes.database import Database
 from classes.bqckup import Bqckup
 from classes.storage import Storage
 from classes.s3 import s3
-from config import BQ_PATH
+from constant import BQ_PATH
 
 backup = Blueprint('bqckup', __name__)
 
@@ -93,7 +93,7 @@ def test_db_connection():
             credentials={
                 'user': post.get('user'),
                 'host': post.get('host'),
-                'user': post.get('user'),
+                'password': post.get('password'),
                 'name': post.get('name')
             }
         )
