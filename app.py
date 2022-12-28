@@ -198,6 +198,9 @@ def initialization():
     from models.log import Log, database
     db_path = os.path.join(BQ_PATH, 'database', 'bqckup.db')
     if not os.path.exists(db_path):
+        config_content ="""[web]\nport=9393\n\n[auth]\npassword=bqckup\n\n[bqckup]\nconfig_backup=1"""
+        from classes.file import File
+        File().create_file(os.path.join(BQ_PATH, 'bqckup.cnf'), config_content.strip())
         os.system(f"mkdir -p {os.path.join(BQ_PATH, 'config')}")
         os.system(f"mkdir -p {os.path.join(BQ_PATH, 'database')}")
         os.system(f"touch {db_path}")
