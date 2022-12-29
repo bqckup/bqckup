@@ -23,12 +23,12 @@ class Log(BaseModel):
     id = AutoField()
     name = CharField()
     file_path = CharField()
-    file_size = IntegerField()
+    file_size = IntegerField(default=0)
     description = TextField()
     created_at = IntegerField()
     type = TextField()
     storage = CharField()
-    object_name = TextField()
+    object_name = TextField(null=True)
     status = IntegerField()
     
     # TODO: Fix this duplicate query
@@ -38,7 +38,7 @@ class Log(BaseModel):
             self.update(description=description).where(self.id == id).execute()    
             
     def write(self, data: dict):
-        return self.create( name=data['name'], file_path=data['file_path'], file_size=data['file_size'], description=data['description'], created_at=int(time.time()), type=data['type'], storage=data['storage'], object_name=data['object_name'], status=self.__ON_PROGRESS__ )    
+        return self.create( name=data['name'], file_path=data['file_path'], description=data['description'], created_at=int(time.time()), type=data['type'], storage=data['storage'], status=self.__ON_PROGRESS__ )    
 
 # if __name__ == '__main__':
 #     xx = Log().write({

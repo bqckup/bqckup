@@ -127,22 +127,18 @@
             </div>
           </div>
         </div>
-        <div class="row align-items-center mt-3">
-          <div class="col-4">
-            <div class="progress d-none">
-              <div class="progress-bar" style="width: 25%" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100" aria-label="25% Complete">
-                <span class="visually-hidden">25% Complete</span>
-              </div>
-            </div>
-          </div>
+        <div class="row mt-3">
           <div class="col">
-            <div class="btn-list justify-content-end">
-              <a href="#" x-show="!keySetup" class="btn" @click="keySetup = true;showFormConfig = false;" x-transition>
+            <div class="btn-list justify-content-end ">
+              <button x-show="!keySetup" class="ms-0 me-auto btn float-start" @click="keySetup = true;showFormConfig = false;" x-transition>
                 Back
-              </a>
-              <a href="#" class="btn btn-primary" @click="next()">
+              </button>
+              <button x-show="!keySetup" class="btn justify-content-start" @click="skip = true;next()" x-transition>
+                Skip
+              </button>
+              <button class="btn btn-primary" @click="next()">
                 Continue
-              </a>
+              </button>
             </div>
           </div>
         </div>

@@ -15,12 +15,11 @@ function bqckup_add() {
     },
     async fetchStorages() {
       let request = await fetch("/backup/get_storages");
-      if (request.status != 200) {
-        return alert("Failed to fetching storages");
+      if (request.status == 200) {
+        let response = await request.json();
+        this.storages = response;
+        this.payload.options.storage = this.storages[0];
       }
-      let response = await request.json();
-      this.storages = response;
-      this.payload.options.storage = this.storages[0];
     },
     open(step = false) {
       this.step = this.step == "files" ? "database" : "options";
@@ -105,6 +104,8 @@ function bqckup_add() {
         retention: "7",
         save_locally: "no",
         notification_email: "",
+        provider: "local",
+        destination: "",
       },
     },
     async submit() {
@@ -126,14 +127,15 @@ function bqckup_add() {
         body: formData,
       });
       if (request.status != 200) {
-        console.error(request);
+        let response = await request.json();
         return Swal.fire(
           "Process Failed",
-          "Failed to create bqckup, check console",
+          response.message
+            ? response.message
+            : "Failed to create bqckup, check console",
           "error"
         );
       }
-      let response = await request.json();
       this.$refs.buttonSave.disabled = false;
       return Swal.fire({
         icon: "success",

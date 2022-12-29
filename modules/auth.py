@@ -26,8 +26,7 @@ def login():
             return redirect(url_for('index'))
         
             
-        legit = Path(os.path.join(BQ_PATH, 'key')).read_text()
-        flash(f"Authentication failed {legit} and {key}", "error")
+        flash(f"Authentication failed", "error")
         return redirect(url_for('auth.login'))
         
             

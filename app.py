@@ -95,7 +95,7 @@ def save_setup():
         
         # Storage config
         if request.form.get('skip'):
-            File().write(STORAGE_CONFIG_PATH, '')
+            File().create_file(STORAGE_CONFIG_PATH, '')
             return jsonify(message=f"Success"), 200
             
         if len(request.files.getlist('config_storage')) > 0:
@@ -159,10 +159,6 @@ def index():
     if not Auth.is_authorized():
         return redirect(url_for('auth.login'))
 
-
-    if not os.path.exists(STORAGE_CONFIG_PATH) or not Storage().get_primary_storage():
-        return redirect(url_for('setup'))
-
     _server_storage = Server().get_storage_information()
     
     server_storage = {
@@ -208,7 +204,6 @@ def initialization():
     from models.log import Log, database
     db_path = os.path.join(BQ_PATH, 'database', 'bqckup.db')
     if not os.path.exists(db_path):
-        from classes.file import File
         from classes.config import Config
         
         cfg = Config()
