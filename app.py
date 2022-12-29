@@ -4,7 +4,7 @@ from classes.server import Server
 from classes.bqckup import Bqckup
 from classes.s3 import s3
 from helpers import today24Format, timeSince, bytes_to
-from constant import BQ_PATH
+from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
 import sys, logging, os, ruamel.yaml as rYaml
 from datetime import timedelta
 from flask.json import jsonify
@@ -69,7 +69,7 @@ def before_request():
 
 @app.get('/setup')
 def setup():
-    if os.path.exists(os.path.join(BQ_PATH, 'config', 'storages.yml')):
+    if os.path.exists(STORAGE_CONFIG_PATH):
         return redirect(url_for('index'))
     
     return render_template('wizard.html')
@@ -82,20 +82,30 @@ Validate the config is it success connected to s3
 def save_setup():
     # Write security key
     try:
-        with open(os.path.join(BQ_PATH, 'key'), 'w+') as f:
-            f.write(request.form.get('key'))
-            f.close()
-            
-        # Storage config
+        from classes.config import Config
+        from classes.file import File
         
+        cfg = Config()
+        cfg.config_parser['web']['port'] = cfg.read('web', 'port')
+        cfg.config_parser['auth']['password'] = request.form.get('key')
+        cfg.config_parser['bqckup']['config_backup'] = cfg.read('bqckup', 'config_backup')
+        
+        with open(STORAGE_CONFIG_PATH, 'w') as configfile:
+            cfg.config_parser.write(configfile)
+        
+        # Storage config
+        if request.form.get('skip'):
+            File().write(STORAGE_CONFIG_PATH, '')
+            return jsonify(message=f"Success"), 200
+            
         if len(request.files.getlist('config_storage')) > 0:
             for cs in request.files.getlist('config_storage'):
                 if not cs.filename.endswith('.yml'):
                     return jsonify(message="Config storage must be .yml file"), 400
-                cs.save(os.path.join(BQ_PATH, 'config', 'storages.yml'))
+                cs.save(STORAGE_CONFIG_PATH)
                 
         if len(request.files.getlist('config_storage')) <= 0:
-            with open(os.path.join(BQ_PATH, 'config', 'storages.yml'), 'w+') as f:
+            with open(STORAGE_CONFIG_PATH, 'w+') as f:
                 config_content = {
                     "storages": {
                         request.form.get('name'): {
@@ -125,7 +135,7 @@ def save_setup():
             for cb in request.files.getlist('config_bqckup'):
                 if not cb.filename.endswith('.yml'):
                     return jsonify(message="Backup config must be .yml file"), 400
-                cb.save(os.path.join(Bqckup().backup_config_path, secure_filename(cb.filename)))
+                cb.save(os.path.join(SITE_CONFIG_PATH, secure_filename(cb.filename)))
                 
         return jsonify(message=f"Success"), 200
     except Exception as e:
@@ -150,7 +160,7 @@ def index():
         return redirect(url_for('auth.login'))
 
 
-    if not os.path.exists(os.path.join(BQ_PATH, 'config', 'storages.yml')) or not Storage().get_primary_storage():
+    if not os.path.exists(STORAGE_CONFIG_PATH) or not Storage().get_primary_storage():
         return redirect(url_for('setup'))
 
     _server_storage = Server().get_storage_information()
@@ -198,9 +208,17 @@ def initialization():
     from models.log import Log, database
     db_path = os.path.join(BQ_PATH, 'database', 'bqckup.db')
     if not os.path.exists(db_path):
-        config_content ="""[web]\nport=9393\n\n[auth]\npassword=bqckup\n\n[bqckup]\nconfig_backup=1"""
         from classes.file import File
-        File().create_file(os.path.join(BQ_PATH, 'bqckup.cnf'), config_content.strip())
+        from classes.config import Config
+        
+        cfg = Config()
+        cfg.config_parser['web']['port'] = cfg.read('web', 'port')
+        cfg.config_parser['auth']['password'] = "s0m3r4nd0mp455w0rd"
+        cfg.config_parser['bqckup']['config_backup'] = cfg.read('bqckup', 'config_backup')
+        
+        with open(STORAGE_CONFIG_PATH, 'w') as configfile:
+            cfg.config_parser.write(configfile)
+        
         os.system(f"mkdir -p {os.path.join(BQ_PATH, 'config')}")
         os.system(f"mkdir -p {os.path.join(BQ_PATH, 'database')}")
         os.system(f"touch {db_path}")

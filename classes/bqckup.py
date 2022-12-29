@@ -6,7 +6,7 @@ from classes.file import File
 from classes.config import Config
 from classes.yml_parser import Yml_Parser
 from models.log import Log
-from constant import BQ_PATH
+from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
 from classes.s3 import s3
 from helpers import difference_in_days, get_today, time_since
 from datetime import datetime
@@ -16,10 +16,9 @@ class ConfigExceptions(Exception):
 
 class Bqckup:
     def __init__(self):
-        self.backup_config_path = os.path.join(BQ_PATH, "sites")
         
-        if not os.path.exists(self.backup_config_path):
-            os.makedirs(self.backup_config_path)
+        if not os.path.exists(SITE_CONFIG_PATH):
+            os.makedirs(SITE_CONFIG_PATH)
             
     def validate_config(self, name: str) -> None:
         config = self.detail(name)
@@ -65,7 +64,7 @@ class Bqckup:
         return 1
     
     def list(self):
-        files = File().get_file_list(self.backup_config_path)
+        files = File().get_file_list(SITE_CONFIG_PATH)
         results = {}
         
         for index, file in enumerate(files):
@@ -127,7 +126,7 @@ class Bqckup:
     # Upload
     def do_backup(self, backup_config):
         try:
-            bqckup_config_location = os.path.join(self.backup_config_path, backup_config)
+            bqckup_config_location = os.path.join(SITE_CONFIG_PATH, backup_config)
             backup = Yml_Parser.parse(bqckup_config_location)['bqckup']
             backup_folder = f"{backup.get('name')}/{get_today()}"
             
@@ -199,7 +198,7 @@ class Bqckup:
             # bqckup config
             if Config().get('bqckup', 'config_backup'):
                 _s3.upload(bqckup_config_location, f"config/{backup.get('name')}.yml", False)
-                _s3.upload(os.path.join(BQ_PATH, 'config', 'storages.yml'), 'config/storages.yml', False)
+                _s3.upload(STORAGE_CONFIG_PATH, False)
 
             if os.path.exists(compressed_file):
                 print(f"\nUploading {compressed_file}\n")

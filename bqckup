@@ -1,4 +1,4 @@
-#! /etc/bqckup/venv/bin/python3
+#! /home/hp/Project/bqckup/venv/bin/python3
 
 import typer, getpass
 from classes.bqckup import Bqckup

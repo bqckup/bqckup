@@ -3,7 +3,7 @@ from classes.database import Database
 from classes.bqckup import Bqckup
 from classes.storage import Storage
 from classes.s3 import s3
-from constant import BQ_PATH
+from constant import SITE_CONFIG_PATH
 
 backup = Blueprint('bqckup', __name__)
 
@@ -21,7 +21,6 @@ def get_download_link():
 def backup_now(name):
     try:
         from classes.queue import Queue
-        from classes.bqckup import Bqckup
         queue = Queue()
         bqckup = Bqckup()
         backup = bqckup.detail(name)
@@ -52,7 +51,7 @@ def save():
 
     with open(
         os.path.join(
-          Bqckup().backup_config_path,
+          SITE_CONFIG_PATH,
             f"{backup['name']}.yml"
         ),
         "w+"
