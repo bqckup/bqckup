@@ -209,16 +209,6 @@ def initialization():
     from models.log import Log, database
     db_path = os.path.join(BQ_PATH, 'database', 'bqckup.db')
     if not os.path.exists(db_path):
-        from classes.config import Config
-        
-        cfg = Config()
-        cfg.config_parser['web']['port'] = cfg.read('web', 'port')
-        cfg.config_parser['auth']['password'] = "s0m3r4nd0mp455w0rd"
-        cfg.config_parser['bqckup']['config_backup'] = cfg.read('bqckup', 'config_backup')
-        
-        with open(STORAGE_CONFIG_PATH, 'w') as configfile:
-            cfg.config_parser.write(configfile)
-        
         os.system(f"mkdir -p {os.path.join(BQ_PATH, 'config')}")
         os.system(f"mkdir -p {os.path.join(BQ_PATH, 'database')}")
         os.system(f"touch {db_path}")
