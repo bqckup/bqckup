@@ -171,8 +171,23 @@
                     </div>
                     <div x-show="step == 'options'">
                         <div class="mb-3">
+                            <label for="" class="form-label">Provider</label>
+                            <select class="form-control" x-model.defer="payload.options.provider">
+                                <option value="local" :selected="payload.options.provider == 'local'">Local</option>
+                                <option value="s3" :selected="payload.options.provider == 's3'">S3 Protocol</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" x-show="payload.options.provider == 'local'">
+                            <label for="" class="form-label">Destination</label>
+                            <input type="text" class="form-control" placeholder="Destination" x-model.defer="payload.options.destination">
+                            <small class="form-text">If it does not exist, it will be automatically created</small>
+                        </div>
+                        <div class="mb-3" x-show="payload.options.provider == 's3'">
                             <label for="" class="form-label">Storage</label>
-                            <select class="form-control" x-model.defer="payload.options.storage">
+                            <div class="alert alert-warning alert-important" x-show="!storages.length">
+                                You don't have any s3 storage configured. Please configure your s3 storage first.
+                            </div>
+                            <select class="form-control" x-show="storages.length" x-model.defer="payload.options.storage">
                                 <template x-for="storage in storages">
                                     <option :value="storage" x-text="storage"></option>
                                 </template>

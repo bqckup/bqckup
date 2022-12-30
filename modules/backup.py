@@ -1,9 +1,9 @@
 from flask import Blueprint, request, render_template, jsonify
 from classes.database import Database
-from classes.bqckup import Bqckup
+from classes.bqckup import Bqckup, ConfigExceptions
 from classes.storage import Storage
 from classes.s3 import s3
-from constant import BQ_PATH
+from constant import SITE_CONFIG_PATH
 
 backup = Blueprint('bqckup', __name__)
 
@@ -21,7 +21,6 @@ def get_download_link():
 def backup_now(name):
     try:
         from classes.queue import Queue
-        from classes.bqckup import Bqckup
         queue = Queue()
         bqckup = Bqckup()
         backup = bqckup.detail(name)
@@ -33,12 +32,12 @@ def backup_now(name):
     
 @backup.get('/get_storages')
 def get_storages():
-    storages = Storage().list()
-    
-    if not storages:
-        return jsonify(message="No Storages found"), 404
-    
-    return jsonify(storages)
+    try:
+        storages = Storage().list()
+    except:
+        return jsonify(message="Failed to fetch storages"), 500
+    else:
+        return jsonify(storages)
 
 @backup.post('/save')
 def save():
@@ -49,14 +48,9 @@ def save():
     options = json.loads(post.get('options'))
 
     paths =  [p for p in backup['path'].split('\n') if len(p)]
-
-    with open(
-        os.path.join(
-          Bqckup().backup_config_path,
-            f"{backup['name']}.yml"
-        ),
-        "w+"
-    ) as stream:
+    file_name =  os.path.join(SITE_CONFIG_PATH, f"{backup['name']}.yml")
+    
+    with open(file_name,"w+") as stream:
         content = {
             "bqckup": {
                 'name': backup['name'],
@@ -71,8 +65,16 @@ def save():
         yaml = yaml.YAML()
         yaml.indent(sequence=4, offset=2)
         yaml.dump(content, stream)
-    
-    return jsonify(message="Success")
+        
+    try:
+        Bqckup().validate_config(backup['name'])
+    except ConfigExceptions as cfgExc:
+        os.unlink(file_name)
+        return jsonify(error=True, message=str(cfgExc)), 500
+    except Exception as e:
+        return jsonify(error=True, message=f"Failed to save backup: {e}"), 500
+    else:
+        return jsonify(message="Success")
 
 @backup.get('/add')
 def view_add():

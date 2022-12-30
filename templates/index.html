@@ -158,14 +158,6 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M7 10v4h3v7h4v-7h3l1 -4h-4v-2a1 1 0 0 1 1 -1h3v-4h-3a5 5 0 0 0 -5 5v2h-3"></path></svg>
                   </span>
                 </div>
-                <div class="col">
-                  <div class="font-weight-medium">
-                    132 Likes
-                  </div>
-                  <div class="text-muted">
-                    21 today
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -181,7 +173,7 @@
                     <img src="{{ url_for('static', filename='img/logo-bqckup.png') }}" alt="">
                   </div>
                   <div class="text-center mt-2">
-                    Version: 1.0.0
+                    Version: {{ version }}
                   </div>
                 </div>
               </div>
@@ -230,12 +222,18 @@
                             <span class="form-help" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Hint: We suggest you to set the limit for your cloud storage, so bqckup will give you a warning when it's almost exceed">?</span>
                           </div>
                       </div>
-                      <div class="datagrid-content">100 / ∞</div>
-                      <div class="progress mt-2">
-                        <div class="progress-bar" style="width: 100%" role="progressbar" aria-valuenow="38" aria-valuemin="0" aria-valuemax="100" aria-label="38% Complete">
-                          <span class="visually-hidden">38% Complete</span>
+                      {% if cloud_storage %}
+                        <div class="datagrid-content">100 / ∞</div>
+                        <div class="progress mt-2">
+                          <div class="progress-bar" style="width: 100%" role="progressbar" aria-valuenow="38" aria-valuemin="0" aria-valuemax="100" aria-label="38% Complete">
+                            <span class="visually-hidden">38% Complete</span>
+                          </div>
                         </div>
-                      </div>
+                      {% else %}
+                        <span class="text-muted">
+                          No cloud storage
+                        </span>
+                      {% endif %}
                     </div>
                   </div>
                 </div>
@@ -281,7 +279,7 @@
                           <!-- </div>
                         </div> -->
                       </td>
-                      <td>{{ bqckups[i]['options']['storage'] }}</td>
+                      <td>{{ bqckups[i]['options']['provider'] if not bqckups[i]['options']['provider'] == 'local' else bqckups[i]['options']['storage'] }}</td>
                       <td>{{ '-' if not bqckups[i]['last_backup'] else bqckups[i]['last_backup']|time_since }}</td>
                       <td>
                         {% if not bqckups[i]['next_backup'] %}

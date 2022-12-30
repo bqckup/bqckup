@@ -9,6 +9,7 @@ function setupWizard() {
     bucket: null,
     endpointURL: null,
     storageName: null,
+    skip: false,
     next() {
       if (this.keySetup) {
         if (!this.key) {
@@ -45,6 +46,7 @@ function setupWizard() {
       formData.append("region", this.region);
       formData.append("bucket", this.bucket);
       formData.append("endpoint_url", this.endpointURL);
+      formData.append("skip", this.skip);
       let request = await fetch("/setup/save", {
         method: "POST",
         body: formData,

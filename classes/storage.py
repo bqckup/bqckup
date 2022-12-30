@@ -1,15 +1,10 @@
-import os
 from classes.yml_parser import Yml_Parser
-from constant import BQ_PATH
+from constant import STORAGE_CONFIG_PATH
 
 class StorageException(Exception): pass
 class Storage:
     def __init__(self):
-        self.config_path = os.path.join(BQ_PATH, 'config', 'storages.yml')
-        self.parsed_storage = Yml_Parser.parse(self.config_path)
-
-    def validate_config(self):
-        pass
+        self.parsed_storage = Yml_Parser.parse(STORAGE_CONFIG_PATH)
 
     def get_parsed_storage(self):
         return self.parsed_storage
