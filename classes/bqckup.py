@@ -22,7 +22,7 @@ class Bqckup:
             
     def validate_config(self, name: str) -> None:
         
-        print(f"\nChecking {name} config")
+        print(f"\nChecking {name} config ... \n")
         
         config = self.detail(name)
         
@@ -87,7 +87,7 @@ class Bqckup:
             if results[index]['last_backup']:
                 next_backup_in_date = datetime.fromtimestamp(results[index]['last_backup'] + (self._interval_in_number(bqckup['options']['interval']) * 86400)).strftime('%d/%m/%Y 00:00:00')
                 results[index]['next_backup'] = time_since(datetime.strptime(next_backup_in_date, '%d/%m/%Y %H:%M:%S').timestamp(), time.time(), reverse=True)
-            
+                
         return results
             
     def get_last_log(self, name:str):
@@ -96,7 +96,7 @@ class Bqckup:
     def get_logs(self, name: str):
         return list(Log().select().where(Log.name == name))
     
-    def backup(self, force:bool = False):
+    def     backup(self, force:bool = False):
         backups = self.list()
         
         if not backups:
@@ -156,7 +156,8 @@ class Bqckup:
                 "storage": backup['options']['storage']
             })
             
-            print("\nCompressing files...\n")
+            print("\nCompressing files ...")
+            
             compressed_file = Tar().compress(backup.get('path'), compressed_file)
             
             Log().update(file_size=os.stat(compressed_file).st_size).where(Log.id == log_compressed_files.id).execute()
@@ -164,7 +165,7 @@ class Bqckup:
             sql_path = os.path.join(tmp_path, f"{int(time.time())}.sql.gz")
             
             if backup.get('database'):
-                print("Exporting database...\n")
+                print("Exporting database...")
                  # Database export
                 
                 log_database = Log().write({
@@ -196,9 +197,8 @@ class Bqckup:
                 folders = [folder for folder in os.listdir(backup_path_without_date) if os.path.isdir(os.path.join(backup_path_without_date, folder))]
                 folders.sort(key=lambda x: os.path.getmtime(os.path.join(backup_path_without_date, x)))
                 
-                while len(folders) >= backup.get('options').get('retention'):
-                    os.rmdir(os.path.join(backup_path_without_date, folders[0]))
-                    folders.pop(0)
+                if len(folders) > int(backup.get('options').get('retention')):
+                    shutil.rmtree(os.path.join(backup_path_without_date, folders[0]))                    
                     
                 if os.path.exists(compressed_file):
                     shutil.move(compressed_file, os.path.join(backup_path, os.path.basename(compressed_file)))

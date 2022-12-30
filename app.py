@@ -1,15 +1,13 @@
 from modules.auth import auth
 from modules.backup import backup
 from classes.server import Server
-from classes.bqckup import Bqckup
 from classes.s3 import s3
 from helpers import today24Format, timeSince, bytes_to
-from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
+from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH, VERSION
 import sys, logging, os, ruamel.yaml as rYaml
 from datetime import timedelta
 from flask.json import jsonify
 from flask import Flask, render_template, request, redirect, url_for
-from classes.storage import Storage
 from werkzeug.utils import secure_filename
 
 
@@ -38,7 +36,7 @@ def globalVariable():
     currentUrl = request.url
     currentUrlSplit = request.url.split("/")
     currentTime = today24Format()
-    currentVersion = "1.0.0"
+    currentVersion = VERSION
 
     return dict(
         currentUrl=currentUrl,
@@ -155,6 +153,7 @@ def do_update():
 def index():
     from classes.auth import Auth
     from classes.bqckup import Bqckup
+    from classes.storage import Storage
     
     if not Auth.is_authorized():
         return redirect(url_for('auth.login'))
@@ -166,11 +165,17 @@ def index():
         "free": bytes_to('g', _server_storage.free),
         "total": bytes_to('g', _server_storage.total),
     }
-    
+    try:
+        cloud_storage = Storage()
+    except Exception as e:
+        print(f"Failed to connect to cloud storage, {str(e)}")
+        cloud_storage = False
+        
     return render_template(
         "index.html",
         server_storage=server_storage,
         bqckups=Bqckup().list(),
+        cloud_storage=cloud_storage
     )
 
 # jinja
@@ -224,15 +229,4 @@ def initialization():
 
 if __name__ == "__main__":
     initialization()
-        
     app.run(host="0.0.0.0", debug=True, port=9393)
-else:
-    logging.basicConfig(
-        filename="/var/log/Bqckup.log",
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s",
-    )
-    logging.basicConfig(filename='demo.log', level=logging.DEBUG)
-    gunicorn_logger = logging.getLogger("gunicorn.error")
-    app.logger.handlers = gunicorn_logger.handlers
-    app.logger.setLevel(gunicorn_logger.level)
