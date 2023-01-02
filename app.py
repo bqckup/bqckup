@@ -174,6 +174,7 @@ def index():
     return render_template(
         "index.html",
         server_storage=server_storage,
+        cloud_storage_used=s3(Storage().get_primary_storage()).get_total_used(),
         bqckups=Bqckup().list(),
         cloud_storage=cloud_storage,
         is_limit=Bqckup().is_limit()

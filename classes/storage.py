@@ -9,7 +9,7 @@ class Storage:
 
     def get_parsed_storage(self):
         return self.parsed_storage
-
+    
     def list(self) -> list:
         return list(self.parsed_storage['storages'].keys())
 
