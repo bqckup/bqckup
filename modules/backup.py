@@ -64,6 +64,9 @@ def save():
         
         if database['user']:
             content['bqckup']['database'] = database
+            
+        if options['provider'] == 'local':
+            options['storage'] = 'local'
         
         yaml = yaml.YAML()
         yaml.indent(sequence=4, offset=2)
