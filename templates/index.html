@@ -80,12 +80,15 @@
   </div>
   <div class="page-body">
     <div class="container-xl">
+      {% if is_limit %}
       <div class="alert alert-warning">
         You have reached the limit ( 2/2 Site to Backup ), we recommend upgrading to one of our available packages. 
         <small class="d-block text-muted">
           Please visit our <a href="https://bqckup.com">website</a> or contact our customer support team for more information.
         </small>
       </div>
+      {% endif %}
+
       <div class="row row-cards d-none">
         <div class="col-sm-6 col-lg-3">
           <div class="card card-sm">
