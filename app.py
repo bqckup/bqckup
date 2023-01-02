@@ -175,7 +175,8 @@ def index():
         "index.html",
         server_storage=server_storage,
         bqckups=Bqckup().list(),
-        cloud_storage=cloud_storage
+        cloud_storage=cloud_storage,
+        is_limit=Bqckup().is_limit()
     )
 
 # jinja

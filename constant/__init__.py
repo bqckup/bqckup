@@ -1,6 +1,23 @@
-import os
+from os import path
+
+# Bqckup Path
 BQ_PATH="/etc/bqckup"
-STORAGE_CONFIG_PATH=os.path.join(BQ_PATH, 'config', 'storages.yml')
-SITE_CONFIG_PATH=os.path.join(BQ_PATH, 'sites')
-CONFIG_PATH=os.path.join(BQ_PATH, 'bqckup.cnf')
+
+# Bqckup Storage Config Path
+STORAGE_CONFIG_PATH=path.join(BQ_PATH, 'config', 'storages.yml')
+
+# Bqckup Site Config Path
+SITE_CONFIG_PATH=path.join(BQ_PATH, 'sites')
+
+# Bqckup Config Path
+CONFIG_PATH=path.join(BQ_PATH, 'bqckup.cnf')
+
+# Bqckup Information
 VERSION="1.1.0"
+CURRENT_PACKAGE = "free"
+PACKAGES={
+    "free": {
+        "backup_limit": 2,
+    }
+}
+PACKAGE=PACKAGES[CURRENT_PACKAGE]
