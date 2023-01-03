@@ -1,27 +1,28 @@
 #!/bin/bash
 
+DOWNLOAD_LINK="https://downloads.bqckup.com"
+BQCKUP_PATH="/etc/bqckup"
+DISTRO=$(lsb_release -is)
+DISTRO_VERSION=$(lsb_release -rs)
+LATEST_VERSION=$(curl -s "$DOWNLOAD_LINK/latest")
+CONFIG_FILE="$DOWNLOAD_LINK/bqckup.cnf.example"
 
-DOWNLOAD_LINK="https://download.bqckup.com"
-
-# Check the contents of the /etc/os-release file
-if [ -f /etc/os-release ]; then
-    # Extract the distribution name from the file
-    distro=$(grep ^NAME /etc/os-release | cut -d'=' -f2 | sed -e 's/^"//' -e 's/"$//')
-    if [ "$distro" = "Ubuntu" ]; then
-        apt install sqlite3 wget -y 
-    elif [ "$distro" = "CentOS Linux" ]; then
-        yum install sqlite wget -y
-    else
-        echo "Bqckup doesn't support this OS yet"
+if [ "$DISTRO" = "Ubuntu" ]; then
+    sudo apt-get install sqlite3
+    wget "$DOWNLOAD_LINK/$LATEST_VERSION/bqckup-debian.tar.gz"
+    if [[ "$DISTRO_VERSION" < "18.04" ]]; then
+        echo "Ubuntu 18.04 or higher is required to run Bqckup."
+        exit 1
     fi
-
-# If the /etc/os-release file does not exist, check the contents of the /etc/redhat-release file
-elif [ -f /etc/redhat-release ]; then
-    yum install sqlite -y
-else
-    echo "Bqckup doesn't support this OS yet"
 fi
 
-wget "$DOWNLOAD_LINK"
-sudo chmod +x bqckup
-sudo mv bqckup /usr/bin/bqckup
+if [ "$DISTRO" = "CentOS" ]; then
+    sudo yum install sqlite3
+    wget "$DOWNLOAD_LINK/$LATEST_VERSION/bqckup-centos.tar.gz"
+fi
+
+tar xvf "bqckup-debian.tar.gz"
+rm "bqckup-debian.tar.gz"
+sudo chmod +x "bqckup"
+sudo mv "bqckup" "/usr/bin"
+sudo curl -s "$CONFIG_FILE" -o "$BQCKUP_PATH/bqckup.cnf"
