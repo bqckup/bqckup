@@ -1,6 +1,5 @@
 import os, sys, boto3
 from helpers import getInt
-from hurry.filesize import size, alternative
 from boto3.s3.transfer import TransferConfig
 from botocore.config import Config
 from classes.progresspercentage import ProgressPercentage
@@ -35,40 +34,14 @@ class s3(object):
     def isAuthorized(self):
         return True if self.client else False
 
-    def cloudStorageFull(self) -> bool:
-        # TODO: with config
-        limit = 20
-        current = self.getCloudDiskUsage()
-
-        if getInt(current["free"]) <= int(limit):
-            return True
-        return False
-        
-
-    def getCloudDiskUsage(self, prefix=""):
+    def get_total_used(self, prefix=""):
         files = self.list(prefix)
 
         if not len(files):
-            return {"used": 0, "free": 250}
-
-        sizeFile = 0
-        for f in files:
-            sizeFile += f["Size"]
-
-        used = size(sizeFile, system=alternative)
-
-        # 250 GB Max S3 Size, More than that will get charge
-        used = f"{round((getInt(used) / 1024), 2)} GB" if "MB" in used else used
-
-        # TODO: Fix this ( 250 GB )
-        free = 250 - getInt(used)
-
-        # in GB
-        usage = {"used": used, "free": "%s GB" % free}
+            return 0
 
 
-        return usage
-
+        return sum([int(f["Size"]) for f in files.get('Contents')])
 
     # prefix for filtering
     def list(self, prefix="", Delimiter=""):

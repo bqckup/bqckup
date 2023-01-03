@@ -5,3 +5,4 @@ database/
 *.spec
 dist/
 build/
+.vscode/
