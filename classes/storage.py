@@ -10,8 +10,11 @@ class Storage:
     def get_parsed_storage(self):
         return self.parsed_storage
     
-    def list(self) -> list:
-        return list(self.parsed_storage['storages'].keys())
+    def list(self):
+        try:
+            return list(self.parsed_storage['storages'].keys())
+        except:
+            return list()
 
     def get_storage_detail(self, name: str) -> dict:
         try:

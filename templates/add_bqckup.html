@@ -10,10 +10,10 @@
                         Bqckup
                     </div>
                     <h2 class="page-title">
-                        Add
+                        New Backup
                     </h2>
                 </div>
-                <div class="col-auto ms-auto d-print-none"
+                <!-- <div class="col-auto ms-auto d-print-none"
                     style="width: {{ 'auto' if not session['need_update'] else '50%'}};height:1em;">
                     <div class="text-end page-pretitle">
                         Server Time
@@ -21,7 +21,7 @@
                     <h2 class="page-title">
                         00:00:00
                     </h2>
-                </div>
+                </div> -->
             </div>
         </div>
     </div>
@@ -45,8 +45,7 @@
                         <p class="card-subtitle" x-text="form.description"></p>
                     </div>
                     <div class="card-actions">
-                        <span class="text-warning me-2" x-show="step == 'database'">You can skip this step, if you do not
-                            need database backup</span>
+                        <span class="text-warning me-2" x-show="step == 'database'">You can skip this step by clicking next button, if you do not need database backup</span>
                         <button class="btn btn-light" :class="step == 'files' ? 'd-none' : ''" x-on:click="previous()">
                             <svg xmlns="http://www.w3.org/2000/svg" class="icon me-0" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                                 <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
@@ -228,7 +227,7 @@
                             <label for="" class="form-label">File Retention</label>
                             <input type="number" class="form-control" x-model.defer="payload.options.retention" placeholder="Number of File Retention" x-mode.defer="retention">
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-3" x-show="payload.options.provider != 'local'" x-animate>
                             <label class="form-label">Options</label>
                             <label class="form-check">
                                 <input class="form-check-input" type="checkbox" value="yes" x-model.defer="payload.options.save_locally">

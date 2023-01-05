@@ -165,16 +165,22 @@ def index():
         "free": bytes_to('g', _server_storage.free),
         "total": bytes_to('g', _server_storage.total),
     }
+    
     try:
-        cloud_storage = Storage()
+        cloud_storage = Storage().parsed_storage
     except Exception as e:
         print(f"Failed to connect to cloud storage, {str(e)}")
         cloud_storage = False
+    
+    cloud_storage_used = 0
+    
+    if cloud_storage:
+        cloud_storage_used = s3(Storage().get_primary_storage()).get_total_used()
         
     return render_template(
         "index.html",
         server_storage=server_storage,
-        cloud_storage_used=s3(Storage().get_primary_storage()).get_total_used(),
+        cloud_storage_used=cloud_storage_used,
         bqckups=Bqckup().list(),
         cloud_storage=cloud_storage,
         is_limit=Bqckup().is_limit()
