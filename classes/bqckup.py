@@ -6,7 +6,7 @@ from classes.file import File
 from classes.config import Config
 from classes.yml_parser import Yml_Parser
 from models.log import Log
-from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH, PACKAGE
+from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
 from classes.s3 import s3
 from helpers import difference_in_days, get_today, time_since
 from datetime import datetime
