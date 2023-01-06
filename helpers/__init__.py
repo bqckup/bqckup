@@ -2,10 +2,6 @@ import os, errno, datetime, logging
 from os import path
 from datetime import date, datetime
 from pathlib import Path
-from constant import CURRENT_PACKAGE
-
-def is_free_version():
-    return CURRENT_PACKAGE == "free"
 
 """
     all format with linux

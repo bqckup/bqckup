@@ -14,10 +14,3 @@ CONFIG_PATH=path.join(BQ_PATH, 'bqckup.cnf')
 
 # Bqckup Information
 VERSION="1.1.0"
-CURRENT_PACKAGE = "free"
-PACKAGES={
-    "free": {
-        "backup_limit": 2,
-    }
-}
-PACKAGE=PACKAGES[CURRENT_PACKAGE]

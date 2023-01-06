@@ -8,7 +8,7 @@ from classes.yml_parser import Yml_Parser
 from models.log import Log
 from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH, PACKAGE
 from classes.s3 import s3
-from helpers import difference_in_days, get_today, time_since, is_free_version
+from helpers import difference_in_days, get_today, time_since
 from datetime import datetime
 
 class ConfigExceptions(Exception):
@@ -64,9 +64,6 @@ class Bqckup:
             return 30
         return 1
     
-    def is_limit(self):
-        return len(self.list()) >= PACKAGE['backup_limit']
-    
     def list(self):
         files = File().get_file_list(SITE_CONFIG_PATH)
         results = {}
@@ -86,9 +83,6 @@ class Bqckup:
             if results[index]['last_backup']:
                 next_backup_in_date = datetime.fromtimestamp(results[index]['last_backup'] + (self._interval_in_number(bqckup['options']['interval']) * 86400)).strftime('%d/%m/%Y 00:00:00')
                 results[index]['next_backup'] = time_since(datetime.strptime(next_backup_in_date, '%d/%m/%Y %H:%M:%S').timestamp(), time.time(), reverse=True)
-                
-            if is_free_version() and len(results) == PACKAGE['backup_limit']:
-                break
                 
         return results
             

@@ -29,6 +29,9 @@ def test_config():
     if not sites:
         print("No site found")
     else:
+        # Storage config test
+
+        # Site Config test
         table = Table(title="Bqckup sites config")
         table.add_column("Name", style="cyan")
         table.add_column("Config Path", style="cyan")
@@ -38,7 +41,6 @@ def test_config():
 
         Console().print(table)
         
-
 @bq_cli.command()
 def run(force:bool = False):
     Bqckup().backup(force=force)

@@ -80,14 +80,6 @@
   </div>
   <div class="page-body">
     <div class="container-xl">
-      {% if is_limit %}
-      <div class="alert alert-warning">
-        You have reached the limit ( 2/2 Site to Backup ), we recommend upgrading to one of our available packages. 
-        <small class="d-block text-muted">
-          Please visit our <a href="https://bqckup.com">website</a> or contact our customer support team for more information.
-        </small>
-      </div>
-      {% endif %}
       <div class="row row-cards d-none">
         <div class="col-sm-6 col-lg-3">
           <div class="card card-sm">
@@ -189,31 +181,16 @@
             <div class="col col-sm">
               <div class="card">
                 <div class="empty">
-                  {% if not is_limit %}
                     <svg xmlns="http://www.w3.org/2000/svg"  style="--tblr-icon-size: 4rem;" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                       <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                       <ellipse cx="12" cy="6" rx="8" ry="3"></ellipse>
                       <path d="M4 6v6a8 3 0 0 0 16 0v-6"></path>
                       <path d="M4 12v6a8 3 0 0 0 16 0v-6"></path>
                   </svg>
-                  {% else %}
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" style="--tblr-icon-size: 4rem;" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                    <path d="M7 18a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7h-1"></path>
-                    <polyline points="9 15 12 12 15 15"></polyline>
-                    <line x1="12" y1="12" x2="12" y2="21"></line>
-                  </svg>
-                  {% endif %}
                   <div class="empty-action">
-                  {% if not is_limit %}
                     <a href="{{ url_for('bqckup.view_add') }}" class="btn btn-primary">
                       Add Backup
                     </a>
-                  {% else %}
-                  <a href="https://bqckup.com" class="btn btn-success">
-                    Upgrade to pro
-                  </a>
-                  {% endif %}
                   </div>
                 </div>
               </div>

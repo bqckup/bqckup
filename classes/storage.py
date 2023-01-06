@@ -1,6 +1,5 @@
 from classes.yml_parser import Yml_Parser
-from constant import STORAGE_CONFIG_PATH, PACKAGE
-from helpers import is_free_version
+from constant import STORAGE_CONFIG_PATH
 
 class StorageException(Exception): pass
 class Storage:

@@ -41,9 +41,6 @@ def get_storages():
 
 @backup.post('/save')
 def save():
-    if Bqckup().is_limit():
-        return redirect(url_for('index'))
-
     import json, os, ruamel.yaml as yaml
     post = request.form
     backup = json.loads(post.get('backup'))
@@ -84,8 +81,6 @@ def save():
 
 @backup.get('/add')
 def view_add():
-    if Bqckup().is_limit():
-        return redirect(url_for('index'))
     return render_template('add_bqckup.html')
 
 @backup.get('/detail/<backup_name>')

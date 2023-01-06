@@ -183,7 +183,6 @@ def index():
         cloud_storage_used=cloud_storage_used,
         bqckups=Bqckup().list(),
         cloud_storage=cloud_storage,
-        is_limit=Bqckup().is_limit()
     )
 
 # jinja
