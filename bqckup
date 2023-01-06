@@ -1,23 +1,43 @@
 #! /home/hp/Project/bqckup/venv/bin/python3
 
-import typer, getpass
+import typer, getpass, os
 from classes.bqckup import Bqckup
 from classes.config import Config
 from classes.server import Server
+from constant import VERSION, SITE_CONFIG_PATH
+from rich import print
+from rich.console import Group, Console
+from rich.table import Table
+from rich.panel import Panel
 
 bq_cli = typer.Typer()
 
-# @bq_cli.command()
-# def check_update():
-#     pass
-
-# @bq_cli.command()
-#     def version():
-#         pass
+@bq_cli.command()
+def get_information():
+    content = Group(
+        Panel("Version  : %s" % VERSION),
+        Panel("Website  : https://bqckup.com"),
+        Panel("Twitter  : https://twitter.com/bqckup"),
+        Panel("Github   : https://github.com/bqckup/bqckup"),
+        Panel("Discord  : https://discord.gg/3Z7Y4Z2")
+    )
+    print(Panel.fit(content, title="Bqckup information", title_align="left", border_style="yellow"))
 
 @bq_cli.command()
 def test_config():
-    Bqckup().validate_config('ojtPlugin')
+    sites = Bqckup().list()
+    if not sites:
+        print("No site found")
+    else:
+        table = Table(title="Bqckup sites config")
+        table.add_column("Name", style="cyan")
+        table.add_column("Config Path", style="cyan")
+        table.add_column("Status", style="cyan")
+        for i in sites:
+            table.add_row(sites[i]['name'], os.path.join(SITE_CONFIG_PATH, sites[i]['file_name']), 'OK', style="red")
+
+        Console().print(table)
+        
 
 @bq_cli.command()
 def run(force:bool = False):
@@ -28,16 +48,14 @@ def gui_active():
     from gevent.pywsgi import WSGIServer
     
     try:
-        # logger = logging.getLogger('bqckuplog')
-        # logger.setLevel(40)
-        # logHandler = handlers.RotatingFileHandler("/var/log/bqckup.log", maxBytes =1000000, backupCount=1)
-        # logger.addHandler(logHandler)
         port = int(Config().read('web', 'port'))
         http_server = WSGIServer(('0.0.0.0', port), app)
         print(f"\nListening to http://{Server().ip()}:{port}\n", flush=True)
         http_server.serve_forever()
     except Exception as e:
         print(f"Failed to start web server, {str(e)}")
+
+    
         
     
     
