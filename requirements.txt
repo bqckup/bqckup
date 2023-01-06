@@ -30,3 +30,5 @@ gevent
 pyinstaller
 peewee
 configparser
+emails
+rich
