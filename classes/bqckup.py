@@ -21,15 +21,11 @@ class Bqckup:
             os.makedirs(SITE_CONFIG_PATH)
             
     def validate_config(self, name: str) -> None:
-        
-        print(f"\nChecking {name} config ... \n")
-        
+        print(f"\nChecking {name} config ...")
         config = self.detail(name)
-        
         if not config:
             raise ConfigExceptions(f"Backup {name} not found")
 
-        
         # validate files
         for path in config.get('path'):
             if not os.path.exists(path):
