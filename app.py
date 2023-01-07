@@ -3,7 +3,7 @@ from modules.backup import backup
 from classes.server import Server
 from classes.s3 import s3
 from helpers import today24Format, timeSince, bytes_to
-from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH, VERSION
+from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH, VERSION, CONFIG_PATH
 import sys, logging, os, ruamel.yaml as rYaml
 from datetime import timedelta
 from flask.json import jsonify
@@ -88,7 +88,7 @@ def save_setup():
         cfg.config_parser['auth']['password'] = request.form.get('key')
         cfg.config_parser['bqckup']['config_backup'] = cfg.read('bqckup', 'config_backup')
         
-        with open(STORAGE_CONFIG_PATH, 'w') as configfile:
+        with open(CONFIG_PATH, 'w') as configfile:
             cfg.config_parser.write(configfile)
         
         # Storage config

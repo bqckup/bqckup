@@ -1,7 +1,18 @@
-import os, errno, datetime, logging
+import os, errno, datetime, logging, requests
 from os import path
 from datetime import date, datetime
 from pathlib import Path
+from constant import VERSION
+
+
+def send_anonymous_statistic():
+    payload = {
+        'version': VERSION,
+        'os': os.popen('lsb_release -is').read().strip(),
+        'os_version': os.popen('lsb_release -rs').read().strip(),
+        'kernel': os.popen('uname -a').read().strip(),
+    }
+    # requests.post('https://bqckup.com/api/statistic', data=payload)
 
 """
     all format with linux

@@ -1,11 +1,14 @@
-; Port to listen on for the web interface
 [web]
+; Port to listen on for the web interface
 port=9393
 
-; Authentication password for the web interface
 [auth]
+; Authentication password for the web interface
 password=bqckup
 
-; Backup the configuration
 [bqckup]
+; Backup the configuration
 config_backup=1
+
+; To understand how Bqckup performs in various environments by contributing anonymous statistics. This will enable us to identify any issues that may occur with specific distributions or setups and improve our analysis of the data.
+anonymous_statistic=1
