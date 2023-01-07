@@ -3,16 +3,24 @@ from os import path
 from datetime import date, datetime
 from pathlib import Path
 from constant import VERSION
+from classes.server import Server
 
 
 def send_anonymous_statistic():
-    payload = {
-        'version': VERSION,
-        'os': os.popen('lsb_release -is').read().strip(),
-        'os_version': os.popen('lsb_release -rs').read().strip(),
-        'kernel': os.popen('uname -a').read().strip(),
-    }
-    # requests.post('https://bqckup.com/api/statistic', data=payload)
+    import json
+    try:
+        payload = {
+            'server_ip': Server().ip(),
+            'server_detail': {
+                'version': VERSION,
+                'os': os.popen('lsb_release -is').read().strip(),
+                'os_version': os.popen('lsb_release -rs').read().strip(),
+                'kernel': os.popen('uname -a').read().strip(),
+            }
+        }
+        payload = {"payload": json.dumps(payload)}
+        requests.post('https://bqckup.com/index.php/wp-json/bqckup/api/v1/anonymous-statistic', payload)
+    except: pass
 
 """
     all format with linux
