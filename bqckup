@@ -17,9 +17,8 @@ def get_information():
     content = Group(
         Panel("Version  : %s" % VERSION),
         Panel("Website  : https://bqckup.com"),
-        Panel("Twitter  : https://twitter.com/bqckup"),
+        Panel("Twitter  : https://twitter.com/its_bqckup"),
         Panel("Github   : https://github.com/bqckup/bqckup"),
-        Panel("Discord  : https://discord.gg/3Z7Y4Z2")
     )
     print(Panel.fit(content, title="Bqckup information", title_align="left", border_style="yellow"))
 

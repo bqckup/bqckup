@@ -1,8 +1,11 @@
+; Port to listen on for the web interface
 [web]
 port=9393
 
+; Authentication password for the web interface
 [auth]
 password=bqckup
 
+; Backup the configuration
 [bqckup]
 config_backup=1
