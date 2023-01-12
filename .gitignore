@@ -6,3 +6,4 @@ database/
 dist/
 build/
 .vscode/
+static/*.md
