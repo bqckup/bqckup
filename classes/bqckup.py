@@ -101,7 +101,7 @@ class Bqckup:
         
         for i in backups:
             backup = backups[i]
-            self.validate_config(backup['name'])
+            # self.validate_config(backup['name'])
             last_log = self.get_last_log(backup['name'])
             
             if last_log:
