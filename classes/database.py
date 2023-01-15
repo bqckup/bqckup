@@ -21,7 +21,11 @@ class Database:
     def test_connection(self, credentials: dict) -> bool:
         import mysql.connector
         try:
-            c = mysql.connector.connect(**credentials)
+            c = mysql.connector.connect(
+                user=credentials['user'],
+                host=credentials['host'],
+                password=credentials['password'],
+                database=credentials['name'])
         except mysql.connector.Error as e:
             logging.error(e)
             raise DatabaseException("Failed to connect database, see log for details")

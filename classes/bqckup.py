@@ -220,9 +220,9 @@ class Bqckup:
                         _s3.delete(obj.get("Key"))
             
                 # bqckup config
-                if Config().get('bqckup', 'config_backup'):
+                if Config().read('bqckup', 'config_backup'):
                     _s3.upload(bqckup_config_location, f"config/{backup.get('name')}.yml", False)
-                    _s3.upload(STORAGE_CONFIG_PATH, False)
+                    _s3.upload(STORAGE_CONFIG_PATH, 'storages.yml', False)
 
                 if os.path.exists(compressed_file):
                     print(f"\nUploading {compressed_file}\n")

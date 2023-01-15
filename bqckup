@@ -1,4 +1,4 @@
-#! /home/hp/Project/bqckup/venv/bin/python3
+#! venv/bin/python3
 
 import typer, getpass, os
 from classes.bqckup import Bqckup
