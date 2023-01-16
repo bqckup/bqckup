@@ -215,6 +215,25 @@ def time_since(unix):
 def initialization():
     from models.log import Log, database
     db_path = os.path.join(BQ_PATH, 'database', 'bqckup.db')
+    dummy_storge_config = STORAGE_CONFIG_PATH.replace('.yml', '.yml.example')
+        
+    if not os.path.exists(dummy_storge_config):
+        with open(dummy_storge_config, 'w+') as stream:
+            _yaml = rYaml.YAML()
+            _yaml.indent(sequence=4, offset=2)
+            _yaml.dump({
+                "storages": {
+                    "dummy": {
+                        "bucket": "dummy",
+                        "access_key_id": "dummy",
+                        "secret_access_key": "dummy",
+                        "region": "dummy",
+                        "endpoint": "dummy",
+                        "primary": "no"
+                    }
+                }
+            }, stream)
+
     if not os.path.exists(db_path):
         os.system(f"mkdir -p {os.path.join(BQ_PATH, 'config')}")
         os.system(f"mkdir -p {os.path.join(BQ_PATH, 'database')}")
