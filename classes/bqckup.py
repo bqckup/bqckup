@@ -66,6 +66,7 @@ class Bqckup:
     
     def list(self):
         files = File().get_file_list(SITE_CONFIG_PATH)
+        files = [file for file in files if file.endswith('.yml')]
         results = {}
         
         for index, file in enumerate(files):

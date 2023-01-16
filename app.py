@@ -216,6 +216,34 @@ def initialization():
     from models.log import Log, database
     db_path = os.path.join(BQ_PATH, 'database', 'bqckup.db')
     dummy_storge_config = STORAGE_CONFIG_PATH.replace('.yml', '.yml.example')
+    dummy_site_config = os.path.join(SITE_CONFIG_PATH, 'domain.yml.example')
+
+    if not os.path.exists(dummy_site_config):
+        with open(dummy_site_config, 'w+') as stream:
+            _yaml = rYaml.YAML()
+            _yaml.indent(sequence=4, offset=2)
+            _yaml.dump({
+                "bqckup": {
+                    "name": "domain",
+                    "path": ['/var/www/html'],
+                    "database": {
+                        "type": "mysql",
+                        "host": "localhost",
+                        "port": 3306,
+                        "user": "root",
+                        "password": "root",
+                        "name": "database"
+                    },
+                    "options": {
+                        "storage": "dummy",
+                        "interval": "daily",
+                        "retention": "7",
+                        "save_locally": "no",
+                        "notification_email": "email@example.com",
+                        "provider": "s3"
+                    }
+                }
+            }, stream)
         
     if not os.path.exists(dummy_storge_config):
         with open(dummy_storge_config, 'w+') as stream:
