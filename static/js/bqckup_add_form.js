@@ -93,7 +93,7 @@ function bqckup_add() {
       },
       database: {
         host: "localhost",
-        type: "mysqli",
+        type: "mysql",
         name: "mysql",
         user: "",
         password: "",
