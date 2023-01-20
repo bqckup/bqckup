@@ -1,11 +1,12 @@
 ## Background
 
-As a programmer with multiple clients to manage, the importance of regularly backing up databases and associated assets cannot be overstated. As my client base expands, so too must the tools I use to ensure that these backups are comprehensive, reliable, and automated. I need a system that handles backups seamlessly, with minimal input from me, and only alerts me when there is an issue that requires my attention, such as a failed backup. Furthermore, I require a tool that supports a wide range of storage providers, including S3 protocol, giving me the flexibility and control I need to ensure that my backups are secure and easily accessible. The quote "Backup and forget!" sums up the peace of mind that an automated backup system can provide.
+As a programmer with multiple clients to manage, the importance of regularly backing up databases and associated assets cannot be overstated. As my client base expands, so too must the tools I use to ensure that these backups are comprehensive, reliable, and automated. I need a system that handles backups seamlessly, with minimal input from me, and only alerts me when there is an issue that requires my attention, such as a failed backup. Furthermore, I require a tool that supports a wide range of storage providers, including S3 protocol, giving me the flexibility and control I need to ensure that my backups are secure and easily accessible. 
+
+Our motto  **"Backup and forget!"** sums up the peace of mind that an automated backup system can provide.
 
 **Bqckup** is a powerful tool that helps you to safeguard your critical data and keep it protected from any potential disasters. With Bqckup, you can enjoy the peace of mind that comes with regularly and automatically performing backups on your servers. This easy-to-use tool, written in Python and using Sqlite3 as its database, is designed to be intuitive and user-friendly. It's free, open-source and accessible to anyone.
 
-But that's not all, Bqckup also prioritizes **your privacy**, so you don't have to worry about your sensitive information being shared or exposed. With Bqckup, you retain full control over your data and can trust that it will be kept safe and secure at all times. Keep your data safe and secure with Bqckup.
-
+But that's not all, Bqckup also prioritizes **your privacy**, so you don't have to worry about your sensitive information being shared or exposed. With Bqckup, you retain full control over your data and can trust that it will be kept safe and secure at all times. Keep your data safe and secure with Bqckup 🥳.
 
 ## Features 
 - With this software, you can easily backup your database and it's associated assets to  S3 or Object Storage 
@@ -21,7 +22,11 @@ But that's not all, Bqckup also prioritizes **your privacy**, so you don't have 
 - Support more storage such as Google Drive, FTP, Dropbox, etc
 - Weekly report for the backup
 
-(When our target of usage adoptation reach 500)
+(When our target of usage adoptation reach 500 😊)
+
+## Preview 
+image here
+
 
 ## Installation
 
