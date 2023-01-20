@@ -4,7 +4,7 @@ As a programmer with multiple clients to manage, the importance of regularly bac
 
 Our motto  **"Backup and forget!"** sums up the peace of mind that an automated backup system can provide.
 
-**Bqckup** is a powerful tool that helps you to safeguard your critical data and keep it protected from any potential disasters. With Bqckup, you can enjoy the peace of mind that comes with regularly and automatically performing backups on your servers. This easy-to-use tool, written in Python and using Sqlite3 as its database, is designed to be intuitive and user-friendly. It's free, open-source and accessible to anyone.
+[**Bqckup**](https://bqckup.com) is a powerful tool that helps you to safeguard your critical data and keep it protected from any potential disasters. With Bqckup, you can enjoy the peace of mind that comes with regularly and automatically performing backups on your servers. This easy-to-use tool, written in Python and using Sqlite3 as its database, is designed to be intuitive and user-friendly. It's free, open-source and accessible to anyone.
 
 But that's not all, Bqckup also prioritizes **your privacy**, so you don't have to worry about your sensitive information being shared or exposed. With Bqckup, you retain full control over your data and can trust that it will be kept safe and secure at all times. Keep your data safe and secure with Bqckup 🥳.
 
@@ -54,7 +54,7 @@ Create a file named `bqckup` in `/etc/cron.d/` and add the following code to it:
 */5 * * * * root /usr/local/bin/bqckup run
 ```
 ## Getting help & Getting involved
-1. **Read the documentation**: Our project's documentation is a great place to start. It covers everything from setting up your development environment to contributing code. Click here (https://docs.bqckup.com).
+1. **Read the documentation**: Our project's documentation is a great place to start. It covers everything from setting up your development environment to contributing code. [Click here](https://docs.bqckup.com)
 
 2. **Report bugs**: If you've found a bug in the project, please report it on our issue tracker. Make sure to include as much information as possible, including steps to reproduce the bug and OS Information.
 
