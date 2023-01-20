@@ -47,7 +47,7 @@ Create a file named `bqckup` in `/etc/cron.d/` and add the following code to it:
 */5 * * * * root /usr/local/bin/bqckup run
 ```
 ## Getting help & Getting involved
-1. **Read the documentation**: Our project's documentation is a great place to start. It covers everything from setting up your development environment to contributing code.
+1. **Read the documentation**: Our project's documentation is a great place to start. It covers everything from setting up your development environment to contributing code. Click here (https://docs.bqckup.com).
 
 2. **Report bugs**: If you've found a bug in the project, please report it on our issue tracker. Make sure to include as much information as possible, including steps to reproduce the bug and OS Information.
 
