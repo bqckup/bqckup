@@ -16,6 +16,7 @@ Install now and forget about back up!
 - You can configure backups based on your specific time range, making it easy to schedule backups that work for you.
 - Whether you prefer working from the command line or a web-based GUI, we've got you covered. It provides both options.
 - Compatible with various Linux operating systems, so it can be used on a wide range of systems.
+- It is self-installation and self-hosted, no vendor lock-in, **your data is yours absolutely**
 
 
 ## Upcoming Features
