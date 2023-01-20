@@ -20,10 +20,10 @@ Install now and forget about how complicated to setup and run back up!
 
 
 ## Upcoming Features
-- If you have multiple servers, our **unified** backup feature allows you to manage all your backups from one central location.
+- If you have multiple servers, our **Unified** backup dashboard feature allows you to manage all your backups from one central location.
 - Custom Timezone
 - Support more storage such as Google Drive, FTP, Dropbox, etc
-- Weekly report for the backup
+- Weekly report for the backup to your email to watch any failure and the storage size on your server and storage. 
 
 (When our target of usage adoptation reach 500 😊)
 
