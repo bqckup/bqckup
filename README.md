@@ -1,7 +1,25 @@
-## Bqkcup
+## Background
 
-Bqckup is a tool that helps you to regularly and automatically perform backups on your servers. It is a simple and easy to use tool that can be used by anyone. It is written in Python and uses Sqlite3 as a database. It is a free and open source tool.
+As a programmer with multiple clients to manage, the importance of regularly backing up databases and associated assets cannot be overstated. As my client base expands, so too must the tools I use to ensure that these backups are comprehensive, reliable, and automated. I need a system that handles backups seamlessly, with minimal input from me, and only alerts me when there is an issue that requires my attention, such as a failed backup. Furthermore, I require a tool that supports a wide range of storage providers, including S3 protocol, giving me the flexibility and control I need to ensure that my backups are secure and easily accessible. The quote "Backup and forget!" sums up the peace of mind that an automated backup system can provide.
 
+**Bqckup** is a powerful tool that helps you to safeguard your critical data and keep it protected from any potential disasters. With Bqckup, you can enjoy the peace of mind that comes with regularly and automatically performing backups on your servers. This easy-to-use tool, written in Python and using Sqlite3 as its database, is designed to be intuitive and user-friendly. It's free, open-source and accessible to anyone.
+
+But that's not all, Bqckup also prioritizes **your privacy**, so you don't have to worry about your sensitive information being shared or exposed. With Bqckup, you retain full control over your data and can trust that it will be kept safe and secure at all times. Keep your data safe and secure with Bqckup.
+
+
+## Features 
+- With this software, you can easily backup your database and its associated assets to a variety of storage options such as Google Drive, S3, FTP, and even local storage.
+- You'll never have to worry about missing a backup failure again, thanks to our built-in email notification system.
+- You can configure backups based on your specific time range, making it easy to schedule backups that work for you.
+- Choose from multiple backup formats including zip, tar.gz, and 7zip for greater flexibility.
+- Whether you prefer working from the command line or a web-based GUI, we've got you covered. It provides both options.
+- Compatible with various Linux operating systems, so it can be used on a wide range of systems.
+
+
+## Upcoming Features
+- If you have multiple servers, our **unified** backup feature allows you to manage all your backups from one central location.
+- Weekly report for the backup
+(When our target of usage adoptation reach 500)
 
 ## Installation
 
