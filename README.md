@@ -8,17 +8,19 @@ But that's not all, Bqckup also prioritizes **your privacy**, so you don't have 
 
 
 ## Features 
-- With this software, you can easily backup your database and its associated assets to a variety of storage options such as Google Drive, S3, FTP, and even local storage.
+- With this software, you can easily backup your database and it's associated assets to  S3 or Object Storage 
 - You'll never have to worry about missing a backup failure again, thanks to our built-in email notification system.
 - You can configure backups based on your specific time range, making it easy to schedule backups that work for you.
-- Choose from multiple backup formats including zip, tar.gz, and 7zip for greater flexibility.
 - Whether you prefer working from the command line or a web-based GUI, we've got you covered. It provides both options.
 - Compatible with various Linux operating systems, so it can be used on a wide range of systems.
 
 
 ## Upcoming Features
 - If you have multiple servers, our **unified** backup feature allows you to manage all your backups from one central location.
+- Custom Timezone
+- Support more storage such as Google Drive, FTP, Dropbox, etc
 - Weekly report for the backup
+
 (When our target of usage adoptation reach 500)
 
 ## Installation
