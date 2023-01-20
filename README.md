@@ -6,7 +6,9 @@ Our motto  **"Backup and forget!"** sums up the peace of mind that an automated 
 
 [**Bqckup**](https://bqckup.com) is a powerful tool that helps you to safeguard your critical data and keep it protected from any potential disasters. With Bqckup, you can enjoy the peace of mind that comes with regularly and automatically performing backups on your servers. This easy-to-use tool, written in Python and using Sqlite3 as its database, is designed to be intuitive and user-friendly. It's free, open-source and accessible to anyone.
 
-But that's not all, Bqckup also prioritizes **your privacy**, so you don't have to worry about your sensitive information being shared or exposed. With Bqckup, you retain full control over your data and can trust that it will be kept safe and secure at all times. Keep your data safe and secure with Bqckup 🥳.
+But that's not all, Bqckup also prioritizes **your privacy**, so you don't have to worry about your sensitive information being shared or exposed. With Bqckup, you retain full control over your data and can trust that it will be kept safe and secure at all times. Keep your data safe and secure with Bqckup 🥳
+
+Install now and forget about Bqckup!
 
 ## Features 
 - With this software, you can easily backup your database and it's associated assets to  S3 or Object Storage 
