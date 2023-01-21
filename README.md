@@ -28,7 +28,7 @@ Install now and forget about how complicated to setup and run back up!
 (When our target of usage adoptation reach 500 😊)
 
 ## Preview 
-image here
+![Preview](https://cdn.discordapp.com/attachments/1059717742795702293/1066157604830720060/Peek_2023-01-21_08-49.gif)
 
 
 ## Installation
