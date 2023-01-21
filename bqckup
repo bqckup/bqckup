@@ -20,6 +20,7 @@ def get_information():
         Panel("Website  : https://bqckup.com"),
         Panel("Twitter  : https://twitter.com/its_bqckup"),
         Panel("Github   : https://github.com/bqckup/bqckup"),
+        Panel("Discord  : https://discord.gg/c4hT7YJg"),
     )
     print(Panel.fit(content, title="Bqckup information", title_align="left", border_style="yellow"))
 
