@@ -93,7 +93,7 @@ class Bqckup:
     def get_logs(self, name: str):
         return list(Log().select().where(Log.name == name))
     
-    def     backup(self, force:bool = False):
+    def backup(self, force:bool = False):
         backups = self.list()
         
         if not backups:

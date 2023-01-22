@@ -215,6 +215,18 @@ def time_since(unix):
 def initialization():
     from models.log import Log, database
     db_path = os.path.join(BQ_PATH, 'database', 'bqckup.db')
+    
+    if not os.path.exists(db_path):
+        for folder in ['config', 'database', 'sites']:
+            if not os.path.exists(os.path.join(BQ_PATH, folder)):
+                os.makedirs(os.path.join(BQ_PATH, folder))
+
+        os.system(f"touch {db_path}")
+        os.system(f"chmod 755 {db_path}")
+        database.connect()
+        database.create_tables([Log])
+        database.close()
+
     dummy_storge_config = STORAGE_CONFIG_PATH.replace('.yml', '.yml.example')
     dummy_site_config = os.path.join(SITE_CONFIG_PATH, 'domain.yml.example')
 
@@ -261,15 +273,6 @@ def initialization():
                     }
                 }
             }, stream)
-
-    if not os.path.exists(db_path):
-        os.system(f"mkdir -p {os.path.join(BQ_PATH, 'config')}")
-        os.system(f"mkdir -p {os.path.join(BQ_PATH, 'database')}")
-        os.system(f"touch {db_path}")
-        os.system(f"chmod 755 {db_path}")
-        database.connect()
-        database.create_tables([Log])
-        database.close()
 
 if __name__ == "__main__":
     initialization()
