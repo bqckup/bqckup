@@ -5,7 +5,7 @@ LATEST_VERSION=$(curl https://downloads.bqckup.com/latest.txt)
 BQCKUP_PATH="/etc/bqckup"
 DISTRO=$(lsb_release -is)
 DISTRO_VERSION=$(lsb_release -rs)
-CONFIG_FILE="$DOWNLOAD_LINK/bqckup.cnf.example"
+CONFIG_FILE="https://raw.githubusercontent.com/bqckup/bqckup/1x/bqckup.cnf.example"
 green=`tput setaf 2`
 reset=`tput sgr0`
 
