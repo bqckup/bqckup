@@ -8,7 +8,7 @@ class Server:
     
     def ip(self):
         try:
-            return requests.get('https://ifconfig.me').text
+            return requests.get('https://ifconfig.me', verify=False).text
         except Exception:
             print("Failed to get IP address, using socket instead")
             return "0.0.0.0"
