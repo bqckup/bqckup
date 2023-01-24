@@ -54,7 +54,7 @@ To automate the backup process, you can add the above command to the cron schedu
 Create a file named `bqckup` in `/etc/cron.d/` and add the following code to it:
 
 ```cron
-*/5 * * * * root /usr/local/bin/bqckup run
+*/5 * * * * root /usr/bin/bqckup run
 ```
 ## Getting help & Getting involved
 1. **Read the documentation**: Our project's documentation is a great place to start. It covers everything from setting up your development environment to contributing code. [Click here](https://docs.bqckup.com)
