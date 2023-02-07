@@ -1,9 +1,11 @@
 #! venv/bin/python3
 
 import typer, getpass, os
+from typing import Optional
 from classes.bqckup import Bqckup
 from classes.config import Config
 from classes.server import Server
+from classes.storage import Storage
 from constant import VERSION, SITE_CONFIG_PATH
 from rich import print
 from rich.console import Group, Console
@@ -14,7 +16,12 @@ from helpers import send_anonymous_statistic
 bq_cli = typer.Typer()
 
 @bq_cli.command()
-def get_information():
+def storage(list: Optional[bool] = False):
+    sl = Storage().list()
+    print(sl)
+
+@bq_cli.command()
+def info():
     content = Group(
         Panel("Version  : %s" % VERSION),
         Panel("Website  : https://bqckup.com"),
@@ -36,6 +43,7 @@ def test_config():
         table.add_column("Name", style="cyan")
         table.add_column("Config Path", style="cyan")
         table.add_column("Status", style="cyan")
+
         for i in sites:
             table.add_row(sites[i]['name'], os.path.join(SITE_CONFIG_PATH, sites[i]['file_name']), 'OK', style="red")
 
@@ -44,7 +52,7 @@ def test_config():
 @bq_cli.command()
 def run(force:bool = False):
     Bqckup().backup(force=force)
-    
+
 @bq_cli.command()
 def gui_active():
     from gevent.pywsgi import WSGIServer
