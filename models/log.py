@@ -1,10 +1,10 @@
 from peewee import *
 import os, time, sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from constant import BQ_PATH
+from constant import DATABASE_PATH
 
 database = SqliteDatabase(
-    os.path.join(BQ_PATH, 'database', 'bqckup.db'),
+    DATABASE_PATH,
     pragmas={ 'journal_mode': 'wal', 'cache_size': -1024 * 64}
 )
 
