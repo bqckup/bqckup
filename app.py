@@ -218,6 +218,7 @@ def initialization():
     os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
     with open(DATABASE_PATH, 'w') as f:
         f.write("")
+
     os.chmod(DATABASE_PATH, 0o755)
 
     for folder in ['databases', 'folders', 'storages']:
@@ -257,7 +258,6 @@ def initialization():
                         "secret_access_key": "dummy",
                         "region": "dummy",
                         "endpoint": "dummy",
-                        "primary": "no"
             }, stream)
 
 if __name__ == "__main__":
