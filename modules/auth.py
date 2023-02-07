@@ -1,5 +1,5 @@
 import os
-from constant import BQ_PATH, STORAGE_CONFIG_PATH
+from constant import BQ_PATH, STORAGE_PATH
 from flask import Blueprint, request, flash, redirect, url_for, session, render_template
 
 auth = Blueprint('auth', __name__)
@@ -8,7 +8,7 @@ auth = Blueprint('auth', __name__)
 def login():
     # from models import User
     if request.method == 'GET':
-        if not os.path.exists(STORAGE_CONFIG_PATH):
+        if not os.path.exists(STORAGE_PATH):
             return redirect(url_for('setup'))
         return render_template('auth/login.html')
 

@@ -31,7 +31,6 @@ def test_config():
         print("No site found")
     else:
         # Storage config test
-
         # Site Config test
         table = Table(title="Bqckup sites config")
         table.add_column("Name", style="cyan")
@@ -57,10 +56,6 @@ def gui_active():
         http_server.serve_forever()
     except Exception as e:
         print(f"Failed to start web server, {str(e)}")
-
-    
-        
-    
     
 if __name__ == "__main__":
     if getpass.getuser() != 'root':
@@ -69,7 +64,7 @@ if __name__ == "__main__":
         from app import app, initialization
         try:
             initialization()
-            send_anonymous_statistic()
+            # send_anonymous_statistic()
         except Exception as e:
             print(f"Failed to initialize, {str(e)}")
         else:

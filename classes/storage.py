@@ -1,10 +1,10 @@
 from classes.yml_parser import Yml_Parser
-from constant import STORAGE_CONFIG_PATH
+from constant import STORAGE_PATH
 
 class StorageException(Exception): pass
 class Storage:
     def __init__(self):
-        self.parsed_storage = Yml_Parser.parse(STORAGE_CONFIG_PATH)
+        self.parsed_storage = Yml_Parser.parse(STORAGE_PATH)
 
     def get_parsed_storage(self):
         return self.parsed_storage

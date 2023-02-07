@@ -3,7 +3,7 @@ from modules.backup import backup
 from classes.server import Server
 from classes.s3 import s3
 from helpers import today24Format, timeSince, bytes_to
-from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH, VERSION, CONFIG_PATH
+from constant import BQ_PATH, STORAGE_PATH, FOLDER_PATH, VERSION, CONFIG_PATH, DATABASE_PATH
 import sys, logging, os, ruamel.yaml as rYaml
 from datetime import timedelta
 from flask.json import jsonify
@@ -67,7 +67,7 @@ def before_request():
 
 @app.get('/setup')
 def setup():
-    if os.path.exists(STORAGE_CONFIG_PATH):
+    if os.path.exists(STORAGE_PATH):
         return redirect(url_for('index'))
     
     return render_template('wizard.html')
@@ -93,17 +93,17 @@ def save_setup():
         
         # Storage config
         if request.form.get('skip'):
-            File().create_file(STORAGE_CONFIG_PATH, '')
+            File().create_file(STORAGE_PATH, '')
             return jsonify(message=f"Success"), 200
             
         if len(request.files.getlist('config_storage')) > 0:
             for cs in request.files.getlist('config_storage'):
                 if not cs.filename.endswith('.yml'):
                     return jsonify(message="Config storage must be .yml file"), 400
-                cs.save(STORAGE_CONFIG_PATH)
+                cs.save(STORAGE_PATH)
                 
         if len(request.files.getlist('config_storage')) <= 0:
-            with open(STORAGE_CONFIG_PATH, 'w+') as f:
+            with open(STORAGE_PATH, 'w+') as f:
                 config_content = {
                     "storages": {
                         request.form.get('name'): {
@@ -214,46 +214,35 @@ def time_since(unix):
 
 def initialization():
     from models.log import Log, database
-    db_path = os.path.join(BQ_PATH, 'database', 'bqckup.db')
-    
-    if not os.path.exists(db_path):
-        for folder in ['config', 'database', 'sites']:
-            if not os.path.exists(os.path.join(BQ_PATH, folder)):
-                os.makedirs(os.path.join(BQ_PATH, folder))
 
-        os.system(f"touch {db_path}")
-        os.system(f"chmod 755 {db_path}")
+    os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
+    with open(DATABASE_PATH, 'w') as f:
+        f.write("")
+    os.chmod(DATABASE_PATH, 0o755)
+
+    for folder in ['databases', 'folders', 'storages']:
+        os.makedirs(os.path.join(BQ_PATH, folder), exist_ok=True)
+
         database.connect()
         database.create_tables([Log])
         database.close()
 
-    dummy_storge_config = STORAGE_CONFIG_PATH.replace('.yml', '.yml.example')
-    dummy_site_config = os.path.join(SITE_CONFIG_PATH, 'domain.yml.example')
+    dummy_storge_config = os.path.join(STORAGE_PATH, 'storage.yml.example')
+    dummy_site_config = os.path.join(FOLDER_PATH, 'folder.yml.example')
 
     if not os.path.exists(dummy_site_config):
         with open(dummy_site_config, 'w+') as stream:
             _yaml = rYaml.YAML()
             _yaml.indent(sequence=4, offset=2)
             _yaml.dump({
-                "bqckup": {
-                    "name": "domain",
-                    "path": ['/var/www/html'],
-                    "database": {
-                        "type": "mysql",
-                        "host": "localhost",
-                        "port": 3306,
-                        "user": "root",
-                        "password": "root",
-                        "name": "database"
-                    },
-                    "options": {
-                        "storage": "dummy",
-                        "interval": "daily",
-                        "retention": "7",
-                        "save_locally": "no",
-                        "notification_email": "email@example.com",
-                        "provider": "s3"
-                    }
+                "name": "domain",
+                "path": ['/var/www/html'],
+                "options": {
+                    "storage": "dummy",
+                    "interval": "daily",
+                    "retention": "7",
+                    "save_locally": "no",
+                    "notification_email": "email@example.com",
                 }
             }, stream)
         
@@ -262,16 +251,13 @@ def initialization():
             _yaml = rYaml.YAML()
             _yaml.indent(sequence=4, offset=2)
             _yaml.dump({
-                "storages": {
-                    "dummy": {
+                        "name": "dummy",
                         "bucket": "dummy",
                         "access_key_id": "dummy",
                         "secret_access_key": "dummy",
                         "region": "dummy",
                         "endpoint": "dummy",
                         "primary": "no"
-                    }
-                }
             }, stream)
 
 if __name__ == "__main__":
