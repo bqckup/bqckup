@@ -28,7 +28,7 @@ class HasYML(ABC):
         results = []
         for config in self.get_list_file_config():
             parsed_config = Yml_Parser.parse(config)
-            results.append(parsed_config)
             parsed_config['name'] = os.path.basename(config).replace('.yml', '')
+            results.append(parsed_config)
 
         return list(results)
