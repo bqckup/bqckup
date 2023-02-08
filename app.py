@@ -3,7 +3,7 @@ from modules.backup import backup
 from classes.server import Server
 from classes.s3 import s3
 from helpers import today24Format, timeSince, bytes_to
-from constant import BQ_PATH, STORAGE_PATH, FOLDER_PATH, VERSION, CONFIG_PATH, DATABASE_PATH
+from constant import BQ_PATH, STORAGE_PATH, FOLDER_PATH, VERSION, CONFIG_PATH, BQ_DATABASE_PATH
 import sys, logging, os, ruamel.yaml as rYaml
 from datetime import timedelta
 from flask.json import jsonify
@@ -215,11 +215,11 @@ def time_since(unix):
 def initialization():
     from models.log import Log, database
 
-    os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
-    with open(DATABASE_PATH, 'w') as f:
+    os.makedirs(os.path.dirname(BQ_DATABASE_PATH), exist_ok=True)
+    with open(BQ_DATABASE_PATH, 'w') as f:
         f.write("")
 
-    os.chmod(DATABASE_PATH, 0o755)
+    os.chmod(BQ_DATABASE_PATH, 0o755)
 
     for folder in ['databases', 'folders', 'storages']:
         os.makedirs(os.path.join(BQ_PATH, folder), exist_ok=True)
