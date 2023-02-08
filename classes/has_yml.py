@@ -11,6 +11,14 @@ class HasYML(ABC):
     def get_config_path(self):
         pass
 
+    def remove(self, name: str):
+        config = os.path.join(self.get_config_path(), f"{name}.yml")
+
+        if not os.path.exists(config):
+            raise Exception(f"{config} doesn't exists")
+        
+        os.unlink(config)
+
     def save_config(self, name: str, data: dict):
         import ruamel.yaml as yaml
         with open(os.path.join(self.get_config_path(), f"{name}.yml"), "w+") as stream:

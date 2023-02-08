@@ -9,8 +9,11 @@ STORAGE_PATH=path.join(BQ_PATH, 'storages')
 # Bqckup Site Config Path
 FOLDER_PATH=path.join(BQ_PATH, 'folders')
 
+# Database path
+DATABASE_PATH=path.join(BQ_PATH, 'databases')
+
 # Sqlite Database Path
-DATABASE_PATH="/var/bqckup/bqckup.db"
+BQ_DATABASE_PATH="/var/bqckup/bqckup.db"
 
 # Bqckup Database Config Path
 SITE_CONFIG_PATH=path.join(BQ_PATH, 'databases')

@@ -1,12 +1,12 @@
 #! venv/bin/python3
 
 import typer, getpass, os
-from typing import Optional
 from classes.bqckup import Bqckup
 from classes.config import Config
 from classes.server import Server
 from classes.storage import Storage
-from constant import VERSION, SITE_CONFIG_PATH
+from classes.database import Database
+from constant import VERSION, SITE_CONFIG_PATH, DATABASE_PATH, STORAGE_PATH
 from rich import print
 from rich.console import Group, Console
 from rich.table import Table
@@ -14,6 +14,64 @@ from rich.panel import Panel
 from helpers import send_anonymous_statistic
 
 bq_cli = typer.Typer()
+
+@bq_cli.command()
+def add_database(
+    name: str = typer.Option(...),
+    type: str = typer.Option(...),
+    username: str = typer.Option(...),
+    password: str = typer.Option(...),
+    database: str = typer.Option(...),
+    port: str = typer.Option(None),
+):
+    if type.lower() not in Database().SUPPORTED_DATABASE:
+        print(f"\n[red] {type} is not supported yet, feel free to open an issue [/red]\n")
+        return 
+
+    if not port:
+        port = 3306 if type.lower() == 'mysql' else 5432
+
+    try:
+        Database().add(
+            name=name,
+            type=type,
+            username=username,
+            password=password,
+            database=database,
+            port=port
+        )
+    except Exception as e:
+        print(f"\n[red] Failed to add database, {e} [/red]\n")
+    else:
+        print(f"\n[green] Database successfully added [/green]\n")
+
+@bq_cli.command()
+def remove_database(name: str = typer.Option(...)):
+    try:
+        Database().remove(name)
+    except Exception as e:
+        print(f"[red] Failed to remove database, {e}[/red]")
+    else:
+        print(f"[green] successfully removed the database [/green]")
+@bq_cli.command()
+def list_database():
+    ld = Database().list()
+    table = Table(title="Database list")
+
+    # Table header
+    table.add_column("#")
+    table.add_column("YML")
+    table.add_column("Username")
+    table.add_column("Database")
+    table.add_column("Type")
+
+    for no, d in enumerate(ld):
+        no += 1
+        table.add_row(str(no), os.path.join(DATABASE_PATH, f"{d['name']}.yml"), d['username'], d['database'], d['type'])
+    
+    print("")
+    Console().print(table)
+    print("")
 
 @bq_cli.command()
 def add_storage(
@@ -52,9 +110,10 @@ def remove_storage(name: str = typer.Option(...)):
 def list_storage():
     sl = Storage().list()
     table = Table(title="Storage list")
+
     # Table Header
     table.add_column("#")
-    table.add_column("Name")
+    table.add_column("YML")
     table.add_column("Bucket")
     table.add_column("Key ID")
     table.add_column("Secret Key")
@@ -62,7 +121,7 @@ def list_storage():
     # Table Row
     for no, s in enumerate(sl):
         no += 1
-        table.add_row(str(no), s['name'], s['bucket'], s['access_key_id'], s['secret_access_key'])
+        table.add_row(str(no), os.path.join(STORAGE_PATH, f"{s['name']}.yml"), s['bucket'], s['access_key_id'], s['secret_access_key'])
     print("")
     Console().print(table)
     print("")
