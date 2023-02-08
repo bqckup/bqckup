@@ -9,7 +9,6 @@ commonmark==0.9.1
 configparser==5.2.0
 cssselect==1.1.0
 cssutils==2.3.1
-dataclasses==0.8
 emails==0.6
 Flask==2.0.3
 Flask-Caching==1.10.1
@@ -29,7 +28,6 @@ MarkupSafe==2.0.1
 mysql-connector-python==8.0.32
 packaging==21.3
 peewee==3.15.4
-pkg-resources==0.0.0
 premailer==3.10.0
 protobuf==3.19.6
 Pygments==2.14.0
