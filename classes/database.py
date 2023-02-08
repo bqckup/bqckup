@@ -1,19 +1,29 @@
 import logging, os
+from classes.has_yml import HasYML
+from constant import DATABASE_PATH
 
 # Database Exceptions
 class DatabaseException(Exception):
     pass
 
 
-"""
-should be compatible with to other database type
-"""
-class Database:
+class Database(HasYML):
     # mysqli is temporary
     SUPPORTED_DATABASE = ("mysql", "postgresql")
     
-    def __init__(self, type = "mysql"):
-        self.type = type.lower()
+    def __init__(self):
+        pass
+
+    def get_config_path(self):
+        return DATABASE_PATH
+
+    def add(self, **kwargs):
+        name = kwargs['name']
+        del kwargs['name']
+        self.save_config(name, dict(kwargs.items()))        
+
+    def list(self):
+        return self._parse_all_config()
         
     def export(self, output: str, db_user: str, db_password: str, db_name: str) -> None:
         os.system(f"mysqldump -u {db_user} -p{db_password} {db_name} | gzip > {output}")
