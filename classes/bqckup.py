@@ -6,7 +6,7 @@ from classes.file import File
 from classes.config import Config
 from classes.yml_parser import Yml_Parser
 from models.log import Log
-from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
+from constant import BQ_PATH, STORAGE_PATH, SITE_CONFIG_PATH
 from classes.s3 import s3
 from helpers import difference_in_days, get_today, time_since
 from datetime import datetime
@@ -223,7 +223,7 @@ class Bqckup:
                 # bqckup config
                 if Config().read('bqckup', 'config_backup'):
                     _s3.upload(bqckup_config_location, f"config/{backup.get('name')}.yml", False)
-                    _s3.upload(STORAGE_CONFIG_PATH, 'storages.yml', False)
+                    _s3.upload(STORAGE_PATH, 'storages.yml', False)
 
                 if os.path.exists(compressed_file):
                     print(f"\nUploading {compressed_file}\n")

@@ -1,0 +1,263 @@
+# The configurations that used for the recording, feel free to edit them
+config:
+
+  # Specify a command to be executed
+  # like `/bin/bash -l`, `ls`, or any other commands
+  # the default is bash for Linux
+  # or powershell.exe for Windows
+  command: bash -l
+  
+  # Specify the current working directory path
+  # the default is the current working directory path
+  cwd: /home/nugroho/Projects/bqckup
+  
+  # Export additional ENV variables
+  env:
+    recording: true
+  
+  # Explicitly set the number of columns
+  # or use `auto` to take the current
+  # number of columns of your shell
+  cols: 113
+  
+  # Explicitly set the number of rows
+  # or use `auto` to take the current
+  # number of rows of your shell
+  rows: 31
+  
+  # Amount of times to repeat GIF
+  # If value is -1, play once
+  # If value is 0, loop indefinitely
+  # If value is a positive number, loop n times
+  repeat: 0
+  
+  # Quality
+  # 1 - 100
+  quality: 100
+  
+  # Delay between frames in ms
+  # If the value is `auto` use the actual recording delays
+  frameDelay: auto
+  
+  # Maximum delay between frames in ms
+  # Ignored if the `frameDelay` isn't set to `auto`
+  # Set to `auto` to prevent limiting the max idle time
+  maxIdleTime: 2000
+  
+  # The surrounding frame box
+  # The `type` can be null, window, floating, or solid`
+  # To hide the title use the value null
+  # Don't forget to add a backgroundColor style with a null as type
+  frameBox:
+    type: floating
+    title: Terminalizer
+    style:
+      border: 0px black solid
+      # boxShadow: none
+      # margin: 0px
+  
+  # Add a watermark image to the rendered gif
+  # You need to specify an absolute path for
+  # the image on your machine or a URL, and you can also
+  # add your own CSS styles
+  watermark:
+    imagePath: null
+    style:
+      position: absolute
+      right: 15px
+      bottom: 15px
+      width: 100px
+      opacity: 0.9
+  
+  # Cursor style can be one of
+  # `block`, `underline`, or `bar`
+  cursorStyle: block
+  
+  # Font family
+  # You can use any font that is installed on your machine
+  # in CSS-like syntax
+  fontFamily: "Monaco, Lucida Console, Ubuntu Mono, Monospace"
+  
+  # The size of the font
+  fontSize: 12
+  
+  # The height of lines
+  lineHeight: 1
+  
+  # The spacing between letters
+  letterSpacing: 0
+  
+  # Theme
+  theme:
+    background: "transparent"
+    foreground: "#afafaf"
+    cursor: "#c7c7c7"
+    black: "#232628"
+    red: "#fc4384"
+    green: "#b3e33b"
+    yellow: "#ffa727"
+    blue: "#75dff2"
+    magenta: "#ae89fe"
+    cyan: "#708387"
+    white: "#d5d5d0"
+    brightBlack: "#626566"
+    brightRed: "#ff7fac"
+    brightGreen: "#c8ed71"
+    brightYellow: "#ebdf86"
+    brightBlue: "#75dff2"
+    brightMagenta: "#ae89fe"
+    brightCyan: "#b1c6ca"
+    brightWhite: "#f9f9f4"
+  
+# Records, feel free to edit them
+records:
+  - delay: 351
+    content: "\e]0;nugroho@dell:~/Projects/bqckup\e\\\e]7;file://dell/home/nugroho/Projects/bqckup\e\\\e[?2004h\e]0;nugroho@dell: ~/Projects/bqckup\a\e[01;32mnugroho@dell\e[00m:\e[01;34m~/Projects/bqckup\e[00m$ "
+  - delay: 923
+    content: "\e[H\e[2J\e]0;nugroho@dell: ~/Projects/bqckup\a\e[01;32mnugroho@dell\e[00m:\e[01;34m~/Projects/bqckup\e[00m$ "
+  - delay: 1298
+    content: .
+  - delay: 65
+    content: /
+  - delay: 228
+    content: b
+  - delay: 144
+    content: q
+  - delay: 51
+    content: c
+  - delay: 59
+    content: k
+  - delay: 129
+    content: u
+  - delay: 61
+    content: p
+  - delay: 158
+    content: ' '
+  - delay: 77
+    content: t
+  - delay: 76
+    content: e
+  - delay: 36
+    content: s
+  - delay: 68
+    content: t
+  - delay: 85
+    content: '-'
+  - delay: 162
+    content: c
+  - delay: 121
+    content: o
+  - delay: 47
+    content: 'n'
+  - delay: 285
+    content: "\b\e[K"
+  - delay: 108
+    content: "\b\e[K"
+  - delay: 109
+    content: "\b\e[K"
+  - delay: 82
+    content: r
+  - delay: 116
+    content: u
+  - delay: 53
+    content: 'n'
+  - delay: 127
+    content: "\r\n\e[?2004l\r"
+  - delay: 288
+    content: "Please run this script as root user\r\n"
+  - delay: 54
+    content: "\e]0;nugroho@dell:~/Projects/bqckup\e\\\e]7;file://dell/home/nugroho/Projects/bqckup\e\\\e[?2004h\e]0;nugroho@dell: ~/Projects/bqckup\a\e[01;32mnugroho@dell\e[00m:\e[01;34m~/Projects/bqckup\e[00m$ "
+  - delay: 1020
+    content: ./bqckup test-run
+  - delay: 194
+    content: "\b\b\b"
+  - delay: 175
+    content: "\b\b\b\b\b"
+  - delay: 131
+    content: "\b\b\b\b\b\b\b"
+  - delay: 134
+    content: "\b\b"
+  - delay: 465
+    content: "\e[1@s"
+  - delay: 80
+    content: "\e[1@u"
+  - delay: 71
+    content: "\e[1@d"
+  - delay: 71
+    content: "\e[1@o"
+  - delay: 202
+    content: "\e[1@ "
+  - delay: 148
+    content: "\r\n\e[?2004l\r"
+  - delay: 9
+    content: '[sudo] password for nugroho: '
+  - delay: 1873
+    content: "\r\n"
+  - delay: 346
+    content: "###################### example.com ######################\r\n\r\n\e[33mCreating archive\e[0m\r\n\e[?25l\r\e[2KCompressing \e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m  0%\e[0m \e[36m-:--:--\e[0m\r\n                                                                 "
+  - delay: 102
+    content: "\r\e[2K\e[1A\e[2KCompressing \e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m  0%\e[0m \e[36m-:--:--\e[0m\r\n                                                                 "
+  - delay: 103
+    content: "\r\e[2K\e[1A\e[2KCompressing \e[38;2;249;38;114m━━━━\e[0m\e[38;5;237m╺\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m 10%\e[0m \e[36m-:--:--\e[0m\r\n                                                                 "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KCompressing \e[38;2;249;38;114m━━━━━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m 29%\e[0m \e[36m0:00:01\e[0m\r\n                                                                 "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KCompressing \e[38;2;249;38;114m━━━━━━━━━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m 39%\e[0m \e[36m0:00:01\e[0m\r\n                                                                 "
+  - delay: 103
+    content: "\r\e[2K\e[1A\e[2KCompressing \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━\e[0m\e[38;5;237m╺\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m 48%\e[0m \e[36m0:00:01\e[0m\r\n                                                                 "
+  - delay: 103
+    content: "\r\e[2K\e[1A\e[2KCompressing \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;5;237m╺\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━\e[0m \e[35m 58%\e[0m \e[36m0:00:01\e[0m\r\n                                                                 "
+  - delay: 103
+    content: "\r\e[2K\e[1A\e[2KCompressing \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;5;237m╺\e[0m\e[38;5;237m━━━━━━━━━━━━\e[0m \e[35m 68%\e[0m \e[36m0:00:01\e[0m\r\n                                                                 "
+  - delay: 102
+    content: "\r\e[2K\e[1A\e[2KCompressing \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━━━━━━━━━\e[0m \e[35m 77%\e[0m \e[36m0:00:01\e[0m\r\n                                                                 "
+  - delay: 103
+    content: "\r\e[2K\e[1A\e[2KCompressing \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━━━━━\e[0m \e[35m 87%\e[0m \e[36m0:00:01\e[0m\r\n                                                                 "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KCompressing \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━\e[0m \e[35m 97%\e[0m \e[36m0:00:01\e[0m\r\n                                                                 \r\e[2K\e[1A\e[2KCompressing \e[38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m100%\e[0m \e[36m0:00:00\e[0m\r\n                                                                 \r\e[2K\e[1A\e[2KCompressing \e[38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m100%\e[0m \e[36m0:00:00\e[0m\r\n                                                                 \r\n\e[?25h\e[33mExporting Database\e[0m\r\n\e[?25l\r\e[2KExporting \e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m  0%\e[0m \e[36m-:--:--\e[0m\r\n                                                               "
+  - delay: 103
+    content: "\r\e[2K\e[1A\e[2KExporting \e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m  0%\e[0m \e[36m-:--:--\e[0m\r\n                                                               "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KExporting \e[38;2;249;38;114m━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m  9%\e[0m \e[36m-:--:--\e[0m\r\n                                                               "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KExporting \e[38;2;249;38;114m━━━━━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m 29%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KExporting \e[38;2;249;38;114m━━━━━━━━━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m 39%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KExporting \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m 49%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KExporting \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;5;237m╺\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━\e[0m \e[35m 58%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KExporting \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;5;237m╺\e[0m\e[38;5;237m━━━━━━━━━━━━\e[0m \e[35m 68%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 103
+    content: "\r\e[2K\e[1A\e[2KExporting \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;5;237m╺\e[0m\e[38;5;237m━━━━━━━━\e[0m \e[35m 78%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KExporting \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━━━━━\e[0m \e[35m 87%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 105
+    content: "\r\e[2K\e[1A\e[2KExporting \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━\e[0m \e[35m 97%\e[0m \e[36m0:00:01\e[0m\r\n                                                               \r\e[2K\e[1A\e[2KExporting \e[38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m100%\e[0m \e[36m0:00:00\e[0m\r\n                                                               \r\e[2K\e[1A\e[2KExporting \e[38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m100%\e[0m \e[36m0:00:00\e[0m\r\n                                                               \r\n\e[?25h\e[33mUploading to cloud\e[0m\r\n\e[?25l\r\e[2KUploading \e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m  0%\e[0m \e[36m-:--:--\e[0m\r\n                                                               "
+  - delay: 103
+    content: "\r\e[2K\e[1A\e[2KUploading \e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m  0%\e[0m \e[36m-:--:--\e[0m\r\n                                                               "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KUploading \e[38;2;249;38;114m━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m 19%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KUploading \e[38;2;249;38;114m━━━━━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m 29%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 105
+    content: "\r\e[2K\e[1A\e[2KUploading \e[38;2;249;38;114m━━━━━━━━━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m 39%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 106
+    content: "\r\e[2K\e[1A\e[2KUploading \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━\e[0m\e[38;5;237m╺\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m 48%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KUploading \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;5;237m╺\e[0m\e[38;5;237m━━━━━━━━━━━━━━━━\e[0m \e[35m 58%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 105
+    content: "\r\e[2K\e[1A\e[2KUploading \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━━━━━━━━━━━━━\e[0m \e[35m 67%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KUploading \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;2;249;38;114m╸\e[0m\e[38;5;237m━━━━━━━━━\e[0m \e[35m 77%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 104
+    content: "\r\e[2K\e[1A\e[2KUploading \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;5;237m╺\e[0m\e[38;5;237m━━━━━\e[0m \e[35m 86%\e[0m \e[36m0:00:01\e[0m\r\n                                                               "
+  - delay: 105
+    content: "\r\e[2K\e[1A\e[2KUploading \e[38;2;249;38;114m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\e[38;5;237m╺\e[0m\e[38;5;237m━\e[0m \e[35m 96%\e[0m \e[36m0:00:01\e[0m\r\n                                                               \r\e[2K\e[1A\e[2KUploading \e[38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m100%\e[0m \e[36m0:00:00\e[0m\r\n                                                               \r\e[2K\e[1A\e[2KUploading \e[38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[35m100%\e[0m \e[36m0:00:00\e[0m\r\n                                                               \r\n\e[?25h########################################################\r\n\e[32mEverything is backed up\e[0m\r\n"
+  - delay: 80
+    content: "\e]0;nugroho@dell:~/Projects/bqckup\e\\\e]7;file://dell/home/nugroho/Projects/bqckup\e\\\e[?2004h\e]0;nugroho@dell: ~/Projects/bqckup\a\e[01;32mnugroho@dell\e[00m:\e[01;34m~/Projects/bqckup\e[00m$ "
+  - delay: 2433
+    content: "\e[H\e[2J\e]0;nugroho@dell: ~/Projects/bqckup\a\e[01;32mnugroho@dell\e[00m:\e[01;34m~/Projects/bqckup\e[00m$ "
+  - delay: 107
+    content: "\e[?2004l\r\r\nlogout\r\n"

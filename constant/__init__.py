@@ -4,10 +4,16 @@ from os import path
 BQ_PATH="/etc/bqckup"
 
 # Bqckup Storage Config Path
-STORAGE_CONFIG_PATH=path.join(BQ_PATH, 'config', 'storages.yml')
+STORAGE_PATH=path.join(BQ_PATH, 'storages')
 
 # Bqckup Site Config Path
-SITE_CONFIG_PATH=path.join(BQ_PATH, 'sites')
+FOLDER_PATH=path.join(BQ_PATH, 'folders')
+
+# Sqlite Database Path
+DATABASE_PATH="/var/bqckup/bqckup.db"
+
+# Bqckup Database Config Path
+SITE_CONFIG_PATH=path.join(BQ_PATH, 'databases')
 
 # Bqckup Config Path
 CONFIG_PATH=path.join(BQ_PATH, 'bqckup.cnf')

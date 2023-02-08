@@ -1,38 +1,30 @@
-from classes.yml_parser import Yml_Parser
-from constant import STORAGE_CONFIG_PATH
+from classes.has_yml import HasYML
+from constant import STORAGE_PATH
 
 class StorageException(Exception): pass
-class Storage:
-    def __init__(self):
-        self.parsed_storage = Yml_Parser.parse(STORAGE_CONFIG_PATH)
+class Storage(HasYML):
 
-    def get_parsed_storage(self):
-        return self.parsed_storage
+    def __init__(self):
+        pass
+
+    def get_config_path(self):
+        return STORAGE_PATH
+
+    def add(self, **kwargs):
+        name = kwargs['name']
+        del kwargs['name']
+        self.save_config(name, dict(kwargs.items()))
+
+
+    # Delete Storage YML file
+    def remove(self, name: str):
+        import os
+        storage_path = os.path.join(STORAGE_PATH, f"{name}.yml")
+
+        if not os.path.exists(storage_path):
+            raise StorageException(f"Storage [{name}] doesn't exists")
+        
+        os.unlink(storage_path)
     
     def list(self):
-        try:
-            return list(self.parsed_storage['storages'].keys())
-        except:
-            return list()
-
-    def get_storage_detail(self, name: str) -> dict:
-        try:
-            return self.parsed_storage['storages'][name]
-        except:
-            raise StorageException(f"Storage {name} doesn't exists")
-        
-    def get_primary_storage(self):
-        storages = self.list()
-        
-        if len(storages) >= 1:
-            return storages[0]
-        
-        parsed_config = self.parsed_storage
-        
-        for storage in storages:
-            if 'primary' not in parsed_config['storages'][storage]:
-                continue
-            if parsed_config['storages'][storage]['primary'].lower() == 'yes':
-                return parsed_config['storages'][storage]
-            
-        return None
+        return self._parse_all_config()

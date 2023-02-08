@@ -1,9 +1,11 @@
 #! venv/bin/python3
 
 import typer, getpass, os
+from typing import Optional
 from classes.bqckup import Bqckup
 from classes.config import Config
 from classes.server import Server
+from classes.storage import Storage
 from constant import VERSION, SITE_CONFIG_PATH
 from rich import print
 from rich.console import Group, Console
@@ -14,7 +16,59 @@ from helpers import send_anonymous_statistic
 bq_cli = typer.Typer()
 
 @bq_cli.command()
-def get_information():
+def add_storage(
+    name: str = typer.Option(...), 
+    bucket: str = typer.Option(...), 
+    access_key_id: str = typer.Option(...), 
+    secret_access_key: str = typer.Option(...), 
+    region: str = typer.Option(...), 
+    endpoint: str = typer.Option(...)
+    ):
+    try:
+        Storage().add(
+            name=name, 
+            bucket=bucket, 
+            access_key_id=access_key_id, 
+            secret_access_key=secret_access_key, 
+            region=region, 
+            endpoint=endpoint
+        )
+    except Exception as e:
+        print(f"[red] Failed to create new storage, {e} [/red]")
+    else:
+        print("[green] Storage created Successfully [/green]")
+
+@bq_cli.command()
+def remove_storage(name: str = typer.Option(...)):
+    try:
+        Storage().remove(name)
+    except Exception as e:
+        print("[red] Failed to remove storage, {e} [/red]")
+    else:
+        print("[green] Storage successfully deleted [/green]")
+
+# TODO: Censor Credentials
+@bq_cli.command()
+def list_storage():
+    sl = Storage().list()
+    table = Table(title="Storage list")
+    # Table Header
+    table.add_column("#")
+    table.add_column("Name")
+    table.add_column("Bucket")
+    table.add_column("Key ID")
+    table.add_column("Secret Key")
+
+    # Table Row
+    for no, s in enumerate(sl):
+        no += 1
+        table.add_row(str(no), s['name'], s['bucket'], s['access_key_id'], s['secret_access_key'])
+    print("")
+    Console().print(table)
+    print("")
+
+@bq_cli.command()
+def info():
     content = Group(
         Panel("Version  : %s" % VERSION),
         Panel("Website  : https://bqckup.com"),
@@ -31,12 +85,12 @@ def test_config():
         print("No site found")
     else:
         # Storage config test
-
         # Site Config test
         table = Table(title="Bqckup sites config")
         table.add_column("Name", style="cyan")
         table.add_column("Config Path", style="cyan")
         table.add_column("Status", style="cyan")
+
         for i in sites:
             table.add_row(sites[i]['name'], os.path.join(SITE_CONFIG_PATH, sites[i]['file_name']), 'OK', style="red")
 
@@ -45,7 +99,7 @@ def test_config():
 @bq_cli.command()
 def run(force:bool = False):
     Bqckup().backup(force=force)
-    
+
 @bq_cli.command()
 def gui_active():
     from gevent.pywsgi import WSGIServer
@@ -57,10 +111,6 @@ def gui_active():
         http_server.serve_forever()
     except Exception as e:
         print(f"Failed to start web server, {str(e)}")
-
-    
-        
-    
     
 if __name__ == "__main__":
     if getpass.getuser() != 'root':
@@ -69,7 +119,7 @@ if __name__ == "__main__":
         from app import app, initialization
         try:
             initialization()
-            send_anonymous_statistic()
+            # send_anonymous_statistic()
         except Exception as e:
             print(f"Failed to initialize, {str(e)}")
         else:
