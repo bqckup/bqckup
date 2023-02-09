@@ -20,6 +20,8 @@ class Database(HasYML):
     def add(self, **kwargs):
         name = kwargs['name']
         del kwargs['name']
+        kwargs['save_locally'] = 'yes' if kwargs['save_locally'] else 'no'
+        kwargs['notification'] = 'yes' if kwargs['notification'] else 'no'
         self.save_config(name, dict(kwargs.items()))        
 
     def list(self):

@@ -1,12 +1,15 @@
 #! venv/bin/python3
 
 import typer, getpass, os
+from typing import List
+from pathlib import Path
 from classes.bqckup import Bqckup
 from classes.config import Config
 from classes.server import Server
 from classes.storage import Storage
 from classes.database import Database
-from constant import VERSION, SITE_CONFIG_PATH, DATABASE_PATH, STORAGE_PATH
+from classes.folder import Folder
+from constant import VERSION, FOLDER_PATH, DATABASE_PATH, STORAGE_PATH
 from rich import print
 from rich.console import Group, Console
 from rich.table import Table
@@ -16,6 +19,64 @@ from helpers import send_anonymous_statistic
 bq_cli = typer.Typer()
 
 @bq_cli.command()
+def list_folder():
+    fl = Folder().list()
+    table = Table(title="Folder list")
+
+    table.add_column('#')
+    table.add_column('yml')
+    table.add_column('path')
+    table.add_column('storage')
+
+    for no, f in enumerate(fl):
+        no += 1
+        table.add_row(str(no), os.path.join('', f"{f['name']}.yml"), ', '.join(f['path']), ', '.join(f['options']['storage']))
+    
+    print("")
+    Console().print(table)
+    print("")
+    
+@bq_cli.command()
+def remove_folder(name: str = typer.Option(...)):
+    try:
+        Folder().remove(name)
+    except Exception as e:
+        print(f"\n[red] Failed to remove folder's config, {e} [/red]\n")
+    else:
+        print(f"\n[green] Success [/green] \n")
+
+@bq_cli.command()
+def add_folder(
+    name: str = typer.Option(...),
+    path: List[Path] = typer.Option(...),
+    storage: List[Path] = typer.Option(...),
+    interval: str = typer.Option(...),
+    retention: int = typer.Option(...),
+    save_locally: bool = typer.Option(default=False),
+    notification: bool = typer.Option(...)
+):
+    try:
+        config_path = os.path.join(FOLDER_PATH, f"{name}.yml")
+
+        if os.path.exists(config_path):
+            print(f"[red] {config_path} already exists [/red]]\n")
+            return
+            
+        Folder().add(
+            name=name,
+            path=path,
+            storage=storage,
+            interval=interval,
+            retention=retention,
+            save_locally=save_locally,
+            notification=notification
+        )
+    except Exception as e:
+        print(f"\n [red] Failed, {e} [/red] \n")
+    else:
+        print("\n [green] Success [/green] \n")
+
+@bq_cli.command()
 def add_database(
     name: str = typer.Option(...),
     type: str = typer.Option(...),
@@ -23,10 +84,21 @@ def add_database(
     password: str = typer.Option(...),
     database: str = typer.Option(...),
     port: str = typer.Option(None),
-):
+    storage: List[Path] = typer.Option(...),
+    interval: str = typer.Option(...),
+    retention: int = typer.Option(...),
+    save_locally: bool = typer.Option(default=False),
+    notification: bool = typer.Option(...)):
+
     if type.lower() not in Database().SUPPORTED_DATABASE:
         print(f"\n[red] {type} is not supported yet, feel free to open an issue [/red]\n")
         return 
+
+    config_path = os.path.join(DATABASE_PATH, f"{name}.yml")
+
+    if os.path.exists(config_path):
+        print(f"[red] {config_path} already exists [/red]]\n")
+        return
 
     if not port:
         port = 3306 if type.lower() == 'mysql' else 5432
@@ -38,12 +110,17 @@ def add_database(
             username=username,
             password=password,
             database=database,
-            port=port
+            port=port,
+            storage=storage,
+            interval=interval,
+            retention=retention,
+            save_locally=save_locally,
+            notification=notification
         )
     except Exception as e:
-        print(f"\n[red] Failed to add database, {e} [/red]\n")
+        print(f"\n[red] Failed, {e} [/red]\n")
     else:
-        print(f"\n[green] Database successfully added [/green]\n")
+        print(f"\n[green] Success [/green]\n")
 
 @bq_cli.command()
 def remove_database(name: str = typer.Option(...)):
@@ -53,6 +130,7 @@ def remove_database(name: str = typer.Option(...)):
         print(f"[red] Failed to remove database, {e}[/red]")
     else:
         print(f"[green] successfully removed the database [/green]")
+
 @bq_cli.command()
 def list_database():
     ld = Database().list()
@@ -83,6 +161,12 @@ def add_storage(
     endpoint: str = typer.Option(...)
     ):
     try:
+        config_path = os.path.join(STORAGE_PATH, f"{name}.yml")
+
+        if os.path.exists(config_path):
+            print(f"[red] {config_path} already exists [/red]]\n")
+            return
+
         Storage().add(
             name=name, 
             bucket=bucket, 
@@ -92,18 +176,18 @@ def add_storage(
             endpoint=endpoint
         )
     except Exception as e:
-        print(f"[red] Failed to create new storage, {e} [/red]")
+        print(f"[red] Failed, {e} [/red]")
     else:
-        print("[green] Storage created Successfully [/green]")
+        print("[green] Success [/green]")
 
 @bq_cli.command()
 def remove_storage(name: str = typer.Option(...)):
     try:
         Storage().remove(name)
     except Exception as e:
-        print("[red] Failed to remove storage, {e} [/red]")
+        print("[red] Failed, {e} [/red]")
     else:
-        print("[green] Storage successfully deleted [/green]")
+        print("[green] Success [/green]")
 
 # TODO: Censor Credentials
 @bq_cli.command()
@@ -122,6 +206,7 @@ def list_storage():
     for no, s in enumerate(sl):
         no += 1
         table.add_row(str(no), os.path.join(STORAGE_PATH, f"{s['name']}.yml"), s['bucket'], s['access_key_id'], s['secret_access_key'])
+
     print("")
     Console().print(table)
     print("")
@@ -138,26 +223,8 @@ def info():
     print(Panel.fit(content, title="Bqckup information", title_align="left", border_style="yellow"))
 
 @bq_cli.command()
-def test_config():
-    sites = Bqckup().list()
-    if not sites:
-        print("No site found")
-    else:
-        # Storage config test
-        # Site Config test
-        table = Table(title="Bqckup sites config")
-        table.add_column("Name", style="cyan")
-        table.add_column("Config Path", style="cyan")
-        table.add_column("Status", style="cyan")
-
-        for i in sites:
-            table.add_row(sites[i]['name'], os.path.join(SITE_CONFIG_PATH, sites[i]['file_name']), 'OK', style="red")
-
-        Console().print(table)
-        
-@bq_cli.command()
-def run(force:bool = False):
-    Bqckup().backup(force=force)
+def run(force:bool = typer.Option(False), name: str = typer.Option(None)):
+    
 
 @bq_cli.command()
 def gui_active():
@@ -169,11 +236,11 @@ def gui_active():
         print(f"\nListening to http://{Server().ip()}:{port}\n", flush=True)
         http_server.serve_forever()
     except Exception as e:
-        print(f"Failed to start web server, {str(e)}")
+        print(f"\n[red] Failed to start web server, {str(e)}[/red]\n")
     
 if __name__ == "__main__":
     if getpass.getuser() != 'root':
-        print("Please run this script as root user")
+        print("\n[red]Please run this script as root user[/red]\n")
     else:
         from app import app, initialization
         try:

@@ -21,7 +21,8 @@ class HasYML(ABC):
 
     def save_config(self, name: str, data: dict):
         import ruamel.yaml as yaml
-        with open(os.path.join(self.get_config_path(), f"{name}.yml"), "w+") as stream:
+        config_path = os.path.join(self.get_config_path(), f"{name}.yml")
+        with open(config_path, "w+") as stream:
             yaml = yaml.YAML()
             yaml.indent(sequence=4, offset=2)
             yaml.dump(data, stream)
