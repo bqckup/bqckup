@@ -23,12 +23,12 @@ if [ "$DISTRO" = "CentOS" ]; then
     wget "$DOWNLOAD_LINK/$LATEST_VERSION/bqckup-centos.tar.gz"
 fi
 
-tar xvf "bqckup-debian.tar.gz"
-rm "bqckup-debian.tar.gz"
-sudo chmod +x "bqckup"
-sudo mv "bqckup" "/usr/bin"
-sudo mkdir -p /etc/bqckup
-sudo curl -o /etc/bqckup/bqckup.cnf "$CONFIG_FILE"
+tar xvf bqckup-debian.tar.gz && \ 
+    rm bqckup-debian.tar.gz && \
+    sudo chmod +x bqckup && \
+    mv bqckup /usr/bin && \
+    sudo mkdir -p /etc/bqckup && \
+    sudo curl -o /etc/bqckup/bqckup.cnf "$CONFIG_FILE"
 
 printf "\n##############################################\n"
 printf "\nBqckup is installed\n"
