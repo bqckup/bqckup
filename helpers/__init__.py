@@ -155,7 +155,7 @@ def getInt(s):
     arr = re.findall(r"\d+", s)
     return int(arr[0])
 
-def get_today(format="%Y-%m-%d"):
+def get_today(format="%d-%B-%Y"):
     return date.today().strftime(format)
 
 
