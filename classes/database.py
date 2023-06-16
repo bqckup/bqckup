@@ -16,7 +16,7 @@ class Database:
         self.type = type.lower()
         
     def export(self, output: str, db_user: str, db_password: str, db_name: str) -> None:
-        os.system(f"mysqldump -u {db_user} -p{db_password} {db_name} | gzip > {output}")
+        os.system(f"mysqldump -u {db_user} -p'{db_password}' {db_name} | gzip > {output}")
     
     def test_connection(self, credentials: dict) -> bool:
         import mysql.connector
