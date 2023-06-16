@@ -210,15 +210,17 @@ class Bqckup:
             
                 # Cleaning Old Folder
                 list_folder = _s3.list(
-                    f"{_s3.root_folder_name}/{backup.get('name')}/",
-                    '/'
+                    f"{_s3.root_folder_name}/{backup.get('name')}/"
                 )
-            
+
                 if list_folder.get('KeyCount') >= int(backup.get('options').get('retention')):
-                    last_folder_prefix = list_folder.get('CommonPrefixes')[0].get('Prefix')
-                    last_folder = _s3.list(last_folder_prefix)
-                    for obj in last_folder.get("Contents"):
-                        _s3.delete(obj.get("Key"))
+                    last_modified_object  = lambda obj: int(obj['LastModified'].strftime('%s'))
+                    sorted_version  = [obj['Key'] for obj in sorted(list_folder.get('Contents'), key=last_modified_object)]
+                    if sorted_version:
+                        for sv in sorted_version:
+                            if sv.startswith(os.path.dirname(sorted_version[0])):
+                                _s3.delete(sv)
+
             
                 # bqckup config
                 if Config().read('bqckup', 'config_backup'):
