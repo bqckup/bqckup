@@ -71,7 +71,7 @@ def upload_file(storage: str, file: str, save_as: str = None):
         return 
     
     if not save_as:
-        save_as = file
+        save_as = os.path.basename(file)
     
     try:
         # Check if storage exists
