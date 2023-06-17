@@ -13,4 +13,4 @@ SITE_CONFIG_PATH=path.join(BQ_PATH, 'sites')
 CONFIG_PATH=path.join(BQ_PATH, 'bqckup.cnf')
 
 # Bqckup Information
-VERSION="1.1.0"
+VERSION="1.1.1"
