@@ -61,7 +61,7 @@ def gui_active():
         print(f"Failed to start web server, {str(e)}")
 
 @bq_cli.command()
-def upload_file(storage: str, file: str, save_as: str|None = None):
+def upload_file(storage: str, file: str, save_as: str = None):
     if not os.path.exists(file):
         print(f"[red] File not found [/red]")
         return
@@ -106,7 +106,7 @@ def generate_link(storage: str, key:str, expire:int = 86400):
 
 
 if __name__ == "__main__":
-    if getpass.getuser() == 'root':
+    if getpass.getuser() != 'root':
         print("Please run this script as root user")
     else:
         from app import app, initialization
