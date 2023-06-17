@@ -4,6 +4,8 @@ import typer, getpass, os
 from classes.bqckup import Bqckup
 from classes.config import Config
 from classes.server import Server
+from classes.storage import Storage
+from classes.s3 import s3
 from constant import VERSION, SITE_CONFIG_PATH
 from rich import print
 from rich.console import Group, Console
@@ -58,18 +60,59 @@ def gui_active():
     except Exception as e:
         print(f"Failed to start web server, {str(e)}")
 
+@bq_cli.command()
+def upload_file(storage: str, file: str, save_as: str|None = None):
+    if not os.path.exists(file):
+        print(f"[red] File not found [/red]")
+        return
     
-        
+    if os.path.isdir(file):
+        print(f"[red] Cannot upload directory [/red]")
+        return 
     
+    if not save_as:
+        save_as = file
     
+    try:
+        # Check if storage exists
+        Storage().get_storage_detail(storage)
+        s3(storage).upload(file, save_as)
+    except Exception as e:
+        print(f"[red] Failed to upload file, {str(e)} [/red]")
+    else:
+        print(f"[green] File uploaded successfully [/green]")
+
+# Expire is in seconds
+@bq_cli.command()
+def generate_link(storage: str, key:str, expire:int = 86400):
+    from humanfriendly import format_timespan
+
+    try:
+        # Check if storage exists
+        Storage().get_storage_detail(storage)
+        link = s3(storage).generate_link(key, expire)
+        print(f"[bold green]Link generated successfully [/bold green]\n")
+        print(f"Link")
+        print(f"[green]{link.strip()}[/green]\n")
+        print(f"[bold yellow]Information[/bold yellow]")
+        print(f"This link will expire in {format_timespan(expire)}\n")
+        print("-" * 30 + "Tips" + "-" * 30 + "\n")
+        print(f"[bold purple]CURL[/bold purple]")
+        print(f'curl -o {os.path.basename(key)} "{link.strip()}"\n'.strip())
+        print(f"\n[bold purple]WGET[/bold purple]")
+        print(f'wget "{link.strip()}" -O {os.path.basename(key)}'.strip())
+    except Exception as e:
+        print(f"[red] Failed to generate link, {str(e)} [/red]")
+
+
 if __name__ == "__main__":
-    if getpass.getuser() != 'root':
+    if getpass.getuser() == 'root':
         print("Please run this script as root user")
     else:
         from app import app, initialization
         try:
             initialization()
-            send_anonymous_statistic()
+            #send_anonymous_statistic()
         except Exception as e:
             print(f"Failed to initialize, {str(e)}")
         else:
