@@ -88,16 +88,16 @@ class s3(object):
             )
             raise Exception("Msg : {}\n".format(errorMsg))
 
-    def getLinkDownload(self, fileName=False):
+    def generate_link(self, file_name=False, time_to_expire=86400):
         try:
             link = self.client.generate_presigned_url(
                 ClientMethod="get_object",
                 Params={
                     "Bucket": self.bucket_name,
-                    "Key": fileName,
-                    "ResponseContentDisposition": f"attachment; filename = {fileName}",
+                    "Key": f"{self.root_folder_name}/{file_name}",
+                    "ResponseContentDisposition": f"attachment; filename={file_name}",
                 },
-                ExpiresIn=86400,# One Day
+                ExpiresIn=time_to_expire,# One Day
             )
         except Exception as e:
             print("Get link download failed, reason {}".format(e))
