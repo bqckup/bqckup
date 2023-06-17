@@ -10,7 +10,7 @@ backup = Blueprint('bqckup', __name__)
 # filename is object name
 @backup.post('/get_download_link')
 def get_download_link(): 
-    link = s3(storage_name=request.form.get('storage_name')).getLinkDownload(request.form.get('file_name'))
+    link = s3(storage_name=request.form.get('storage_name')).generate_link(request.form.get('file_name'))
     
     if not link:
         return jsonify(error=True, message="Failed to get download link")
