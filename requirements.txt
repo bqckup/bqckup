@@ -20,4 +20,5 @@ rich
 rq
 ruamel.yaml
 typer
-urllib3
+packaging
+humanfriendly
