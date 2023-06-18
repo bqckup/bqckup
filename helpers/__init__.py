@@ -644,3 +644,23 @@ def executeCommand(q):
         pass
 
     return a, e
+
+
+def generate_short_link(link):
+    import uuid
+    from constant import YOURLS_SECRET_KEY, YOURLS_HOST
+
+    if not YOURLS_HOST or not YOURLS_HOST:
+        return False
+
+    r = requests.post(f"{YOURLS_HOST}/yourls-api.php?signature={YOURLS_SECRET_KEY}", {
+       "format": "json",
+        "action": "shorturl",
+        "url": link,
+    })
+
+    if r.status_code != 200:
+        return False
+    
+
+    return r.json()['shorturl']

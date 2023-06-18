@@ -1,7 +1,7 @@
 from os import path
 
 # Bqckup Path
-BQ_PATH="/etc/bqckup"
+BQ_PATH="/Users/opensynergic/bqckup"
 
 # Bqckup Storage Config Path
 STORAGE_CONFIG_PATH=path.join(BQ_PATH, 'config', 'storages.yml')
@@ -14,3 +14,8 @@ CONFIG_PATH=path.join(BQ_PATH, 'bqckup.cnf')
 
 # Bqckup Information
 VERSION="1.2.0"
+
+# YOURLS Credentials
+YOURLS_HOST=""
+
+YOURLS_SECRET_KEY=""
