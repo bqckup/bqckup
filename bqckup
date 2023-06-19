@@ -114,6 +114,34 @@ def generate_link(storage: str, key:str, expire:int = 86400):
     except Exception as e:
         print(f"[red] Failed to generate link, {str(e)} [/red]")
 
+@bq_cli.command()
+def get_list(name: str):
+    node = Bqckup().detail(name)
+
+    if not node:
+        print(f"[red] Backup for {name} not found [/red]")
+        return None
+    
+    _s3 = s3(node['options']['storage'])
+    backups = _s3.list(f"{_s3.root_folder_name}/{node['name']}")
+    
+    if not backups or not backups.get('Contents'):
+        print(f"[red] No backup found for {name} [/red]")
+        return None
+    
+    table = Table("#", "Key", "Created at")
+    
+    for i, backup in enumerate(backups.get('Contents')):
+        backup['Key'] = backup['Key'].replace('bqckup/', '')
+        table.add_row(str(i+1), backup['Key'], backup['LastModified'].strftime("%d %b %Y %H:%M:%S"))
+    
+    Console().print(table)
+
+    print("\n[yellow]Tips: [/yellow]")
+    print("You can generate a download link by running this command:\n")
+    print(f"bqckup generate-link {node['options']['storage']} <Key>\n")
+    print("Example:")
+    print(f"bqckup generate-link {node['options']['storage']} '{backups.get('Contents')[0].get('Key')}'\n")
 
 @bq_cli.command()
 def check_update(update:bool = False):
@@ -156,7 +184,7 @@ def check_update(update:bool = False):
         print(f"Latest Version  : {latest_version}")
 
 if __name__ == "__main__":
-    if getpass.getuser() == 'root':
+    if getpass.getuser() != 'root':
         print("Please run this script as root user")
     else:
         from app import app, initialization
