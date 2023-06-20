@@ -173,11 +173,10 @@ def check_update(update:bool = False):
             else:
                 if os.path.exist(new_bqckup):
                     shutil.move(new_bqckup, "/usr/bin/bqckup")
-                    print(f"[bold green]You are using the latest version of Bqckup[/bold green]" if not need_update else f"[bold red]New version available, {latest_version}[/bold red]")
+                    print(f"[green] Bqckup updated successfully [/green]")
                     os.system("/usr/bin/bqckup get-information")
                 else:
                     print("[red] Failed to update [/red]")
-
                 return
             
         print(f"Current Version : {VERSION}")
@@ -190,7 +189,7 @@ if __name__ == "__main__":
         from app import app, initialization
         try:
             initialization()
-            send_anonymous_statistic()
+            # send_anonymous_statistic()
         except Exception as e:
             print(f"Failed to initialize, {str(e)}")
         else:
