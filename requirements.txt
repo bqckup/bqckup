@@ -22,3 +22,4 @@ ruamel.yaml
 typer
 packaging
 humanfriendly
+wget
