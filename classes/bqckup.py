@@ -109,7 +109,7 @@ class Bqckup:
             if last_log:
                 interval = backup['options']['interval']
                 last_backup = last_log.created_at
-                last_backup = difference_in_days(time.time(), last_backup)
+                last_backup = abs(difference_in_days(last_backup, time.time()))
                 to_compare = self._interval_in_number(interval)
                 
                 # Not enough time has passed
