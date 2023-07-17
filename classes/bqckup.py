@@ -10,6 +10,7 @@ from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
 from classes.s3 import s3
 from helpers import difference_in_days, get_today, time_since
 from datetime import datetime
+from helpers.file_management import remove_folder
 
 class ConfigExceptions(Exception):
     pass
@@ -253,6 +254,8 @@ class Bqckup:
         except Exception as e:
             import traceback
             traceback.print_exc()
+
+            remove_folder(tmp_path)
             
             # Separate this two error by it's own exceptions
             if 'log_compressed_files' in locals():

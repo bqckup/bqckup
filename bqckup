@@ -1,9 +1,8 @@
-#! venv/bin/python3
+#! /etc/bqckup/venv/bin/python3
 
 import typer, getpass, os
 from classes.bqckup import Bqckup
 from classes.config import Config
-from classes.server import Server
 from classes.storage import Storage
 from classes.s3 import s3
 from constant import VERSION, SITE_CONFIG_PATH
@@ -11,7 +10,6 @@ from rich import print
 from rich.console import Group, Console
 from rich.table import Table
 from rich.panel import Panel
-from helpers import send_anonymous_statistic
 
 bq_cli = typer.Typer()
 
@@ -55,7 +53,7 @@ def gui_active():
     try:
         port = int(Config().read('web', 'port'))
         http_server = WSGIServer(('0.0.0.0', port), app)
-        print(f"\nListening to http://{Server().ip()}:{port}\n", flush=True)
+        print(f"\nListening on port {port}\n", flush=True)
         http_server.serve_forever()
     except Exception as e:
         print(f"Failed to start web server, {str(e)}")
@@ -112,7 +110,6 @@ if __name__ == "__main__":
         from app import app, initialization
         try:
             initialization()
-            #send_anonymous_statistic()
         except Exception as e:
             print(f"Failed to initialize, {str(e)}")
         else:
