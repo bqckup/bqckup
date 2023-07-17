@@ -255,6 +255,7 @@ class Bqckup:
             import traceback
             traceback.print_exc()
 
+            # If backup failed remove the tmp folder
             remove_folder(tmp_path)
             
             # Separate this two error by it's own exceptions
