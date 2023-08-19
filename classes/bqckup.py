@@ -214,14 +214,18 @@ class Bqckup:
                     f"{_s3.root_folder_name}/{backup.get('name')}/"
                 )
 
-                if list_folder.get('KeyCount') >= int(backup.get('options').get('retention')):
-                    last_modified_object  = lambda obj: int(obj['LastModified'].strftime('%s'))
-                    sorted_version  = [obj['Key'] for obj in sorted(list_folder.get('Contents'), key=last_modified_object)]
-                    if sorted_version:
-                        for sv in sorted_version:
-                            if sv.startswith(os.path.dirname(sorted_version[0])):
-                                _s3.delete(sv)
+                last_modified_object  = lambda obj: int(obj['LastModified'].strftime('%s'))
+                
+                sorted_version = []
+                for obj in sorted(list_folder.get('Contents'), key=last_modified_object):
+                    folder_name = obj['Key'].replace(os.path.basename(obj['Key']), '')
+                    if folder_name not in sorted_version:
+                        sorted_version.append(folder_name)
 
+                if sorted_version and len(sorted_version) > int(backup.get('options').get('retention')):
+                    for obj in list_folder.get('Contents'):
+                        if obj.startswith(os.path.dirname(sorted_version[0])):
+                            _s3.delete(obj)
             
                 # bqckup config
                 if Config().read('bqckup', 'config_backup'):
