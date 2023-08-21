@@ -1,6 +1,6 @@
 #! /etc/bqckup/venv/bin/python3
 
-import typer, getpass, os
+import typer, getpass, os, requests
 from classes.bqckup import Bqckup
 from classes.config import Config
 from classes.storage import Storage
@@ -81,24 +81,101 @@ def upload_file(storage: str, file: str, save_as: str = None):
 @bq_cli.command()
 def generate_link(storage: str, key:str, expire:int = 86400):
     from humanfriendly import format_timespan
+    from helpers import generate_short_link
 
     try:
         # Check if storage exists
         Storage().get_storage_detail(storage)
         link = s3(storage).generate_link(key, expire)
+        shortlink = generate_short_link(link)
+
         print(f"[bold green]Link generated successfully [/bold green]\n")
-        print(f"Link")
+        print(f"Original Link")
         print(f"[green]{link.strip()}[/green]\n")
+
+        # Use Short link
+        if shortlink:
+            link = shortlink
+            print(f"Shorrten Link")
+            print(f"[green]{link.strip()}[/green]\n")
+
         print(f"[bold yellow]Information[/bold yellow]")
         print(f"This link will expire in {format_timespan(expire)}\n")
         print("-" * 30 + "Tips" + "-" * 30 + "\n")
         print(f"[bold purple]CURL[/bold purple]")
-        print(f'curl -o {os.path.basename(key)} "{link.strip()}"\n'.strip())
+        print(f'curl {"" if not shortlink else "-L"} {os.path.basename(key)} "{link.strip()}" > "{os.path.basename(key)}"\n'.strip())
         print(f"\n[bold purple]WGET[/bold purple]")
-        print(f'wget "{link.strip()}" -O {os.path.basename(key)}'.strip())
+        print(f'wget "{link.strip()}" -O "{os.path.basename(key)}" -q --show-progress'.strip())
     except Exception as e:
         print(f"[red] Failed to generate link, {str(e)} [/red]")
 
+@bq_cli.command()
+def get_list(name: str):
+    node = Bqckup().detail(name)
+
+    if not node:
+        print(f"[red] Backup for {name} not found [/red]")
+        return None
+    
+    _s3 = s3(node['options']['storage'])
+    backups = _s3.list(f"{_s3.root_folder_name}/{node['name']}")
+    
+    if not backups or not backups.get('Contents'):
+        print(f"[red] No backup found for {name} [/red]")
+        return None
+    
+    table = Table("#", "Key", "Created at")
+    
+    for i, backup in enumerate(backups.get('Contents')):
+        backup['Key'] = backup['Key'].replace('bqckup/', '')
+        table.add_row(str(i+1), backup['Key'], backup['LastModified'].strftime("%d %b %Y %H:%M:%S"))
+    
+    Console().print(table)
+
+    print("\n[yellow]Tips: [/yellow]")
+    print("You can generate a download link by running this command:\n")
+    print(f"bqckup generate-link {node['options']['storage']} <Key>\n")
+    print("Example:")
+    print(f"bqckup generate-link {node['options']['storage']} '{backups.get('Contents')[0].get('Key')}'\n")
+
+@bq_cli.command()
+def check_update(update:bool = False):
+    import wget
+    from packaging import version
+    try:
+        latest_version = requests.get('https://download.bqckup.com/latest.txt').text.strip()
+    except Exception as e:
+        print(f"[red] Failed to check update, {str(e)} [/red]")
+    else:
+        need_update = version.parse(VERSION) < version.parse(latest_version)
+        same_version = version.parse(VERSION) == version.parse(latest_version)
+
+        if same_version:
+            print(f"[bold green]You are using the latest version of Bqckup[/bold green]")
+            return
+
+        if need_update and update:
+            import shutil
+            tmp_file = "/tmp/bqckup.tar.gz"
+            new_bqckup = "/tmp/bqckup"
+
+            try:
+                wget.download(f"https://download.bqckup.com/{latest_version}/bqckup.tar.gz", tmp_file)
+                os.system(f"tar xvf {tmp_file} -C /tmp")
+            except Exception as e:
+                print(f"[red] Failed to download update, {str(e)} [/red]")
+                return
+            else:
+                if os.path.exist(new_bqckup):
+                    shutil.move(new_bqckup, "/usr/bin/bqckup")
+                    print(f"[green] Bqckup updated successfully [/green]")
+                    os.system("/usr/bin/bqckup get-information")
+                else:
+                    print("[red] Failed to update [/red]")
+                return
+            
+        print(f"Current Version : {VERSION}")
+        print(f"Latest Version  : {latest_version}")
 
 if __name__ == "__main__":
     if getpass.getuser() != 'root':
