@@ -4,11 +4,13 @@ port=9393
 
 [auth]
 ; Authentication password for the web interface
-password=bqckup
+password="bqckup"
 
 [bqckup]
 ; Backup the configuration
 config_backup=1
+; Default storage name
+storage_name="bqckup"
 
 ; To understand how Bqckup performs in various environments by contributing anonymous statistics. This will enable us to identify any issues that may occur with specific distributions or setups and improve our analysis of the data.
 anonymous_statistic=1
