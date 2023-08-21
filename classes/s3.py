@@ -1,14 +1,14 @@
 import os, sys, boto3
-from helpers import getInt
 from boto3.s3.transfer import TransferConfig
 from botocore.config import Config
+from classes.config import Config as bqckup_config
 from classes.progresspercentage import ProgressPercentage
 from classes.storage import Storage
 
 class s3(object):
     def __init__(self, storage_name: str):
         self.storage = Storage().get_storage_detail(storage_name)
-        self.root_folder_name = 'bqckup'
+        self.root_folder_name = bqckup_config().read('DEFAULT', 'storage', 'bqckup')
         self.clientInit()
         self.bucket_name = self.storage['bucket']
         
