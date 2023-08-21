@@ -1,6 +1,6 @@
 #! /bin/bash
 
-sudo apt-get install zlib1g-dev python3-dev python3-venv build-essential autoconf libtool pkg-config python-opengl python-pil python-pyrex python-pyside.qtopengl qt4-dev-tools qt4-designer libqtgui4 libqtcore4 libqt4-xml libqt4-test libqt4-script libqt4-network libqt4-dbus python-qt4 python-qt4-gl libgle3 python-dev libssl-dev -y
+sudo apt-get install zlib1g-dev python3-dev python3-venv build-essential autoconf libtool pkg-config python-opengl python-pil python-pyrex python-pyside.qtopengl qt4-dev-tools qt4-designer libqtgui4 libqtcore4 libqt4-xml libqt4-test libqt4-script libqt4-network libqt4-dbus python-qt4 python-qt4-gl libgle3 python-dev libssl-dev binutils -y
 
 python3 -m venv venv
 ./venv/bin/python3 -m pip install --upgrade pip

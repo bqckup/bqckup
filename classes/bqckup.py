@@ -10,6 +10,7 @@ from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
 from classes.s3 import s3
 from helpers import difference_in_days, get_today, time_since
 from datetime import datetime
+from helpers.file_management import remove_folder
 
 class ConfigExceptions(Exception):
     pass
@@ -108,7 +109,7 @@ class Bqckup:
             if last_log:
                 interval = backup['options']['interval']
                 last_backup = last_log.created_at
-                last_backup = difference_in_days(time.time(), last_backup)
+                last_backup = abs(difference_in_days(last_backup, time.time()))
                 to_compare = self._interval_in_number(interval)
                 
                 # Not enough time has passed
@@ -213,14 +214,18 @@ class Bqckup:
                     f"{_s3.root_folder_name}/{backup.get('name')}/"
                 )
 
-                if list_folder.get('KeyCount') >= int(backup.get('options').get('retention')):
-                    last_modified_object  = lambda obj: int(obj['LastModified'].strftime('%s'))
-                    sorted_version  = [obj['Key'] for obj in sorted(list_folder.get('Contents'), key=last_modified_object)]
-                    if sorted_version:
-                        for sv in sorted_version:
-                            if sv.startswith(os.path.dirname(sorted_version[0])):
-                                _s3.delete(sv)
+                last_modified_object  = lambda obj: int(obj['LastModified'].strftime('%s'))
+                
+                sorted_version = []
+                for obj in sorted(list_folder.get('Contents'), key=last_modified_object):
+                    folder_name = obj['Key'].replace(os.path.basename(obj['Key']), '')
+                    if folder_name not in sorted_version:
+                        sorted_version.append(folder_name)
 
+                if sorted_version and len(sorted_version) > int(backup.get('options').get('retention')):
+                    for obj in list_folder.get('Contents'):
+                        if obj.startswith(os.path.dirname(sorted_version[0])):
+                            _s3.delete(obj)
             
                 # bqckup config
                 if Config().read('bqckup', 'config_backup'):
@@ -253,6 +258,9 @@ class Bqckup:
         except Exception as e:
             import traceback
             traceback.print_exc()
+
+            # If backup failed remove the tmp folder
+            remove_folder(tmp_path)
             
             # Separate this two error by it's own exceptions
             if 'log_compressed_files' in locals():
