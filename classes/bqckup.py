@@ -217,10 +217,11 @@ class Bqckup:
                 last_modified_object  = lambda obj: int(obj['LastModified'].strftime('%s'))
                 
                 sorted_version = []
-                for obj in sorted(list_folder.get('Contents'), key=last_modified_object):
-                    folder_name = obj['Key'].replace(os.path.basename(obj['Key']), '')
-                    if folder_name not in sorted_version:
-                        sorted_version.append(folder_name)
+                if list_folder.get('Contents'):
+                    for obj in sorted(list_folder.get('Contents'), key=last_modified_object):
+                        folder_name = obj['Key'].replace(os.path.basename(obj['Key']), '')
+                        if folder_name not in sorted_version:
+                            sorted_version.append(folder_name)
 
                 if sorted_version and len(sorted_version) > int(backup.get('options').get('retention')):
                     for obj in list_folder.get('Contents'):
