@@ -8,7 +8,7 @@ from classes.storage import Storage
 class s3(object):
     def __init__(self, storage_name: str):
         self.storage = Storage().get_storage_detail(storage_name)
-        self.root_folder_name = bqckup_config().read('root_folder_name', 'bqckup')
+        self.root_folder_name = bqckup_config().read('bqckup', 'root_folder_name')
         self.clientInit()
         self.bucket_name = self.storage['bucket']
         
