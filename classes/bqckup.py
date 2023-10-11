@@ -225,7 +225,7 @@ class Bqckup:
 
                 if sorted_version and len(sorted_version) > int(backup.get('options').get('retention')):
                     for obj in list_folder.get('Contents'):
-                        if obj.startswith(os.path.dirname(sorted_version[0])):
+                        if obj.get('Key').startswith(os.path.dirname(sorted_version[0])):
                             _s3.delete(obj)
             
                 # bqckup config
