@@ -24,3 +24,4 @@ packaging
 humanfriendly
 wget
 setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
+werkzeug>=3.0.1 # not directly required, pinned by Snyk to avoid a vulnerability
