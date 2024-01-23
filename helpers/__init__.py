@@ -3,6 +3,15 @@ from os import path
 from datetime import date, datetime
 from pathlib import Path
 
+
+def get_server_ip():
+    try:
+        result = requests.get('http://ifconfig.me', verify=False)
+        return result.text.strip()
+    except Exception as e:
+        import socket
+        return socket.gethostbyname(socket.gethostname())
+
 """
     all format with linux
     for example ( converted date )
@@ -137,7 +146,7 @@ def getInt(s):
     return int(arr[0])
 
 def get_today(format="%d-%B-%Y"):
-    return date.today().strftime(format)
+    return datetime.today().strftime(format)
 
 
 def getOlderFiles(path, fromDays):
