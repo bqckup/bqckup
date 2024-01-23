@@ -9,8 +9,19 @@ password="bqckup"
 [bqckup]
 ; Backup the configuration
 config_backup=1
+
 ; Default storage name
 root_folder_name=bqckup
 
 ; To understand how Bqckup performs in various environments by contributing anonymous statistics. This will enable us to identify any issues that may occur with specific distributions or setups and improve our analysis of the data.
 anonymous_statistic=1
+
+[notification]
+; Enable or disable notification
+enabled=0
+
+; Currently Only Discord is supported
+channel=discord
+
+; Webhook URL
+discord_webhook_url=
