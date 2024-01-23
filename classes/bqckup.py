@@ -8,7 +8,7 @@ from classes.yml_parser import Yml_Parser
 from models.log import Log
 from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
 from classes.s3 import s3
-from helpers import difference_in_days, get_today, time_since
+from helpers import difference_in_days, get_today, time_since, get_server_ip
 from datetime import datetime
 from helpers.file_management import remove_folder
 
@@ -269,6 +269,25 @@ class Bqckup:
                 
             if 'log_database' in locals():
                 Log().update_status(log_database.id, Log.__FAILED__, f"Database Backup Failed: {e}")
+                
+            
+            should_send_notification = Config().read('notification', 'enabled')
+            if should_send_notification == '1':
+                from lib.notifications.discord import send_notification
+                send_notification({
+                    "embeds": [{
+                        "title": f"Bqckup Failed",
+                        "description": f"This is an automated notification to inform you that the bqckup has failed.",
+                        "color": 15548997,
+                        "fields": [
+                            {"name": "Server IP", "value": get_server_ip(), "inline": True},
+                            {"name": "Name", "value": backup.get('name'), "inline": True},
+                            {"name": "Date", "value": get_today(format="%d-%B-%Y"), "inline":True},
+                            {"name": "Details", "value": f"{e}", "inline": False}
+                        ],
+                        "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
+                    }]
+                })
                 
             print(f"[{backup.get('name')}] Error: {e}.")
     
