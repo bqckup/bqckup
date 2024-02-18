@@ -1,5 +1,3 @@
-#! /etc/bqckup/venv/bin/python3
-
 import typer, getpass, os, requests
 from classes.bqckup import Bqckup
 from classes.config import Config

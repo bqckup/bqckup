@@ -9,28 +9,28 @@ CONFIG_FILE="https://raw.githubusercontent.com/bqckup/bqckup/1x/bqckup.cnf.examp
 green=`tput setaf 2`
 reset=`tput sgr0`
 
-if [ "$DISTRO" = "Ubuntu" ]; then
-    sudo apt-get install sqlite3 curl
-    wget "$DOWNLOAD_LINK/$LATEST_VERSION/bqckup-debian.tar.gz"
-    if [[ "$DISTRO_VERSION" < "18.04" ]]; then
-        echo "Ubuntu 18.04 or higher is required to run Bqckup."
-        exit 1
-    fi
+if [ "$DISTRO" != "Ubuntu" ]; then
+	echo "Currently only running on ubuntu"
+	exit 1
 fi
 
-if [ "$DISTRO" = "CentOS" ]; then
-    sudo yum install sqlite3
-    wget "$DOWNLOAD_LINK/$LATEST_VERSION/bqckup-centos.tar.gz"
+if [[ "$DISTRO_VERSION" < "18.04" ]]; then
+	echo "Ubuntu 18.04 or higher is required to run Bqckup."
+	exit 1
 fi
 
-tar xvf bqckup-debian.tar.gz && \ 
-    rm bqckup-debian.tar.gz && \
+sudo apt-get install sqlite3 curl -y
+wget "$DOWNLOAD_LINK/ubuntu/$DISTRO_VERSION/latest.tar.gz" -O "/tmp/bqckup.tar.gz"
+
+tar xvf /tmp/bqckup.tar.gz && \ 
+    rm /tmp/bqckup.tar.gz && \
     sudo chmod +x bqckup && \
     mv bqckup /usr/bin && \
     sudo mkdir -p /etc/bqckup && \
     sudo curl -o /etc/bqckup/bqckup.cnf "$CONFIG_FILE"
 
+bqckup get-information
+
 printf "\n##############################################\n"
 printf "\nBqckup is installed\n"
-printf "\nRun: ${green}bqckup gui-active${reset} to setup the apps\n"
 printf "\n##############################################\n"
