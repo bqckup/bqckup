@@ -84,5 +84,3 @@ You can [Visit Here](https://docs.bqckup.com) to view full documentation
 | Ubuntu 18.04 | ✅          |
 | Ubuntu 20.04 | ✅          |
 | Ubuntu 22.04 | ✅          |
-| Centos 7     | ✅          |
-| Rocky Linux  | ✅          |
