@@ -13,7 +13,7 @@ SITE_CONFIG_PATH = path.join(BQ_PATH, 'sites')
 CONFIG_PATH = path.join(BQ_PATH, 'bqckup.cnf')
 
 # Bqckup Information
-VERSION = "1.2.6"
+VERSION = "1.2.7"
 
 # YOURLS Credentials
 YOURLS_HOST = ""

@@ -1,36 +1,36 @@
 #!/bin/bash
 
-DOWNLOAD_LINK="https://downloads.bqckup.com"
-LATEST_VERSION=$(curl https://downloads.bqckup.com/latest.txt)
-BQCKUP_PATH="/etc/bqckup"
-DISTRO=$(lsb_release -is)
-DISTRO_VERSION=$(lsb_release -rs)
-CONFIG_FILE="https://raw.githubusercontent.com/bqckup/bqckup/1x/bqckup.cnf.example"
-green=`tput setaf 2`
-reset=`tput sgr0`
+# Define variables
+REPO_URL="https://github.com/bqckup/bqckup"
+INSTALL_DIR="/usr/bin"
+APP_NAME="bqckup"
 
-if [ "$DISTRO" != "Ubuntu" ]; then
-	echo "Currently only running on ubuntu"
-	exit 1
+# Function to print messages
+print_message() {
+    local message="$1"
+    printf "\n##############################################\n"
+    printf "\n%s\n" "$message"
+    printf "\n##############################################\n"
+}
+
+# Clone the repository
+if git clone "$REPO_URL"; then
+    cd "$APP_NAME" || { echo "Failed to enter directory $APP_NAME"; exit 1; }
+else
+    echo "Failed to clone repository from $REPO_URL"
+    exit 1
 fi
 
-if [[ "$DISTRO_VERSION" < "18.04" ]]; then
-	echo "Ubuntu 18.04 or higher is required to run Bqckup."
-	exit 1
+# Build and install the application
+if make && make install; then
+    if mv dist/"$APP_NAME" "$INSTALL_DIR"; then
+        bqckup get-information
+        print_message "$APP_NAME is installed successfully"
+    else
+        echo "Failed to move $APP_NAME to $INSTALL_DIR"
+        exit 1
+    fi
+else
+    echo "Build or install failed"
+    exit 1
 fi
-
-sudo apt-get install sqlite3 curl -y
-wget "$DOWNLOAD_LINK/ubuntu/$DISTRO_VERSION/latest.tar.gz" -O "/tmp/bqckup.tar.gz"
-
-tar xvf /tmp/bqckup.tar.gz && \ 
-    rm /tmp/bqckup.tar.gz && \
-    sudo chmod +x bqckup && \
-    mv bqckup /usr/bin && \
-    sudo mkdir -p /etc/bqckup && \
-    sudo curl -o /etc/bqckup/bqckup.cnf "$CONFIG_FILE"
-
-bqckup get-information
-
-printf "\n##############################################\n"
-printf "\nBqckup is installed\n"
-printf "\n##############################################\n"
