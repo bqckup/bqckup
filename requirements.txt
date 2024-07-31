@@ -6,7 +6,6 @@ Flask-Caching
 Flask-Cors
 Flask-Login
 Flask-WTF
-gevent
 gunicorn
 hurry.filesize
 mysql-connector-python

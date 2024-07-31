@@ -139,6 +139,9 @@ def run(force: bool = False):
 
 @ bq_cli.command()
 def gui_active():
+    print("[yellow] Currently not supported [/yellow]")
+    return
+    
     from gevent.pywsgi import WSGIServer
 
     try:
