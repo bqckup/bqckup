@@ -8,6 +8,9 @@ sender = {
 }
 
 def send_notification(data):
+    if Config().read('notification', 'enabled') != '1':
+        return
+    
     try:
         data = {**sender, **data}
         req.post(Config().read('notification', 'discord_webhook_url'), json=data)        

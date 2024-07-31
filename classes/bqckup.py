@@ -13,6 +13,9 @@ from helpers import difference_in_days, get_today, time_since, get_server_ip
 from datetime import datetime
 from helpers.file_management import remove_folder
 from hashlib import sha256
+from lib.notifications.discord import send_notification
+from rich import print
+
 class ConfigExceptions(Exception):
     pass
 
@@ -21,6 +24,34 @@ class Bqckup:
         
         if not os.path.exists(SITE_CONFIG_PATH):
             os.makedirs(SITE_CONFIG_PATH)
+            
+    def _send_notification(self, backup_name, messages, additional_data):
+        fields = [
+            {"name": "Server IP", "value": get_server_ip(), "inline": True},
+            {"name": "Name", "value": backup_name, "inline": True},
+            {"name": "Date", "value": get_today(format="%d-%B-%Y"), "inline":True},
+        ]
+        
+        if additional_data:
+            fields.append(additional_data)
+            
+        fields.append({"name": "Details", "value": messages, "inline": False})
+        
+        payload = {
+            "embeds": [{
+                "title": f"No Changes Detected",
+                "description": f"This is an automated notification to inform you that the bqckup information.",
+                "color": 15548997,
+                "fields": fields,
+                "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
+            }]
+        }
+
+          
+        hashed_payload = sha256(str(payload).encode()).hexdigest()                    
+        if not NotificationLog().select().where(NotificationLog.hash == hashed_payload).exists():
+            send_notification(payload)
+            NotificationLog().create(hash=hashed_payload, sent_at=int(time.time()))
             
     def validate_config(self, name: str) -> None:
         print(f"\nChecking {name} config ...")
@@ -155,9 +186,20 @@ class Bqckup:
                 "storage": backup['options']['storage']
             })
             
-            print("\nCompressing files ...")
+            print(f"\nStarting backup for {backup.get('name')}\n")
+                                    
+            print("Compressing files ...")
+            compressed_file = Tar().compress(backup.get('path'),compressed_file)
+            last_compressed_file_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__FILES__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
             
-            compressed_file = Tar().compress(backup.get('path'), compressed_file)
+            
+            print(f"Previous: {last_compressed_file_backup.file_size}")
+            print(f"Current: {os.stat(compressed_file).st_size}")
+            
+            if last_compressed_file_backup and os.stat(compressed_file).st_size == last_compressed_file_backup.file_size:
+                print(f"[red]\nBased on file size, there is no changes detected for {compressed_file}[/red]\n")
+                self._send_notification(backup.get('name'), "Based on file size, there is no changes detected", {"name": "File name", "value": os.path.basename(compressed_file), "inline": False})                    
+
             
             Log().update(file_size=os.stat(compressed_file).st_size).where(Log.id == log_compressed_files.id).execute()
             
@@ -182,7 +224,17 @@ class Bqckup:
                     db_name=backup.get('database').get('name'),
                 )
                 
-                Log().update(file_size=os.stat(sql_path).st_size).where(Log.id == log_database.id).execute()
+                
+            last_log_db_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__DATABASE__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
+            
+            print(f"Previous: {last_log_db_backup.file_size}")
+            print(f"Current: {os.stat(sql_path).st_size}")
+
+            if last_log_db_backup and os.stat(sql_path).st_size == last_log_db_backup.file_size:
+                print(f"\n[red]Based on file size, there is no changes detected for {sql_path}[/red]\n")
+                self._send_notification(backup.get('name'), "Based on file size, there is no changes detected", {"name": "File name", "value": os.path.basename(sql_path), "inline": False})
+            
+            Log().update(file_size=os.stat(sql_path).st_size).where(Log.id == log_database.id).execute()
             
             if backup.get('options').get('provider') == 'local':
                 destination = backup.get('options').get('destination')
@@ -234,7 +286,7 @@ class Bqckup:
                     _s3.upload(STORAGE_CONFIG_PATH, 'storages.yml', False)
 
                 if os.path.exists(compressed_file):
-                    print(f"\nUploading {compressed_file}\n")
+                    print(f"Uploading ...")
                     _s3.upload(
                         compressed_file,
                         f"{backup_folder}/{os.path.basename(compressed_file)}"
@@ -243,7 +295,7 @@ class Bqckup:
                     
                 
                 if os.path.exists(sql_path):
-                    print(f"\n\nUploading {sql_path}\n")
+                    print(f"\n\nUploading ...")
                     _s3.upload(
                         sql_path,
                         f"{backup_folder}/{os.path.basename(sql_path)}"
@@ -272,7 +324,7 @@ class Bqckup:
                 
                     Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success")
             
-            print(f"\nBackup for {backup.get('name')} is done!\n")
+            print(f"\n\n[green]Backup for {backup.get('name')} is done![/green]\n")
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -288,32 +340,10 @@ class Bqckup:
                 Log().update_status(log_database.id, Log.__FAILED__, f"Database Backup Failed: {e}")
                 
             
-            should_send_notification = Config().read('notification', 'enabled')
-            if should_send_notification == '1':
-                from lib.notifications.discord import send_notification
-                
-                payload = {
-                    "embeds": [{
-                        "title": f"Bqckup Failed",
-                        "description": f"This is an automated notification to inform you that the bqckup has failed.",
-                        "color": 15548997,
-                        "fields": [
-                            {"name": "Server IP", "value": get_server_ip(), "inline": True},
-                            {"name": "Name", "value": backup.get('name'), "inline": True},
-                            {"name": "Date", "value": get_today(format="%d-%B-%Y"), "inline":True},
-                            {"name": "Details", "value": f"{e}", "inline": False}
-                        ],
-                        "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
-                    }]
-                }
-                
-                hashed_payload = sha256(str(payload).encode()).hexdigest()
-                
-                if not NotificationLog().select().where(NotificationLog.hash == hashed_payload).exists():
-                    send_notification(payload)
-                    NotificationLog().create(hash=hashed_payload, sent_at=int(time.time()))
+            self._send_notification(backup.get('name'), f"Error: {e}", None)
                 
             print(f"[{backup.get('name')}] Error: {e}.")
+         
     
     def remove(self):
         pass
