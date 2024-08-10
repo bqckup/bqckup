@@ -1,0 +1,8 @@
+storages:
+  storage1:
+    bucket: ridhobackup
+    access_key_id: 4588dc7060058145e212a514c6bb2b03
+    secret_access_key: 1841cee4af3a9890ab587aea0d985c0c625994d9bf8498cf4d1b20eddfcac739
+    region: auto
+    endpoint: https://4fe082a30832ef4bbdb0bb3a0c74123f.r2.cloudflarestorage.com/
+    primary: yes

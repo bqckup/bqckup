@@ -126,7 +126,7 @@ class Bqckup:
     def get_logs(self, name: str):
         return list(Log().select().where(Log.name == name))
     
-    def backup(self, force:bool = False):
+    def backup(self, force:bool = False, site : str = None):
         backups = self.list()
         
         if not backups:
@@ -137,6 +137,11 @@ class Bqckup:
             backup = backups[i]
             # self.validate_config(backup['name'])
             last_log = self.get_last_log(backup['name'])
+
+            if site:
+                if backup['name'] != site:
+                    print(f"domain {site} not found")
+                    continue
             
             if last_log:
                 interval = backup['options']['interval']
@@ -192,9 +197,9 @@ class Bqckup:
             compressed_file = Tar().compress(backup.get('path'),compressed_file)
             last_compressed_file_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__FILES__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
             
-            
-            print(f"Previous: {last_compressed_file_backup.file_size}")
-            print(f"Current: {os.stat(compressed_file).st_size}")
+            if last_compressed_file_backup:
+                print(f"Previous: {last_compressed_file_backup.file_size}")
+                print(f"Current: {os.stat(compressed_file).st_size}")
             
             if last_compressed_file_backup and os.stat(compressed_file).st_size == last_compressed_file_backup.file_size:
                 print(f"[red]\nBased on file size, there is no changes detected for {compressed_file}[/red]\n")
@@ -226,9 +231,10 @@ class Bqckup:
                 
                 
             last_log_db_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__DATABASE__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
-            
-            print(f"Previous: {last_log_db_backup.file_size}")
-            print(f"Current: {os.stat(sql_path).st_size}")
+
+            if last_log_db_backup:
+                print(f"Previous: {last_log_db_backup.file_size}")
+                print(f"Current: {os.stat(sql_path).st_size}")
 
             if last_log_db_backup and os.stat(sql_path).st_size == last_log_db_backup.file_size:
                 print(f"\n[red]Based on file size, there is no changes detected for {sql_path}[/red]\n")
