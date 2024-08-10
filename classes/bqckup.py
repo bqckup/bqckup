@@ -128,6 +128,7 @@ class Bqckup:
     
     def backup(self, force:bool = False, site : str = None):
         backups = self.list()
+        is_site_found = False
         
         if not backups:
             print("No backups found")
@@ -140,8 +141,8 @@ class Bqckup:
 
             if site:
                 if backup['name'] != site:
-                    print(f"domain {site} not found")
                     continue
+                is_site_found = True
             
             if last_log:
                 interval = backup['options']['interval']
@@ -164,6 +165,10 @@ class Bqckup:
                     continue
                 
             self.do_backup(backup['file_name'])
+
+        if not is_site_found:
+            print(f"Site {site} not found")
+            return
     
     # Upload
     def do_backup(self, backup_config):
