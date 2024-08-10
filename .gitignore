@@ -11,3 +11,4 @@ config/*.yml
 sites/*.yml
 sites/*.yml
 bqckup.cnf
+constant/__init__.py

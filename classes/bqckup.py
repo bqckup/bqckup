@@ -97,7 +97,7 @@ class Bqckup:
             return 30
         return 1
     
-    def list(self):
+    def list(self, site:str = None):
         files = File().get_file_list(SITE_CONFIG_PATH)
         files = [file for file in files if file.endswith('.yml')]
         results = {}
@@ -117,7 +117,16 @@ class Bqckup:
             if results[index]['last_backup']:
                 next_backup_in_date = datetime.fromtimestamp(results[index]['last_backup'] + (self._interval_in_number(bqckup['options']['interval']) * 86400)).strftime('%d/%m/%Y 00:00:00')
                 results[index]['next_backup'] = time_since(datetime.strptime(next_backup_in_date, '%d/%m/%Y %H:%M:%S').timestamp(), time.time(), reverse=True)
-                
+        
+        if site:
+            for index in list(results):
+                if results[index]['name'] != site:
+                    del results[index]
+
+        if results == {} :
+            print (f"domain {site} not found")
+            return
+            
         return results
             
     def get_last_log(self, name:str):
@@ -126,9 +135,8 @@ class Bqckup:
     def get_logs(self, name: str):
         return list(Log().select().where(Log.name == name))
     
-    def backup(self, force:bool = False, site : str = None):
-        backups = self.list()
-        is_site_found = False
+    def backup(self, force:bool = False, site:str = None):
+        backups = self.list(site)
         
         if not backups:
             print("No backups found")
@@ -138,11 +146,6 @@ class Bqckup:
             backup = backups[i]
             # self.validate_config(backup['name'])
             last_log = self.get_last_log(backup['name'])
-
-            if site:
-                if backup['name'] != site:
-                    continue
-                is_site_found = True
             
             if last_log:
                 interval = backup['options']['interval']
@@ -165,10 +168,6 @@ class Bqckup:
                     continue
                 
             self.do_backup(backup['file_name'])
-
-        if not is_site_found:
-            print(f"Site {site} not found")
-            return
     
     # Upload
     def do_backup(self, backup_config):
