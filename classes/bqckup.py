@@ -96,8 +96,9 @@ class Bqckup:
         elif interval == 'monthly':
             return 30
         return 1
+        
     
-    def list(self, site:str = None):
+    def list(self):
         files = File().get_file_list(SITE_CONFIG_PATH)
         files = [file for file in files if file.endswith('.yml')]
         results = {}
@@ -117,15 +118,6 @@ class Bqckup:
             if results[index]['last_backup']:
                 next_backup_in_date = datetime.fromtimestamp(results[index]['last_backup'] + (self._interval_in_number(bqckup['options']['interval']) * 86400)).strftime('%d/%m/%Y 00:00:00')
                 results[index]['next_backup'] = time_since(datetime.strptime(next_backup_in_date, '%d/%m/%Y %H:%M:%S').timestamp(), time.time(), reverse=True)
-        
-        if site:
-            for index in list(results):
-                if results[index]['name'] != site:
-                    del results[index]
-
-        if results == {} :
-            print (f"domain {site} not found")
-            return
             
         return results
             
@@ -136,8 +128,15 @@ class Bqckup:
         return list(Log().select().where(Log.name == name))
     
     def backup(self, force:bool = False, site:str = None):
-        backups = self.list(site)
-        
+
+        """
+            Need to optimize this code
+        """
+        if site:
+            backups = {0 : self.detail(site)}
+        else:
+            backups = self.list(site)
+          
         if not backups:
             print("No backups found")
             return
