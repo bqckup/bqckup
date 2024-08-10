@@ -7,7 +7,7 @@ dist/
 build/
 .vscode/
 static/*.md
-config/storages.yml
-sites/domain.yml
-sites/domain1.yml
+config/*.yml
+sites/*.yml
+sites/*.yml
 bqckup.cnf
