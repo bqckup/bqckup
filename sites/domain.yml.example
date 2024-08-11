@@ -14,6 +14,6 @@ bqckup:
     interval: daily
     retention: '7'
     save_locally: no
-    save_locally_path: /home/magang/Documents/bqckup/tmp
+    save_locally_path: /etc/bqckup/tmp
     notification_email: email@example.com
     provider: s3
