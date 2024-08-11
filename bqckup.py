@@ -133,8 +133,8 @@ def test_config():
 
 
 @ bq_cli.command()
-def run(force: bool = False):
-    Bqckup().backup(force=force)
+def run(force: bool = False, site : str = None):
+    Bqckup().backup(force=force, site=site)
 
 
 @ bq_cli.command()

@@ -1,0 +1,8 @@
+storages:
+  dummy:
+    bucket: dummy
+    access_key_id: dummy
+    secret_access_key: dummy
+    region: dummy
+    endpoint: dummy
+    primary: no
