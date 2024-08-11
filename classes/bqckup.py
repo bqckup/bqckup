@@ -135,7 +135,7 @@ class Bqckup:
         if site:
             backups = {0 : self.detail(site)}
         else:
-            backups = self.list(site)
+            backups = self.list()
           
         if not backups:
             print("No backups found")
@@ -233,17 +233,17 @@ class Bqckup:
                 )
                 
                 
-            last_log_db_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__DATABASE__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
+                last_log_db_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__DATABASE__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
 
-            if last_log_db_backup:
-                print(f"Previous: {last_log_db_backup.file_size}")
-                print(f"Current: {os.stat(sql_path).st_size}")
+                if last_log_db_backup:
+                    print(f"Previous: {last_log_db_backup.file_size}")
+                    print(f"Current: {os.stat(sql_path).st_size}")
 
-            if last_log_db_backup and os.stat(sql_path).st_size == last_log_db_backup.file_size:
-                print(f"\n[red]Based on file size, there is no changes detected for {sql_path}[/red]\n")
-                self._send_notification(backup.get('name'), "Based on file size, there is no changes detected", {"name": "File name", "value": os.path.basename(sql_path), "inline": False})
-            
-            Log().update(file_size=os.stat(sql_path).st_size).where(Log.id == log_database.id).execute()
+                if last_log_db_backup and os.stat(sql_path).st_size == last_log_db_backup.file_size:
+                    print(f"\n[red]Based on file size, there is no changes detected for {sql_path}[/red]\n")
+                    self._send_notification(backup.get('name'), "Based on file size, there is no changes detected", {"name": "File name", "value": os.path.basename(sql_path), "inline": False})
+                
+                Log().update(file_size=os.stat(sql_path).st_size).where(Log.id == log_database.id).execute()
             
             if backup.get('options').get('provider') == 'local':
                 destination = backup.get('options').get('destination')
