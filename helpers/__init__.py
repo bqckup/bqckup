@@ -22,9 +22,9 @@ def get_server_ip():
 def difference_in_days(date1: int, date2: int) -> int:
     date1 = datetime.fromtimestamp(date1)
     date2 = datetime.fromtimestamp(date2)
-    day1 = date1.date().day
-    day2 = date2.date().day
-    return day1 - day2
+    difference =  date2 - date1
+    return difference.days
+    
 
 # dt = unix format
 def time_since(dt, default="now", reverse=False):
