@@ -96,6 +96,7 @@ class Bqckup:
         elif interval == 'monthly':
             return 30
         return 1
+        
     
     def list(self):
         files = File().get_file_list(SITE_CONFIG_PATH)
@@ -117,7 +118,7 @@ class Bqckup:
             if results[index]['last_backup']:
                 next_backup_in_date = datetime.fromtimestamp(results[index]['last_backup'] + (self._interval_in_number(bqckup['options']['interval']) * 86400)).strftime('%d/%m/%Y 00:00:00')
                 results[index]['next_backup'] = time_since(datetime.strptime(next_backup_in_date, '%d/%m/%Y %H:%M:%S').timestamp(), time.time(), reverse=True)
-                
+            
         return results
             
     def get_last_log(self, name:str):
@@ -126,9 +127,16 @@ class Bqckup:
     def get_logs(self, name: str):
         return list(Log().select().where(Log.name == name))
     
-    def backup(self, force:bool = False):
-        backups = self.list()
-        
+    def backup(self, force:bool = False, site:str = None):
+
+        """
+            Need to optimize this code
+        """
+        if site:
+            backups = {0 : self.detail(site)}
+        else:
+            backups = self.list()
+          
         if not backups:
             print("No backups found")
             return
@@ -225,16 +233,17 @@ class Bqckup:
                 )
                 
                 
-            last_log_db_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__DATABASE__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
-            
-            print(f"Previous: {last_log_db_backup.file_size}")
-            print(f"Current: {os.stat(sql_path).st_size}")
+                last_log_db_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__DATABASE__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
 
-            if last_log_db_backup and os.stat(sql_path).st_size == last_log_db_backup.file_size:
-                print(f"\n[red]Based on file size, there is no changes detected for {sql_path}[/red]\n")
-                self._send_notification(backup.get('name'), "Based on file size, there is no changes detected", {"name": "File name", "value": os.path.basename(sql_path), "inline": False})
-            
-            Log().update(file_size=os.stat(sql_path).st_size).where(Log.id == log_database.id).execute()
+                if last_log_db_backup:
+                    print(f"Previous: {last_log_db_backup.file_size}")
+                    print(f"Current: {os.stat(sql_path).st_size}")
+
+                if last_log_db_backup and os.stat(sql_path).st_size == last_log_db_backup.file_size:
+                    print(f"\n[red]Based on file size, there is no changes detected for {sql_path}[/red]\n")
+                    self._send_notification(backup.get('name'), "Based on file size, there is no changes detected", {"name": "File name", "value": os.path.basename(sql_path), "inline": False})
+                
+                Log().update(file_size=os.stat(sql_path).st_size).where(Log.id == log_database.id).execute()
             
             if backup.get('options').get('provider') == 'local':
                 destination = backup.get('options').get('destination')
