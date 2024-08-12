@@ -7,6 +7,7 @@ dist/
 build/
 .vscode/
 static/*.md
-sites/*.yml
+sites/*
 config/*.yml
 bqckup.cnf
+constant/__init__.py

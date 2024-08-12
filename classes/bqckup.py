@@ -192,8 +192,9 @@ class Bqckup:
             compressed_file = Tar().compress(backup.get('path'),compressed_file, backup_config.get('exclude_path', []))
             last_compressed_file_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__FILES__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
             
-            print(f"Previous: {last_compressed_file_backup.file_size}")
-            print(f"Current: {os.stat(compressed_file).st_size}")
+            if last_compressed_file_backup:
+                print(f"Previous: {last_compressed_file_backup.file_size}")
+                print(f"Current: {os.stat(compressed_file).st_size}")
             
             if last_compressed_file_backup and os.stat(compressed_file).st_size == last_compressed_file_backup.file_size:
                 print(f"[red]\nBased on file size, there is no changes detected for {compressed_file}[/red]\n")
