@@ -1,0 +1,19 @@
+bqckup:
+  name: domain
+  path:
+    - /var/www/html
+  database:
+    type: mysql
+    host: localhost
+    port: 3306
+    user: root
+    password: root
+    name: database
+  options:
+    storage: dummy
+    interval: daily
+    retention: '7'
+    save_locally: no
+    save_locally_path: /home/magang/Documents/bqckup/tmp
+    notification_email: email@example.com
+    provider: s3
