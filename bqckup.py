@@ -325,21 +325,20 @@ def download_latest(name: str, target: str = None):
                 str(i+1), backup['Key'], backup['LastModified'].strftime("%d %b %Y %H:%M:%S"))
 
         Console().print(table)
- 
-        for i, backup in enumerate(sorted_backups):
-            if target.is_dir():
-                file_path = target / Path(backup['Key']).name
-            else:
-                file_path = target
-            
-            if file_path.exists() and not file_path.is_dir():
-                raise OSError(f"[red]File already exists at path: {file_path}[/red]")
-            if not file_path.exists():
-                file_path.parent.mkdir(parents=True, exist_ok=True)
-                print(f"[green]Created directory: {file_path.parent}[/green]")
+        if target.is_dir():
+            print(f"[green]Target directory: {target}[/green]")
+        else:
+            target.mkdir(parents=True, exist_ok=True)
+            print(f"[green]Created directory: {target}[/green]")
 
+        for i, backup in enumerate(sorted_backups):
+            backup_file_path = Path(backup['Key']).name
+            file_path = target / backup_file_path
+
+
+
+            print(f"[green]Downloading {backup['Key']} to {file_path}...[/green]")
             _s3.client.download_file(_s3.bucket_name, backup['Key'], str(file_path))
-            print(f"[green]Downloading {backup['Key']} to {file_path}...[/green]")            
             
         print(f"[green]Downloaded successfully[/green]")
     except Exception as e:
