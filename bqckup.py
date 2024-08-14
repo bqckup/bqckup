@@ -25,7 +25,11 @@ bq_cli = typer.Typer()
 
 @ bq_cli.command()
 def history(site = None):
-
+    from models.log import Log
+    from datetime import datetime
+    from collections import defaultdict
+    from helpers import bytes_to
+    
     bqckups = Bqckup().list()
 
     # search the site
@@ -42,6 +46,7 @@ def history(site = None):
 
         logs = Bqckup().get_logs(backup['name'])
         if logs:
+            # merge database and files log
             grouped_data = defaultdict(list)
             for log in logs:
                 grouped_data[log.pairing_key].append(log)
@@ -52,6 +57,7 @@ def history(site = None):
             table = Table("schedule", "last backup date", "last database file size", "last file size", "status", 'time consume (s)')
 
             for log in logs:
+                # get database and file log
                 database_log = None
                 file_log = None
                 for item in log:
@@ -60,6 +66,8 @@ def history(site = None):
                     else:
                         file_log = item
                 
+                # check status
+                # automatically fails if one of them is missing
                 if (database_log and file_log) and (database_log.status == Log.__SUCCESS__ and file_log.status == Log.__SUCCESS__):
                     status = "[green]Success[/green]"
                 else:
