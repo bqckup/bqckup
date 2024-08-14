@@ -16,6 +16,7 @@ from rich import print
 from rich.console import Group, Console
 from rich.table import Table
 from rich.panel import Panel
+from rich.progress import Progress
 
 bq_cli = typer.Typer()
 
@@ -295,8 +296,10 @@ def check_update(update: bool = False):
         print(f"Latest Version  : {latest_version}")
 
 @ bq_cli.command()
-def download_latest(name: str, target: str = None):
+def download_latest(name: str, target: str = typer.Option(),):
     from humanfriendly import format_size
+    from helpers import convertDatetime
+
     try:
         node = Bqckup().detail(name)
 
@@ -348,11 +351,13 @@ def download_latest(name: str, target: str = None):
                 print(f"[yellow]File {file_path} already exists[/yellow]")
                 continue
 
-            print(f"[green]Downloading {backup['Key']} to {file_path}...[/green]")
+            # print(f"[green]Downloading {backup['Key']} to {file_path}...[/green]")
             total_size = backup['Size']
-            with typer.progressbar(length=total_size, label=f"Downloading {backup_file_path}") as progress:
+            with Progress() as progress:
+                task = progress.add_task(f"{backup_file_path}", total=total_size)
+                
                 def progress_callback(bytes_transferred):
-                    progress.update(bytes_transferred)
+                    progress.update(task, advance=bytes_transferred)
                 
                 _s3.client.download_file(_s3.bucket_name, backup['Key'], str(file_path), Callback=progress_callback)
             
