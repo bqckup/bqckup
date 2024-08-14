@@ -335,7 +335,9 @@ def download_latest(name: str, target: str = None):
             backup_file_path = Path(backup['Key']).name
             file_path = target / backup_file_path
 
-
+            if file_path.exists():
+                print(f"[yellow]File {file_path} already exists[/yellow]")
+                continue
 
             print(f"[green]Downloading {backup['Key']} to {file_path}...[/green]")
             _s3.client.download_file(_s3.bucket_name, backup['Key'], str(file_path))
