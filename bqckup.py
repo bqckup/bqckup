@@ -16,9 +16,68 @@ from rich import print
 from rich.console import Group, Console
 from rich.table import Table
 from rich.panel import Panel
+from models.log import Log
+from datetime import datetime
+from collections import defaultdict
+from helpers import bytes_to
 
 bq_cli = typer.Typer()
 
+@ bq_cli.command()
+def history(site = None):
+
+    bqckups = Bqckup().list()
+
+    # search the site
+    if site is not None: 
+        for i in list(bqckups):
+            if bqckups[i]['name'] != site:
+                del bqckups[i]
+        if not bqckups:
+            print(f"Site '{site}' not found")
+            return
+
+    for i in bqckups:
+        backup = bqckups[i]
+
+        logs = Bqckup().get_logs(backup['name'])
+        if logs:
+            grouped_data = defaultdict(list)
+            for log in logs:
+                grouped_data[log.pairing_key].append(log)
+
+            logs = list(grouped_data.values())
+            interval = backup['options']['interval']
+
+            table = Table("schedule", "last backup date", "last database file size", "last file size", "status", 'time consume (s)')
+
+            for log in logs:
+                database_log = None
+                file_log = None
+                for item in log:
+                    if item.type == Log.__DATABASE__:
+                        database_log = item
+                    else:
+                        file_log = item
+                
+                if (database_log and file_log) and (database_log.status == Log.__SUCCESS__ and file_log.status == Log.__SUCCESS__):
+                    status = "[green]Success[/green]"
+                else:
+                    status = "[red]Failed[/red]"
+
+                last_backup = datetime.fromtimestamp(file_log.created_at if file_log else database_log.created_at).strftime('%d/%m/%Y %H:%M:%S')
+                database_size = database_log.file_size if database_log else 0
+                database_size = bytes_to('k', database_size)
+                file_size = bytes_to('m', (file_log.file_size if file_log else 0))
+                time_consume = file_log.time_consume if file_log else database_log.time_consume
+
+                table.add_row(interval, last_backup, f"{database_size} kb", f"{file_size} mb", status, f"{time_consume:.2f}")
+    
+            print(f"\nBackup Name: {backup['name']}")
+            Console().print(table)
+            print('\n')
+
+    print(f"Visit: https://bqckup.com\n")    
 
 @bq_cli.command()
 def add_site(
