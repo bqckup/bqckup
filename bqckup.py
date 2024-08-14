@@ -298,8 +298,7 @@ def check_update(update: bool = False):
 @ bq_cli.command()
 def download_latest(name: str, target: str = typer.Option(),):
     from humanfriendly import format_size
-    from helpers import convertDatetime
-
+        
     try:
         node = Bqckup().detail(name)
 
@@ -351,7 +350,6 @@ def download_latest(name: str, target: str = typer.Option(),):
                 print(f"[yellow]File {file_path} already exists[/yellow]")
                 continue
 
-            # print(f"[green]Downloading {backup['Key']} to {file_path}...[/green]")
             total_size = backup['Size']
             with Progress() as progress:
                 task = progress.add_task(f"{backup_file_path}", total=total_size)
