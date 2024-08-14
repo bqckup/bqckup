@@ -1,7 +1,7 @@
 from os import path
 
 # Bqckup Path
-BQ_PATH = "/etc/bqckup"
+BQ_PATH = "/home/ubuntu/Development/bqckup"
 
 # Bqckup Storage Config Path
 STORAGE_CONFIG_PATH = path.join(BQ_PATH, 'config', 'storages.yml')

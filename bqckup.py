@@ -110,7 +110,6 @@ def get_information():
         Panel.fit(content, title="Bqckup information",
                   title_align="left", border_style="yellow"))
 
-
 @ bq_cli.command()
 def test_config():
     sites = Bqckup().list()
@@ -294,6 +293,57 @@ def check_update(update: bool = False):
 
         print(f"Current Version : {VERSION}")
         print(f"Latest Version  : {latest_version}")
+
+@ bq_cli.command()
+def download_latest(name: str, target: str = None):
+    try:
+        node = Bqckup().detail(name)
+
+        if not node:
+            print(f"[red] Backup for {name} not found [/red]")
+            return 
+        
+        if not target:
+            target = Path().absolute()
+        else:
+            target = Path(target)
+
+        _s3 = s3(node['options']['storage'])
+        backups = _s3.list(f"{_s3.root_folder_name}/{node['name']}")
+        config = _s3.list(f"{_s3.root_folder_name}/config/")
+
+        config_file = [item for item in  config.get('Contents', []) if item['Key'].endswith('.yml') and name in item['Key']][0]
+        
+        backup_contents = backups.get('Contents')   
+        sorted_backups = sorted(backup_contents, key=lambda x: x['LastModified'], reverse=True)[:2]
+
+        sorted_backups.append(config_file)
+
+        table = Table("#", "Data", "Created at")
+        for i, backup in enumerate(sorted_backups):
+            table.add_row(
+                str(i+1), backup['Key'], backup['LastModified'].strftime("%d %b %Y %H:%M:%S"))
+
+        Console().print(table)
+ 
+        for i, backup in enumerate(sorted_backups):
+            if target.is_dir():
+                file_path = target / Path(backup['Key']).name
+            else:
+                file_path = target
+            
+            if file_path.exists() and not file_path.is_dir():
+                raise OSError(f"[red]File already exists at path: {file_path}[/red]")
+            if not file_path.exists():
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                print(f"[green]Created directory: {file_path.parent}[/green]")
+
+            _s3.client.download_file(_s3.bucket_name, backup['Key'], str(file_path))
+            print(f"[green]Downloading {backup['Key']} to {file_path}...[/green]")            
+            
+        print(f"[green]Downloaded successfully[/green]")
+    except Exception as e:
+        print(f"[red]An error occurred: {e}[/red]")
 
 
 if __name__ == "__main__":
