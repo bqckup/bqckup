@@ -296,11 +296,12 @@ def check_update(update: bool = False):
 
 @ bq_cli.command()
 def download_latest(name: str, target: str = None):
+    from humanfriendly import format_size
     try:
         node = Bqckup().detail(name)
 
         if not node:
-            print(f"[red] Backup for {name} not found [/red]")
+            print(f"[red]Backup for {name} not found[/red]")
             return 
         
         if not target:
@@ -312,24 +313,32 @@ def download_latest(name: str, target: str = None):
         backups = _s3.list(f"{_s3.root_folder_name}/{node['name']}")
         config = _s3.list(f"{_s3.root_folder_name}/config/")
 
-        config_file = [item for item in  config.get('Contents', []) if item['Key'].endswith('.yml') and name in item['Key']][0]
+        config_file = [item for item in config.get('Contents', []) if item['Key'].endswith('.yml') and name in item['Key']][0]
         
         backup_contents = backups.get('Contents')   
         sorted_backups = sorted(backup_contents, key=lambda x: x['LastModified'], reverse=True)[:2]
 
         sorted_backups.append(config_file)
 
-        table = Table("#", "Data", "Created at")
-        for i, backup in enumerate(sorted_backups):
-            table.add_row(
-                str(i+1), backup['Key'], backup['LastModified'].strftime("%d %b %Y %H:%M:%S"))
+        table = Table("#", "Data", "Created at", "Size")
+        total_size = 0      
 
+        for i, backup in enumerate(sorted_backups):
+            table.add_row(str(i+1), backup['Key'], backup['LastModified'].strftime("%d %b %Y %H:%M:%S"), format_size(backup['Size']))    
+            total_size += backup['Size']  
+        
         Console().print(table)
+        
+        if not typer.confirm(f"Do you really want to download these files with a total size of {format_size(total_size)}?"):
+            print("[red]Download cancelled[/red]")
+            return
+
         if target.is_dir():
-            print(f"[green]Target directory: {target}[/green]")
+            print(f"[green]\nTarget directory: {target}\n[/green]")
         else:
             target.mkdir(parents=True, exist_ok=True)
-            print(f"[green]Created directory: {target}[/green]")
+            print("[yellow]\nTarget directory not exist[/yellow]")
+            print(f"[green]Created directory: {target}\n[/green]")
 
         for i, backup in enumerate(sorted_backups):
             backup_file_path = Path(backup['Key']).name
@@ -340,9 +349,16 @@ def download_latest(name: str, target: str = None):
                 continue
 
             print(f"[green]Downloading {backup['Key']} to {file_path}...[/green]")
-            _s3.client.download_file(_s3.bucket_name, backup['Key'], str(file_path))
+            total_size = backup['Size']
+            with typer.progressbar(length=total_size, label=f"Downloading {backup_file_path}") as progress:
+                def progress_callback(bytes_transferred):
+                    progress.update(bytes_transferred)
+                
+                _s3.client.download_file(_s3.bucket_name, backup['Key'], str(file_path), Callback=progress_callback)
             
-        print(f"[green]Downloaded successfully[/green]")
+            print("\n")
+            
+        print("[green]\nDownloaded successfully[/green]")
     except Exception as e:
         print(f"[red]An error occurred: {e}[/red]")
 
