@@ -356,8 +356,6 @@ def download_latest(name: str, target: str = None):
                 
                 _s3.client.download_file(_s3.bucket_name, backup['Key'], str(file_path), Callback=progress_callback)
             
-            print("\n")
-            
         print("[green]\nDownloaded successfully[/green]")
     except Exception as e:
         print(f"[red]An error occurred: {e}[/red]")
