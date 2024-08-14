@@ -170,6 +170,8 @@ class Bqckup:
     
     # Upload
     def do_backup(self, backup_config):
+        key_pair = int(time.time())
+        time_start = time.time()
         try:
             bqckup_config_location = os.path.join(SITE_CONFIG_PATH, backup_config['file_name'])
             backup = Yml_Parser.parse(bqckup_config_location)['bqckup']
@@ -191,7 +193,8 @@ class Bqckup:
                 "file_path": compressed_file,
                 "description": "File backup is in progress...",
                 "type": Log.__FILES__,
-                "storage": backup['options']['storage']
+                "storage": backup['options']['storage'],
+                'pairing_key': key_pair
             })
             
             print(f"\nStarting backup for {backup.get('name')}\n")
@@ -222,7 +225,8 @@ class Bqckup:
                     "file_path": sql_path,
                     "description": "Database Backup is in Progress",
                     "type": Log.__DATABASE__,
-                    "storage": backup['options']['storage']
+                    "storage": backup['options']['storage'],
+                    'pairing_key': key_pair
                 })
                 
                 Database().export(
@@ -259,13 +263,15 @@ class Bqckup:
                 if len(folders) > int(backup.get('options').get('retention')):
                     shutil.rmtree(os.path.join(backup_path_without_date, folders[0]))                    
                     
+                time_consume = time.time() - time_start
+
                 if os.path.exists(compressed_file):
                     shutil.move(compressed_file, os.path.join(backup_path, os.path.basename(compressed_file)))
-                    Log().update_status(log_compressed_files.id, Log.__SUCCESS__, "File Backup Success")
+                    Log().update_status(log_compressed_files.id, Log.__SUCCESS__, "File Backup Success", time_consume)
                 
                 if os.path.exists(sql_path):
                     shutil.move(sql_path, os.path.join(backup_path, os.path.basename(sql_path)))
-                    Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success")
+                    Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success", time_consume)
                     
             if backup.get('options').get('provider') == 's3':
                 _s3 = s3(storage_name=backup.get('options').get('storage'))
@@ -300,7 +306,8 @@ class Bqckup:
                         compressed_file,
                         f"{backup_folder}/{os.path.basename(compressed_file)}"
                     )
-                    Log().update_status(log_compressed_files.id, Log.__SUCCESS__, "File Backup Success")
+                    time_consume = time.time() - time_start
+                    Log().update_status(log_compressed_files.id, Log.__SUCCESS__, "File Backup Success", time_consume)
                     
                 
                 if os.path.exists(sql_path):
@@ -330,8 +337,8 @@ class Bqckup:
                             except Exception as e:
                                 print(f"Failed to save locally: {e}")
                         
-                
-                    Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success")
+                    time_consume = time.time() - time_start
+                    Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success", time_consume)
             
             print(f"\n\n[green]Backup for {backup.get('name')} is done![/green]\n")
         except Exception as e:
@@ -342,11 +349,12 @@ class Bqckup:
             remove_folder(tmp_path)
             
             # Separate this two error by it's own exceptions
+            time_consume = time.time() - time_start
             if 'log_compressed_files' in locals():
-                Log().update_status(log_compressed_files.id, Log.__FAILED__, f"File Backup Failed: {e}")
+                Log().update_status(log_compressed_files.id, Log.__FAILED__, f"File Backup Failed: {e}", time_consume)
                 
             if 'log_database' in locals():
-                Log().update_status(log_database.id, Log.__FAILED__, f"Database Backup Failed: {e}")
+                Log().update_status(log_database.id, Log.__FAILED__, f"Database Backup Failed: {e}", time_consume)
                 
             
             self._send_notification(backup.get('name'), f"Error: {e}", None)
