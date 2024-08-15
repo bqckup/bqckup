@@ -16,12 +16,65 @@ from rich import print
 from rich.console import Group, Console
 from rich.table import Table
 from rich.panel import Panel
-from models.log import Log
-from datetime import datetime
-from collections import defaultdict
-from helpers import bytes_to
 
 bq_cli = typer.Typer()
+
+@ bq_cli.command()
+def summary(site = None):
+    from helpers import bytes_to
+    from datetime import datetime
+
+    bqckups = Bqckup().list()
+
+    # search the site
+    if site is not None: 
+        for i in list(bqckups):
+            if bqckups[i]['name'] != site:
+                del bqckups[i]
+        if not bqckups:
+            print(f"\nSite '{site}' not found\n")
+            return
+
+    for i in bqckups:
+        backup = bqckups[i]
+        # get backups from s3
+        _s3 = s3(backup['options']['storage'])
+        backups = _s3.list(f"{_s3.root_folder_name}/{backup['name']}")
+
+        # check if backup exists
+        if not backups or not backups.get('Contents'):
+            print(f"[red] No backup found for {site} [/red]")
+            return None
+
+        contents = backups['Contents']
+        last_content = contents[-1]
+        last_folder = last_content['Key'].split('/')[2]
+        last_size = 0
+        total_size = 0
+
+        # calculate the size
+        for content in contents:
+            total_size += content['Size']
+            if content['Key'].split('/')[2] == last_folder:
+                last_size += content['Size']
+        
+        interval = backup['options']['interval']
+        last_modified = last_content['LastModified']
+        to_compare = Bqckup()._interval_in_number(interval)
+
+        print("\n================================================================\n")
+        print(f"Backup Name                     : {backup['name']}")
+        print(f"Last Backup                     : {last_modified.strftime('%d/%m/%Y %H:%M:%S')}")
+        print(f"Last backup file size and name  : {bytes_to('m', last_size)} mb (/{last_folder}) ")
+        print(f"Total size of a bqckup          : {bytes_to('m', total_size)} mb")
+        print(f"Total files                     : {backups['KeyCount']}")
+        print(f"Storage Name                    : {backup['options']['storage']}")
+        print(f"Schedule                        : {interval}")
+        print(f"Next bqckup                     : {datetime.fromtimestamp(last_modified.timestamp() + (to_compare * 86400)).strftime('%d/%m/%Y 00:00:00')}")
+        print(f"Local Backup                    : {'yes' if backup['options']['save_locally'] else 'no'} ")
+    print("\n================================================================\n")
+    print(f"Visit: https://bqckup.com\n")
+
 
 @ bq_cli.command()
 def history(site = None):
@@ -38,7 +91,7 @@ def history(site = None):
             if bqckups[i]['name'] != site:
                 del bqckups[i]
         if not bqckups:
-            print(f"Site '{site}' not found")
+            print(f"\nSite '{site}' not found\n")
             return
 
     for i in bqckups:
