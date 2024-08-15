@@ -20,6 +20,20 @@ from rich.panel import Panel
 bq_cli = typer.Typer()
 
 @ bq_cli.command()
+def migrate_log():
+    from models import database
+    from playhouse.migrate import SqliteMigrator, migrate, IntegerField, FloatField
+    try:
+        migrator = SqliteMigrator(database)
+        migrate(
+            migrator.add_column('log', 'pairing_key', IntegerField(null=True)),
+            migrator.add_column('log', 'time_consume', FloatField(default=0)),
+        )
+        print ("[green] Log migration success [/green]")
+    except Exception as e:
+        print(f"Failed to migrate log, {str(e)}")
+
+@ bq_cli.command()
 def summary(site = None):
     from helpers import bytes_to
     from datetime import datetime

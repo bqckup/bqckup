@@ -22,7 +22,7 @@ class Log(BaseModel):
     object_name = TextField(null=True)
     status = IntegerField()
     time_consume = FloatField(default=0)
-    pairing_key = IntegerField()
+    pairing_key = IntegerField(null=True)
     
     # TODO: Fix this duplicate query
     def update_status(self, id: int, status: int, description=False, time_consume : float = 0):
