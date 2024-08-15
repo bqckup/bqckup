@@ -13,6 +13,7 @@ bqckup:
     storage: dummy
     interval: daily
     retention: '7'
+    disabled: true
     save_locally: no
     save_locally_path: /etc/bqckup/tmp
     notification_email: email@example.com
