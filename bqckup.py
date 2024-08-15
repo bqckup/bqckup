@@ -296,8 +296,9 @@ def check_update(update: bool = False):
         print(f"Latest Version  : {latest_version}")
 
 @ bq_cli.command()
-def download_latest(name: str, target: str = typer.Option(),):
+def download_latest(name: str, target: str = None, silent: bool = False):
     from humanfriendly import format_size
+    from helpers import display_disk_table, download_files, confirm_with_timeout
 
     try:
         node = Bqckup().detail(name)
@@ -305,11 +306,6 @@ def download_latest(name: str, target: str = typer.Option(),):
         if not node:
             print(f"[red]Backup for {name} not found[/red]")
             return 
-        
-        if not target:
-            target = Path().absolute()
-        else:
-            target = Path(target)
 
         _s3 = s3(node['options']['storage'])
         backups = _s3.list(f"{_s3.root_folder_name}/{node['name']}")
@@ -319,7 +315,6 @@ def download_latest(name: str, target: str = typer.Option(),):
         
         backup_contents = backups.get('Contents')   
         sorted_backups = sorted(backup_contents, key=lambda x: x['LastModified'], reverse=True)[:2]
-
         sorted_backups.append(config_file)
 
         table = Table("#", "Data", "Created at", "Size")
@@ -328,37 +323,36 @@ def download_latest(name: str, target: str = typer.Option(),):
         for i, backup in enumerate(sorted_backups):
             table.add_row(str(i+1), backup['Key'], backup['LastModified'].strftime("%d %b %Y %H:%M:%S"), format_size(backup['Size']))    
             total_size += backup['Size']  
-        
+
         Console().print(table)
+
+        print(f"[green]Total size of backup: [/green][bold green]{format_size(total_size)}[/bold green]\n")
+
+        display_disk_table() 
         
-        if not typer.confirm(f"Do you really want to download these files with a total size of {format_size(total_size)}?"):
-            print("[red]Download cancelled[/red]")
-            return
+        if not silent:
+            if not target:
+                if not confirm_with_timeout(typer.style(f"\nDo you want to make a download in this current directory {Path().absolute()}?", fg=typer.colors.YELLOW), timeout=10):
+                    target = Path(typer.prompt(typer.style("Please enter the target directory path", fg=typer.colors.YELLOW)))
+                else:
+                    target = Path().absolute()
+            else:
+                target = Path(target)
+        else:
+            if not target:
+                target = Path().absolute()
+            else:
+                target = Path(target)
 
         if target.is_dir():
             print(f"[green]\nTarget directory: {target}\n[/green]")
         else:
             target.mkdir(parents=True, exist_ok=True)
-            print("[yellow]\nTarget directory not exist[/yellow]")
-            print(f"[green]Created directory: {target}\n[/green]")
-
-        for i, backup in enumerate(sorted_backups):
-            backup_file_path = Path(backup['Key']).name
-            file_path = target / backup_file_path
-
-            if file_path.exists():
-                print(f"[yellow]File {file_path} already exists[/yellow]")
-                continue
+            print("[yellow]\nTarget directory did not exist[/yellow]")
+            print(f"[green]Created directory:[/green] [green bold]{target}\n[/green bold]")
             
-            total_size = backup['Size']
-            with Progress() as progress:
-                task = progress.add_task(f"{backup_file_path}", total=total_size)
-                
-                def progress_callback(bytes_transferred):
-                    progress.update(task, advance=bytes_transferred)
-                
-                _s3.client.download_file(_s3.bucket_name, backup['Key'], str(file_path), Callback=progress_callback)
-            
+        download_files(sorted_backups, target, _s3)
+
         print("[green]\nDownloaded successfully[/green]")
     except Exception as e:
         print(f"[red]An error occurred: {e}[/red]")

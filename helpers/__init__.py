@@ -1,7 +1,13 @@
-import os, errno, datetime, logging, requests
+import os, errno, datetime, logging, requests, typer, signal
+import threading
 from os import path
 from datetime import date, datetime
 from pathlib import Path
+from rich.progress import Progress
+from rich.console import Group, Console
+from humanfriendly import format_size
+from rich.table import Table
+from rich import print
 
 
 def get_server_ip():
@@ -654,3 +660,62 @@ def generate_short_link(link):
     
 
     return r.json()['shorturl']
+
+
+def get_disk_size():
+    statvfs = os.statvfs('/')
+    total = statvfs.f_frsize * statvfs.f_blocks
+    free = statvfs.f_frsize * statvfs.f_bfree
+    used = total - free
+    return {
+        "total": total,
+        "free": free,
+        "used": used
+    }
+
+def download_files(file, target, _s3):
+    for i, backup in enumerate(file):
+        backup_file_path = Path(backup['Key']).name
+        file_path = target / backup_file_path
+
+        if file_path.exists():
+            print(f"[yellow]File {file_path} already exists[/yellow]")
+            continue
+        
+        total_size = backup['Size']
+        with Progress() as progress:
+            task = progress.add_task(f"{backup_file_path}", total=total_size)
+            
+            def progress_callback(bytes_transferred):
+                progress.update(task, advance=bytes_transferred)
+            
+            _s3.client.download_file(_s3.bucket_name, backup['Key'], str(file_path), Callback=progress_callback)
+
+def display_disk_table():
+    disk_size = get_disk_size()
+    disk_table = Table("#", "Description", "Size")
+    disk_info = [
+        ("Total Disk Size", "total"),
+        ("Free Disk Size", "free"),
+        ("Used Disk Size", "used")
+    ]
+
+    for index, (description, key) in enumerate(disk_info, start=1):
+        disk_table.add_row(str(index), description, format_size(disk_size[key]))
+
+    Console().print(disk_table)
+
+def timeout_handler(signum, frame):
+    raise TimeoutError
+
+def confirm_with_timeout(prompt: str, timeout: int = 10) -> bool:
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(timeout)
+    
+    try:
+        result = typer.confirm(prompt, default=True)
+        signal.alarm(0) 
+        return result
+    except TimeoutError:
+        print("\n[yellow]No input received. Defaulting to [bold]Yes[/bold][/yellow]")
+        return True
