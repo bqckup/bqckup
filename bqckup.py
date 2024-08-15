@@ -298,6 +298,7 @@ def check_update(update: bool = False):
 
 @ bq_cli.command()
 def download_latest(name: str, target: str = None, silent: bool = False):
+
     try:
         node = Bqckup().detail(name)
 
@@ -347,6 +348,7 @@ def download_latest(name: str, target: str = None, silent: bool = False):
             print(f"[green]\nTarget directory: {target}\n[/green]")
         else:
             target.mkdir(parents=True, exist_ok=True)
+            
             print("[yellow]\nTarget directory did not exist[/yellow]")
             print(f"[green]Created directory:[/green] [green bold]{target}\n[/green bold]")
             

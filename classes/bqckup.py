@@ -167,12 +167,12 @@ class Bqckup:
                     print(f"Visit: https://bqckup.com\n")
                     continue
                 
-            self.do_backup(backup['file_name'])
+            self.do_backup(backup)
     
     # Upload
     def do_backup(self, backup_config):
         try:
-            bqckup_config_location = os.path.join(SITE_CONFIG_PATH, backup_config)
+            bqckup_config_location = os.path.join(SITE_CONFIG_PATH, backup_config['file_name'])
             backup = Yml_Parser.parse(bqckup_config_location)['bqckup']
             backup_folder = f"{backup.get('name')}/{get_today()}"
             
@@ -202,7 +202,7 @@ class Bqckup:
             print(f"\nStarting backup for {backup.get('name')}\n")
                                     
             print("Compressing files ...")
-            compressed_file = Tar().compress(backup.get('path'),compressed_file)
+            compressed_file = Tar().compress(backup.get('path'),compressed_file, backup_config.get('exclude_path', []))
             last_compressed_file_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__FILES__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
             
             if last_compressed_file_backup:
