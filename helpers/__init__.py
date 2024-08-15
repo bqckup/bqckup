@@ -1,4 +1,4 @@
-import os, errno, datetime, logging, requests, typer, signal
+import os, errno, datetime, logging, requests, typer, signal, re
 import threading
 from os import path
 from datetime import date, datetime
@@ -719,3 +719,13 @@ def confirm_with_timeout(prompt: str, timeout: int = 10) -> bool:
     except TimeoutError:
         print("\n[yellow]No input received. Defaulting to [bold]Yes[/bold][/yellow]")
         return True
+    
+def validate_path(directory_name: str) -> Path:
+    try:
+        # regex pattern to allow alphanumeric characters, underscores, hyphens, dot, and spaces
+        pattern = re.compile(r'^[\w\- .@/]+$')
+        if not pattern.match(directory_name):
+            raise ValueError("Invalid characters in directory name")
+        return Path(directory_name)
+    except Exception as e:
+        raise typer.BadParameter(f"\nThe path '{directory_name}' is not valid: {e}")

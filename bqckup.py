@@ -298,7 +298,7 @@ def check_update(update: bool = False):
 @ bq_cli.command()
 def download_latest(name: str, target: str = None, silent: bool = False):
     from humanfriendly import format_size
-    from helpers import display_disk_table, download_files, confirm_with_timeout
+    from helpers import display_disk_table, download_files, confirm_with_timeout, validate_path
 
     try:
         node = Bqckup().detail(name)
@@ -333,16 +333,17 @@ def download_latest(name: str, target: str = None, silent: bool = False):
         if not silent:
             if not target:
                 if not confirm_with_timeout(typer.style(f"\nDo you want to make a download in this current directory {Path().absolute()}?", fg=typer.colors.YELLOW), timeout=10):
-                    target = Path(typer.prompt(typer.style("Please enter the target directory path", fg=typer.colors.YELLOW)))
+                    target = typer.prompt(typer.style("Please enter the target directory path", fg=typer.colors.YELLOW))
+                    target = validate_path(target)
                 else:
                     target = Path().absolute()
             else:
-                target = Path(target)
+                target = validate_path(target)
         else:
             if not target:
                 target = Path().absolute()
             else:
-                target = Path(target)
+                target = validate_path(target)
 
         if target.is_dir():
             print(f"[green]\nTarget directory: {target}\n[/green]")
