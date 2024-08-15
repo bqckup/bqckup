@@ -351,6 +351,7 @@ def download_latest(name: str, target: str = None, silent: bool = False):
             target.mkdir(parents=True, exist_ok=True)
             print("[yellow]\nTarget directory did not exist[/yellow]")
             print(f"[green]Created directory:[/green] [green bold]{target}\n[/green bold]")
+
             
         download_files(sorted_backups, target, _s3)
 
