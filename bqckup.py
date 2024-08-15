@@ -17,6 +17,10 @@ from rich.console import Group, Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress
+from helpers.utility import get_disk_size, display_disk_table, confirm_with_timeout, validate_path
+from helpers.network import download_files, generate_short_link
+from humanfriendly import format_size, format_timespan
+
 
 bq_cli = typer.Typer()
 
@@ -178,9 +182,6 @@ def upload_file(storage: str, file: str, save_as: str = None):
 
 @ bq_cli.command()
 def generate_link(storage: str, key: str, expire: int = 86400):
-    from humanfriendly import format_timespan
-    from helpers import generate_short_link
-
     try:
         # Check if storage exists
         Storage().get_storage_detail(storage)
@@ -297,9 +298,6 @@ def check_update(update: bool = False):
 
 @ bq_cli.command()
 def download_latest(name: str, target: str = None, silent: bool = False):
-    from humanfriendly import format_size
-    from helpers import display_disk_table, download_files, confirm_with_timeout, validate_path
-
     try:
         node = Bqckup().detail(name)
 
@@ -319,6 +317,7 @@ def download_latest(name: str, target: str = None, silent: bool = False):
 
         table = Table("#", "Data", "Created at", "Size")
         total_size = 0      
+        disk_size = get_disk_size()
 
         for i, backup in enumerate(sorted_backups):
             table.add_row(str(i+1), backup['Key'], backup['LastModified'].strftime("%d %b %Y %H:%M:%S"), format_size(backup['Size']))    
@@ -328,22 +327,21 @@ def download_latest(name: str, target: str = None, silent: bool = False):
 
         print(f"[green]Total size of backup: [/green][bold green]{format_size(total_size)}[/bold green]\n")
 
-        display_disk_table() 
+        display_disk_table(disk_size) 
+
+        if total_size > disk_size['free']:
+            raise Exception("Not enough disk space to download the backup. Visit: https://bqckup.com")
         
         if not silent:
             if not target:
-                if not confirm_with_timeout(typer.style(f"\nDo you want to make a download in this current directory {Path().absolute()}?", fg=typer.colors.YELLOW), timeout=10):
+                prompt_message = typer.style(f"\nDo you want to make a download in this current directory {Path().absolute()}?", fg=typer.colors.YELLOW)
+                if not confirm_with_timeout(prompt_message, timeout=10):
                     target = typer.prompt(typer.style("Please enter the target directory path", fg=typer.colors.YELLOW))
-                    target = validate_path(target)
                 else:
                     target = Path().absolute()
-            else:
-                target = validate_path(target)
+            target = validate_path(target)
         else:
-            if not target:
-                target = Path().absolute()
-            else:
-                target = validate_path(target)
+            target = Path().absolute() if not target else validate_path(target)
 
         if target.is_dir():
             print(f"[green]\nTarget directory: {target}\n[/green]")
@@ -355,6 +353,7 @@ def download_latest(name: str, target: str = None, silent: bool = False):
         download_files(sorted_backups, target, _s3)
 
         print("[green]\nDownloaded successfully[/green]")
+        print(f"Visit: https://bqckup.com\n")    
     except Exception as e:
         print(f"[red]An error occurred: {e}[/red]")
 
