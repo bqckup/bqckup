@@ -6,7 +6,7 @@ from os import path
 from pathlib import Path
 from datetime import date, datetime
 from helpers.cli import executeCommand
-from helpers.timedate import numberOfDays
+from helpers.datetime import numberOfDays
 
 def initialization():
     return not os.path.exists(getAppPath() + '/.nv')
