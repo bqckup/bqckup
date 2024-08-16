@@ -235,6 +235,8 @@ def get_information():
     print(
         Panel.fit(content, title="Bqckup information",
                   title_align="left", border_style="yellow"))
+    
+    raise typer.Exit()
 
 
 @ bq_cli.command()
@@ -481,6 +483,17 @@ def download_latest(name: str, target: str = None, silent: bool = False):
     except Exception as e:
         print(f"[red]An error occurred: {e}[/red]")
 
+def get_version(version: bool):
+    if version:
+        print(f"Version: {VERSION}")
+        raise typer.Exit()
+    
+@bq_cli.callback()
+def common(
+    ctx: typer.Context,
+    version: bool = typer.Option(None, "--version", "-v", callback=get_version, help="Show version information"),
+):
+    pass
 
 if __name__ == "__main__":
     if getpass.getuser() != 'root':
