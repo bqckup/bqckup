@@ -26,7 +26,6 @@ def migrate_log():
     try:
         migrator = SqliteMigrator(database)
         migrate(
-            migrator.rename_column('log', 'pairing_key'),
             migrator.add_column('log', 'time_consume', FloatField(default=0)),
         )
         print ("[green] Log migration success [/green]")
