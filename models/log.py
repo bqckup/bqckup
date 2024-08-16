@@ -22,7 +22,6 @@ class Log(BaseModel):
     object_name = TextField(null=True)
     status = IntegerField()
     time_consume = FloatField(default=0)
-    pairing_key = IntegerField(null=True)
     
     # TODO: Fix this duplicate query
     def update_status(self, id: int, status: int, description=False, time_consume : float = 0):
@@ -31,4 +30,4 @@ class Log(BaseModel):
             self.set_by_id(id, {'description':description})
             
     def write(self, data: dict):
-        return self.create( name=data['name'], file_path=data['file_path'], description=data['description'], created_at=int(time.time()), type=data['type'], storage=data['storage'], status=self.__ON_PROGRESS__, pairing_key=data['pairing_key'])
+        return self.create( name=data['name'], file_path=data['file_path'], description=data['description'], created_at=int(time.time()), type=data['type'], storage=data['storage'], status=self.__ON_PROGRESS__)

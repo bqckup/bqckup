@@ -170,7 +170,6 @@ class Bqckup:
     
     # Upload
     def do_backup(self, backup_config):
-        key_pair = int(time.time())
         time_start = time.time()
         try:
             bqckup_config_location = os.path.join(SITE_CONFIG_PATH, backup_config['file_name'])
@@ -193,8 +192,7 @@ class Bqckup:
                 "file_path": compressed_file,
                 "description": "File backup is in progress...",
                 "type": Log.__FILES__,
-                "storage": backup['options']['storage'],
-                'pairing_key': key_pair
+                "storage": backup['options']['storage']
             })
             
             print(f"\nStarting backup for {backup.get('name')}\n")
@@ -226,7 +224,6 @@ class Bqckup:
                     "description": "Database Backup is in Progress",
                     "type": Log.__DATABASE__,
                     "storage": backup['options']['storage'],
-                    'pairing_key': key_pair
                 })
                 
                 Database().export(
