@@ -418,8 +418,6 @@ def check_update(update: bool = False):
         print(f"Current Version : {VERSION}")
         print(f"Latest Version  : {latest_version}")
 
-<<<<<<< HEAD
-=======
 @ bq_cli.command()
 def download_latest(name: str, target: str = None, silent: bool = False):
 
@@ -483,7 +481,6 @@ def download_latest(name: str, target: str = None, silent: bool = False):
     except Exception as e:
         print(f"[red]An error occurred: {e}[/red]")
 
->>>>>>> 5c3bf29f25c3d7c72caec45418e1c5cf8cd2b622
 
 if __name__ == "__main__":
     if getpass.getuser() != 'root':
