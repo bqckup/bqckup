@@ -23,7 +23,16 @@ bq_cli = typer.Typer()
 def migrate_log():
     from models import database
     from playhouse.migrate import SqliteMigrator, migrate, IntegerField, FloatField
+
     try:
+        # check if log table already migrated
+        cursor = database.execute_sql("PRAGMA table_info(log);")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'time_consume' in columns:
+            print ("[yellow] Log already migrated [/yellow]")
+            return False
+
+        # migrate log table
         migrator = SqliteMigrator(database)
         migrate(
             migrator.add_column('log', 'time_consume', FloatField(default=0)),
