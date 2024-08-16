@@ -235,8 +235,6 @@ def get_information():
     print(
         Panel.fit(content, title="Bqckup information",
                   title_align="left", border_style="yellow"))
-    
-    raise typer.Exit()
 
 
 @ bq_cli.command()
@@ -485,7 +483,10 @@ def download_latest(name: str, target: str = None, silent: bool = False):
 
 def get_version(version: bool):
     if version:
-        print(f"Version: {VERSION}")
+        # print(f"Version: {VERSION}")
+        print(
+            Panel("Version  : %s" % VERSION, title="Bqckup Version",
+                    title_align="left", border_style="yellow"))
         raise typer.Exit()
     
 @bq_cli.callback()
