@@ -6,6 +6,11 @@ class Yml_Checker:
     def checker():
         is_error = False
 
+        # check if storage is exist
+        if not File().is_exists(STORAGE_CONFIG_PATH):
+            print ("\nStorage config not found \n")
+            is_error = True
+
         # storage check
         try:
             Yml_Parser.parse(STORAGE_CONFIG_PATH)
