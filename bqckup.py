@@ -16,7 +16,6 @@ from rich import print
 from rich.console import Group, Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.progress import Progress
 
 bq_cli = typer.Typer()
 
@@ -27,7 +26,7 @@ def migrate_log():
     try:
         migrator = SqliteMigrator(database)
         migrate(
-            migrator.add_column('log', 'pairing_key', IntegerField(null=True)),
+            migrator.rename_column('log', 'pairing_key'),
             migrator.add_column('log', 'time_consume', FloatField(default=0)),
         )
         print ("[green] Log migration success [/green]")
@@ -95,65 +94,44 @@ def summary(site = None):
 def history(site = None):
     from models.log import Log
     from datetime import datetime
-    from collections import defaultdict
     from helpers import bytes_to
+
+    # check if site is empty
+    if site is None :
+        print("\nPlease specify the site ([blue] bqcup history --site site_name [/blue])\n")
+        return False
     
-    bqckups = Bqckup().list()
+    backup = Bqckup().detail(site)
 
-    # search the site
-    if site is not None: 
-        for i in list(bqckups):
-            if bqckups[i]['name'] != site:
-                del bqckups[i]
-        if not bqckups:
-            print(f"\nSite '{site}' not found\n")
-            return
-
-    for i in bqckups:
-        backup = bqckups[i]
-
+    if backup is not None :
         logs = Bqckup().get_logs(backup['name'])
+
         if logs:
-            # merge database and files log
-            grouped_data = defaultdict(list)
-            for log in logs:
-                grouped_data[log.pairing_key].append(log)
+            schedule = backup['options']['interval']
 
-            logs = list(grouped_data.values())
-            interval = backup['options']['interval']
-
-            table = Table("schedule", "last backup date", "last database file size", "last file size", "status", 'time consume (s)')
+            table = Table("last backup date", 'file name' , "size", "type", "status", 'time consume (s)')
 
             for log in logs:
-                # get database and file log
-                database_log = None
-                file_log = None
-                for item in log:
-                    if item.type == Log.__DATABASE__:
-                        database_log = item
-                    else:
-                        file_log = item
-                
-                # check status
-                # automatically fails if one of them is missing
-                if (database_log and file_log) and (database_log.status == Log.__SUCCESS__ and file_log.status == Log.__SUCCESS__):
+                # format sytle for status
+                if log.status == Log.__SUCCESS__:
                     status = "[green]Success[/green]"
                 else:
                     status = "[red]Failed[/red]"
 
-                last_backup = datetime.fromtimestamp(file_log.created_at if file_log else database_log.created_at).strftime('%d/%m/%Y %H:%M:%S')
-                database_size = database_log.file_size if database_log else 0
-                database_size = bytes_to('k', database_size)
-                file_size = bytes_to('m', (file_log.file_size if file_log else 0))
-                time_consume = file_log.time_consume if file_log else database_log.time_consume
+                last_backup = datetime.fromtimestamp(log.created_at).strftime('%d/%m/%Y %H:%M:%S')
+                size = bytes_to('k', log.file_size)
+                time_consume = log.time_consume
+                file_name = log.file_path.split('/')[-2] + '/' + log.file_path.split('/')[-1]
 
-                table.add_row(interval, last_backup, f"{database_size} kb", f"{file_size} mb", status, f"{time_consume:.2f}")
-    
-            print(f"\nBackup Name: {backup['name']}")
+                table.add_row(last_backup, file_name, f"{size} kb", str(log.type), status, f"{time_consume:.2f}")
+        
+            print(f"\nBackup Name: {backup['name']} ([green]{schedule}[/green])")
             Console().print(table)
-            print('\n')
-
-    print(f"Visit: https://bqckup.com\n")    
+            print(f"\nVisit: https://bqckup.com\n")
+        else:
+            print(f"\nNo history found for site '{site}'\n")
+    else:
+        print(f"\nSite '{site}' not found\n")
 
 @bq_cli.command()
 def add_site(
@@ -244,6 +222,7 @@ def get_information():
     print(
         Panel.fit(content, title="Bqckup information",
                   title_align="left", border_style="yellow"))
+
 
 @ bq_cli.command()
 def test_config():
@@ -428,74 +407,6 @@ def check_update(update: bool = False):
 
         print(f"Current Version : {VERSION}")
         print(f"Latest Version  : {latest_version}")
-
-@ bq_cli.command()
-def download_latest(name: str, target: str = typer.Option(),):
-    from humanfriendly import format_size
-        
-    try:
-        node = Bqckup().detail(name)
-
-        if not node:
-            print(f"[red]Backup for {name} not found[/red]")
-            return 
-        
-        if not target:
-            target = Path().absolute()
-        else:
-            target = Path(target)
-
-        _s3 = s3(node['options']['storage'])
-        backups = _s3.list(f"{_s3.root_folder_name}/{node['name']}")
-        config = _s3.list(f"{_s3.root_folder_name}/config/")
-
-        config_file = [item for item in config.get('Contents', []) if item['Key'].endswith('.yml') and name in item['Key']][0]
-        
-        backup_contents = backups.get('Contents')   
-        sorted_backups = sorted(backup_contents, key=lambda x: x['LastModified'], reverse=True)[:2]
-
-        sorted_backups.append(config_file)
-
-        table = Table("#", "Data", "Created at", "Size")
-        total_size = 0      
-
-        for i, backup in enumerate(sorted_backups):
-            table.add_row(str(i+1), backup['Key'], backup['LastModified'].strftime("%d %b %Y %H:%M:%S"), format_size(backup['Size']))    
-            total_size += backup['Size']  
-        
-        Console().print(table)
-        
-        if not typer.confirm(f"Do you really want to download these files with a total size of {format_size(total_size)}?"):
-            print("[red]Download cancelled[/red]")
-            return
-
-        if target.is_dir():
-            print(f"[green]\nTarget directory: {target}\n[/green]")
-        else:
-            target.mkdir(parents=True, exist_ok=True)
-            print("[yellow]\nTarget directory not exist[/yellow]")
-            print(f"[green]Created directory: {target}\n[/green]")
-
-        for i, backup in enumerate(sorted_backups):
-            backup_file_path = Path(backup['Key']).name
-            file_path = target / backup_file_path
-
-            if file_path.exists():
-                print(f"[yellow]File {file_path} already exists[/yellow]")
-                continue
-
-            total_size = backup['Size']
-            with Progress() as progress:
-                task = progress.add_task(f"{backup_file_path}", total=total_size)
-                
-                def progress_callback(bytes_transferred):
-                    progress.update(task, advance=bytes_transferred)
-                
-                _s3.client.download_file(_s3.bucket_name, backup['Key'], str(file_path), Callback=progress_callback)
-            
-        print("[green]\nDownloaded successfully[/green]")
-    except Exception as e:
-        print(f"[red]An error occurred: {e}[/red]")
 
 
 if __name__ == "__main__":
