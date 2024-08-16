@@ -11,7 +11,7 @@ bqckup:
     name: database
   options:
     storage: dummy
-    interval: daily
+    interval: daily #can be daily, weekly, yearly 
     retention: '7'
     save_locally: no
     save_locally_path: /etc/bqckup/tmp
