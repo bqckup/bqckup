@@ -339,10 +339,10 @@ def download_latest(name: str, target: str = None, silent: bool = False):
                 if not confirm_with_timeout(prompt_message, timeout=10):
                     target = typer.prompt(typer.style("Please enter the target directory path", fg=typer.colors.YELLOW))
                 else:
-                    target =  str(Path().absolute())
+                    target =  os.getcwd()
             target = validate_path(target)
         else:
-            target =  str(Path().absolute()) if not target else validate_path(target)
+            target =  os.getcwd() if not target else validate_path(target)
 
         if target.is_dir():
             print(f"[green]\nTarget directory: {target}\n[/green]")
