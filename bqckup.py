@@ -74,7 +74,7 @@ def summary(site = None):
             return None
 
         contents = backups['Contents']
-        last_content = contents[-1]
+        last_content = max(contents, key=lambda x: x['LastModified'].timestamp())
         last_folder = last_content['Key'].split('/')[2]
         last_size = 0
         total_size = 0
@@ -92,7 +92,7 @@ def summary(site = None):
         print("\n================================================================\n")
         print(f"Backup Name                     : {backup['name']}")
         print(f"Last Backup                     : {last_modified.strftime('%d/%m/%Y %H:%M:%S')}")
-        print(f"Last backup file size and name  : {bytes_to('m', last_size)} mb (/{last_folder}) ")
+        print(f"Last backup file size and name  : {bytes_to('m', last_size)} mb ({last_folder}) ")
         print(f"Total size of a bqckup          : {bytes_to('m', total_size)} mb")
         print(f"Total files                     : {backups['KeyCount']}")
         print(f"Storage Name                    : {backup['options']['storage']}")
@@ -111,7 +111,7 @@ def history(site = None):
 
     # check if site is empty
     if site is None :
-        print("\nPlease specify the site ([blue] bqcup history --site site_name [/blue])\n")
+        print("\nPlease specify the site ([blue] bqckup history --site site_name [/blue])\n")
         return False
     
     backup = Bqckup().detail(site)
@@ -132,11 +132,18 @@ def history(site = None):
                     status = "[red]Failed[/red]"
 
                 last_backup = datetime.fromtimestamp(log.created_at).strftime('%d/%m/%Y %H:%M:%S')
-                size = bytes_to('k', log.file_size)
+                if log.file_size >= 1e+9:
+                    # if size is greater than 1 gb
+                    size = f"{bytes_to('g', log.file_size)} gb"
+                elif log.file_size >= 1000000:
+                    # if size is greater than 1 mb
+                    size = f"{bytes_to('m', log.file_size)} mb"
+                else:
+                    size = f"{bytes_to('k', log.file_size)} kb"
                 time_consume = log.time_consume
                 file_name = log.file_path.split('/')[-2] + '/' + log.file_path.split('/')[-1]
 
-                table.add_row(last_backup, file_name, f"{size} kb", str(log.type), status, f"{time_consume:.2f}")
+                table.add_row(last_backup, file_name, size, str(log.type), status, f"{time_consume:.2f}")
         
             print(f"\nBackup Name: {backup['name']} ([green]{schedule}[/green])")
             Console().print(table)
