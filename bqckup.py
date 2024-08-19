@@ -49,6 +49,7 @@ def migrate():
 
 @ bq_cli.command()
 def summary(site = None):
+    from rich.progress import Progress, SpinnerColumn, TextColumn
     from helpers import bytes_to
     from datetime import datetime
 
@@ -67,7 +68,16 @@ def summary(site = None):
         backup = bqckups[i]
         # get backups from s3
         _s3 = s3(backup['options']['storage'])
-        backups = _s3.list(f"{_s3.root_folder_name}/{backup['name']}")
+        backups = None
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+        ) as progress:
+            task = progress.add_task(description="Fetching backups...", total=None)
+            backups = _s3.list(f"{_s3.root_folder_name}/{backup['name']}")
+            progress.update(task, completed=True)
 
         # check if backup exists
         if not backups or not backups.get('Contents'):
