@@ -2,6 +2,8 @@ bqckup:
   name: domain
   path:
     - /var/www/html
+  exclude_path:
+    - /var/www/html/cache
   database:
     type: mysql
     host: localhost
