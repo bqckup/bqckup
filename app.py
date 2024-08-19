@@ -235,10 +235,6 @@ def initialization():
     if not database.table_exists('notification_logs'):
         database.create_tables([NotificationLog])
     database.close()
-        
-        
-    
-    
 
     dummy_storge_config = STORAGE_CONFIG_PATH.replace('.yml', '.yml.example')
     dummy_site_config = os.path.join(SITE_CONFIG_PATH, 'domain.yml.example')
@@ -251,6 +247,10 @@ def initialization():
                 "bqckup": {
                     "name": "domain",
                     "path": ['/var/www/html'],
+                    "enabled": "yes",
+                    "exclude_path": [
+                        '.git'
+                    ],
                     "database": {
                         "type": "mysql",
                         "host": "localhost",
