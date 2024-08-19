@@ -181,8 +181,8 @@ class Bqckup:
             
             tmp_path = os.path.join(BQ_PATH, 'tmp', f"{backup.get('name')}")
 
-            if(backup.get('options').get('disabled')):
-                print(f"[red]Backup for {backup.get('name')} is disabled[/red]")
+            if(not backup.get('enabled')):
+                print(f"[red]Backup for {backup.get('name')} is not enabled[/red]")
                 return False
             
             if Log().select().where((Log.name == backup.get('name')) & (Log.status == Log.__ON_PROGRESS__)).exists():

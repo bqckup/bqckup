@@ -1,5 +1,6 @@
 bqckup:
   name: domain
+  enabled: no
   path:
     - /var/www/html
   exclude_path:
@@ -15,7 +16,6 @@ bqckup:
     storage: dummy
     interval: daily #can be daily, weekly, yearly 
     retention: '7'
-    disabled: true
     save_locally: no
     save_locally_path: /etc/bqckup/tmp
     notification_email: email@example.com
