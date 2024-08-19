@@ -24,27 +24,9 @@ from humanfriendly import format_size, format_timespan
 
 bq_cli = typer.Typer()
 
-@ bq_cli.command()
-def report():
-    from lib.notifications.discord import send_notification, send_file
-    
-    fields = [
-        {"name": "Server IP", "value": "ssss"}
-    ]
-    payload = {
-        "embeds": [{
-            "title": f"just a test",
-            "description": f"This is an automated notification to inform you that the bqckup information.",
-            "color": 15548997,
-            "fields": fields,
-            "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
-        }],
-    }
-    send_file(payload, ("./database/bqckup.db", open("./database/bqckup.db",  "rb")))
-    print ("[green] Notification sent [/green]")
 
 @ bq_cli.command()
-def migrate_log():
+def migrate():
     from models import database
     from playhouse.migrate import SqliteMigrator, migrate, IntegerField, FloatField
 
