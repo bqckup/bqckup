@@ -73,7 +73,7 @@ def summary(site = None):
             TextColumn("[progress.description]{task.description}"),
             transient=True,
         ) as progress:
-            task = progress.add_task(description="Fetching backups...", total=None)
+            task = progress.add_task(description="Fetching details...", total=None)
             _s3 = s3(backup['options']['storage'])
             backups = _s3.list(f"{_s3.root_folder_name}/{backup['name']}")
             progress.update(task, completed=True)
