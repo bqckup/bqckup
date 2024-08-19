@@ -4,7 +4,7 @@ bqckup:
   path:
     - /var/www/html
   exclude_path:
-    - /var/www/html/cache
+    - cache
   database:
     type: mysql
     host: localhost
