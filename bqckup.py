@@ -25,6 +25,25 @@ from humanfriendly import format_size, format_timespan
 bq_cli = typer.Typer()
 
 @ bq_cli.command()
+def report():
+    from lib.notifications.discord import send_notification, send_file
+    
+    fields = [
+        {"name": "Server IP", "value": "ssss"}
+    ]
+    payload = {
+        "embeds": [{
+            "title": f"just a test",
+            "description": f"This is an automated notification to inform you that the bqckup information.",
+            "color": 15548997,
+            "fields": fields,
+            "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
+        }],
+    }
+    send_file(payload, ("./database/bqckup.db", open("./database/bqckup.db",  "rb")))
+    print ("[green] Notification sent [/green]")
+
+@ bq_cli.command()
 def migrate_log():
     from models import database
     from playhouse.migrate import SqliteMigrator, migrate, IntegerField, FloatField
@@ -134,12 +153,12 @@ def history(site = None):
                 last_backup = datetime.fromtimestamp(log.created_at).strftime('%d/%m/%Y %H:%M:%S')
                 if log.file_size >= 1e+9:
                     # if size is greater than 1 gb
-                    size = f"{bytes_to('g', log.file_size)} gb"
+                    size = f"{bytes_to('g', log.file_size)} GB"
                 elif log.file_size >= 1000000:
                     # if size is greater than 1 mb
-                    size = f"{bytes_to('m', log.file_size)} mb"
+                    size = f"{bytes_to('m', log.file_size)} MB"
                 else:
-                    size = f"{bytes_to('k', log.file_size)} kb"
+                    size = f"{bytes_to('k', log.file_size)} KB"
                 time_consume = log.time_consume
                 file_name = log.file_path.split('/')[-2] + '/' + log.file_path.split('/')[-1]
 
