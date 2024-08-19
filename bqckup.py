@@ -105,7 +105,7 @@ def summary(site = None):
 
 
 @ bq_cli.command()
-def history(site = None):
+def history(site = None, filter_day : int = 7):
     from models.log import Log
     from datetime import datetime
     from helpers import bytes_to
@@ -114,40 +114,56 @@ def history(site = None):
     if site is None :
         print("\nPlease specify the site ([blue] bqckup history --site site_name [/blue])\n")
         return False
+
+    def print_table(logs, table):
+        for log in logs:
+            # format sytle for status
+            if log.status == Log.__SUCCESS__:
+                status = "[green]Success[/green]"
+            else:
+                status = "[red]Failed[/red]"
+
+            last_backup = datetime.fromtimestamp(log.created_at).strftime('%d/%m/%Y %H:%M:%S')
+            if log.file_size >= 1e+9:
+                # if size is greater than 1 gb
+                size = f"{bytes_to('g', log.file_size)} GB"
+            elif log.file_size >= 1000000:
+                # if size is greater than 1 mb
+                size = f"{bytes_to('m', log.file_size)} MB"
+            else:
+                size = f"{bytes_to('k', log.file_size)} KB"
+            time_consume = log.time_consume
+            file_name = log.file_path.split('/')[-1]
+
+            table.add_row(last_backup, file_name, size, status, f"{time_consume:.2f}")
+
+        Console().print(table)
     
     backup = Bqckup().detail(site)
 
     if backup is not None :
-        logs = Bqckup().get_logs(backup['name'])
-
+        logs = Log().select().where((Log.name == site) & (Log.created_at >= (datetime.now().timestamp() - (filter_day * 86400)))).execute()
+        
         if logs:
             schedule = backup['options']['interval']
 
-            table = Table("last backup date", 'file name' , "size", "type", "status", 'time consume (s)')
-
+            # split the logs into database and files
+            log_database = []
+            log_files = []
             for log in logs:
-                # format sytle for status
-                if log.status == Log.__SUCCESS__:
-                    status = "[green]Success[/green]"
+                if log.type == Log.__DATABASE__:
+                    log_database.append(log)
                 else:
-                    status = "[red]Failed[/red]"
+                    log_files.append(log)
 
-                last_backup = datetime.fromtimestamp(log.created_at).strftime('%d/%m/%Y %H:%M:%S')
-                if log.file_size >= 1e+9:
-                    # if size is greater than 1 gb
-                    size = f"{bytes_to('g', log.file_size)} GB"
-                elif log.file_size >= 1000000:
-                    # if size is greater than 1 mb
-                    size = f"{bytes_to('m', log.file_size)} MB"
-                else:
-                    size = f"{bytes_to('k', log.file_size)} KB"
-                time_consume = log.time_consume
-                file_name = log.file_path.split('/')[-2] + '/' + log.file_path.split('/')[-1]
+            table_files = Table("last backup date", 'file name' , "size", "status", 'time consume (s)')
+            table_database = Table("last backup date", 'file name' , "size", "status", 'time consume (s)')
 
-                table.add_row(last_backup, file_name, size, str(log.type), status, f"{time_consume:.2f}")
-        
             print(f"\nBackup Name: {backup['name']} ([green]{schedule}[/green])")
-            Console().print(table)
+            print("\nFile Backup")
+            print_table(log_files, table_files)
+            print ("\n Database Backup")
+            print_table(log_database, table_database)
             print(f"\nVisit: https://bqckup.com\n")
         else:
             print(f"\nNo history found for site '{site}'\n")
