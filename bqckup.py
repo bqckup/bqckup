@@ -105,7 +105,7 @@ def summary(site = None):
 
 
 @ bq_cli.command()
-def history(site = None, filter_day : int = 7):
+def history(site = None, filter_latest_days : int = 7):
     from models.log import Log
     from datetime import datetime
     from helpers import bytes_to
@@ -142,7 +142,7 @@ def history(site = None, filter_day : int = 7):
     backup = Bqckup().detail(site)
 
     if backup is not None :
-        logs = Log().select().where((Log.name == site) & (Log.created_at >= (datetime.now().timestamp() - (filter_day * 86400)))).execute()
+        logs = Log().select().where((Log.name == site) & (Log.created_at >= (datetime.now().timestamp() - (filter_latest_days * 86400)))).execute()
         
         if logs:
             schedule = backup['options']['interval']
