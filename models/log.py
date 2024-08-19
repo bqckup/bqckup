@@ -21,12 +21,13 @@ class Log(BaseModel):
     storage = CharField()
     object_name = TextField(null=True)
     status = IntegerField()
+    time_consume = FloatField(default=0)
     
     # TODO: Fix this duplicate query
-    def update_status(self, id: int, status: int, description=False):
-        self.update(status=status).where(self.id == id).execute()
+    def update_status(self, id: int, status: int, description=False, time_consume : float = 0):
+        self.set_by_id(id, {'status':status, 'time_consume':time_consume})
         if description:
-            self.update(description=description).where(self.id == id).execute()    
+            self.set_by_id(id, {'description':description})
             
     def write(self, data: dict):
-        return self.create( name=data['name'], file_path=data['file_path'], description=data['description'], created_at=int(time.time()), type=data['type'], storage=data['storage'], status=self.__ON_PROGRESS__ )    
+        return self.create( name=data['name'], file_path=data['file_path'], description=data['description'], created_at=int(time.time()), type=data['type'], storage=data['storage'], status=self.__ON_PROGRESS__)
