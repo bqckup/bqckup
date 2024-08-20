@@ -117,5 +117,4 @@ class s3(object):
                 storage_name = storage
                 self(storage).client.head_bucket(Bucket=self(storage).bucket_name)                
         except:
-            print(f"[red] Error[/red]: Unable to connect to S3. Please verify your configuration settings for storage '{storage_name}'")
-            quit()
+            raise Exception(f"[red] Error[/red]: Unable to connect to S3. Please verify your configuration settings for storage '{storage_name}'")

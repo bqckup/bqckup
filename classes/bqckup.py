@@ -25,7 +25,12 @@ class ConfigExceptions(Exception):
 class Bqckup:
     def __init__(self):
         Yml_Checker.checker()
-        s3.check_connection()
+        try:
+            s3.check_connection()
+        except Exception as e:
+            print(f"{e}")
+            quit()
+
         if not os.path.exists(SITE_CONFIG_PATH):
             os.makedirs(SITE_CONFIG_PATH)
             
@@ -188,7 +193,7 @@ class Bqckup:
             
             if Log().select().where((Log.name == backup.get('name')) & (Log.status == Log.__ON_PROGRESS__)).exists():
                 print(f"Backup for {backup.get('name')} is already running...")
-                return False
+                # return False
             
             if not File().is_exists(tmp_path):
                 os.makedirs(tmp_path)
