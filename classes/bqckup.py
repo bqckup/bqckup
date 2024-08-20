@@ -16,11 +16,27 @@ from lib.notifications.discord import send_notification
 from rich import print
 from helpers.datetime import time_since, get_today, difference_in_days
 from helpers.network import get_server_ip
-
 from classes.yml_checker import Yml_Checker
+import signal
 
 class ConfigExceptions(Exception):
     pass
+
+def signal_handler(sig, frame):
+    def get_last_log_progress(type):
+        return Log().select().where((Log.status == Log.__ON_PROGRESS__) & (Log.type == type)).order_by(Log.id.desc()).first()
+    
+    current_database_log = get_last_log_progress(Log.__DATABASE__)
+    current_file_log = get_last_log_progress(Log.__FILES__)
+    if current_database_log:
+        Log().delete_by_id(current_database_log.id)
+    if current_file_log:
+        Log().delete_by_id(current_file_log.id)
+        
+    print ("\n[red]Aborted.[/red]")
+    quit()
+    
+signal.signal(signal.SIGINT, signal_handler)
 
 class Bqckup:
     def __init__(self):
@@ -193,7 +209,7 @@ class Bqckup:
             
             if Log().select().where((Log.name == backup.get('name')) & (Log.status == Log.__ON_PROGRESS__)).exists():
                 print(f"Backup for {backup.get('name')} is already running...")
-                return False
+                # return False
             
             if not File().is_exists(tmp_path):
                 os.makedirs(tmp_path)
@@ -352,6 +368,7 @@ class Bqckup:
             
             print(f"\n\n[green]Backup for {backup.get('name')} is done![/green]\n")
         except Exception as e:
+            print (f"Error: {e}")
             import traceback
             traceback.print_exc()
 
