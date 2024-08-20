@@ -360,7 +360,6 @@ class Bqckup:
             
             print(f"\n\n[green]Backup for {backup.get('name')} is done![/green]\n")
         except Exception as e:
-            print (f"Error: {e}")
             import traceback
             traceback.print_exc()
 
