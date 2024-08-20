@@ -25,6 +25,7 @@ class ConfigExceptions(Exception):
 class Bqckup:
     def __init__(self):
         Yml_Checker.checker()
+        s3.check_connection()
         if not os.path.exists(SITE_CONFIG_PATH):
             os.makedirs(SITE_CONFIG_PATH)
             
