@@ -28,7 +28,7 @@ class Bqckup:
         try:
             s3.check_connection()
         except Exception as e:
-            print(f"{e}")
+            print(f"[red]{e}[/red]")
             quit()
 
         if not os.path.exists(SITE_CONFIG_PATH):
