@@ -1,4 +1,4 @@
-import os, time, shutil
+import os, time, shutil, signal, sys
 from classes.database import Database
 from classes.storage import Storage
 from classes.tar import Tar
@@ -16,11 +16,18 @@ from lib.notifications.discord import send_notification
 from rich import print
 from helpers.datetime import time_since, get_today, difference_in_days
 from helpers.network import get_server_ip
-
 from classes.yml_checker import Yml_Checker
 
 class ConfigExceptions(Exception):
     pass
+
+def signal_handler(sig, frame):
+    Log().delete().where(Log.status == Log.__ON_PROGRESS__).execute()
+
+    print ("\n[red]Aborted.[/red]")
+    sys.exit(0)
+    
+signal.signal(signal.SIGINT, signal_handler)
 
 class Bqckup:
     def __init__(self):
