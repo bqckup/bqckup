@@ -209,7 +209,7 @@ class Bqckup:
             
             if Log().select().where((Log.name == backup.get('name')) & (Log.status == Log.__ON_PROGRESS__)).exists():
                 print(f"Backup for {backup.get('name')} is already running...")
-                # return False
+                return False
             
             if not File().is_exists(tmp_path):
                 os.makedirs(tmp_path)
