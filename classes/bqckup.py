@@ -24,7 +24,7 @@ class ConfigExceptions(Exception):
 
 def signal_handler(sig, frame):
     Log().delete().where(Log.status == Log.__ON_PROGRESS__).execute()
-    
+
     print ("\n[red]Aborted.[/red]")
     quit()
     
@@ -32,7 +32,6 @@ signal.signal(signal.SIGINT, signal_handler)
 
 class Bqckup:
     def __init__(self):
-        Log().delete().where(Log.status == Log.__ON_PROGRESS__).execute()
         Yml_Checker.checker()
         try:
             s3.check_connection()
