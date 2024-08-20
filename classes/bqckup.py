@@ -1,4 +1,4 @@
-import os, time, shutil
+import os, time, shutil, signal, sys
 from classes.database import Database
 from classes.storage import Storage
 from classes.tar import Tar
@@ -17,7 +17,6 @@ from rich import print
 from helpers.datetime import time_since, get_today, difference_in_days
 from helpers.network import get_server_ip
 from classes.yml_checker import Yml_Checker
-import signal
 
 class ConfigExceptions(Exception):
     pass
@@ -26,7 +25,7 @@ def signal_handler(sig, frame):
     Log().delete().where(Log.status == Log.__ON_PROGRESS__).execute()
 
     print ("\n[red]Aborted.[/red]")
-    quit()
+    sys.exit(0)
     
 signal.signal(signal.SIGINT, signal_handler)
 
