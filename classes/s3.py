@@ -108,7 +108,6 @@ class s3(object):
     
     @classmethod
     def check_connection(self):
-        from rich import print
         from constant import STORAGE_CONFIG_PATH
         from classes.yml_parser import Yml_Parser
         storage_name = None
