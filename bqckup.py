@@ -93,6 +93,14 @@ def report():
                 filter_this_month = lambda content: content.get('LastModified').month == datetime.now().month
                 contents = list(filter(filter_this_month, backups.get('Contents')))
 
+                # list site in storage
+                list_site_in_storage = []
+                for content in contents:
+                    site_name = content.get('Key').split('/')[1]
+                    ignore = ['config', 'storages.yml']
+                    if site_name not in list_site_in_storage and site_name not in ignore:
+                        list_site_in_storage.append(site_name)
+
                 # check site
                 list_error_site_need_to_check = dict()
                 for site in sites.values():
@@ -137,9 +145,10 @@ def report():
                         {"name": "Server IP", "value": get_server_ip(), "inline": True},
                         {"name": "Bqckup Version", "value": VERSION, "inline": True},
                         {"name": "Storage", "value": storage, "inline": True},
-                        {"name": "Total Site", "value": len(Bqckup().list()), "inline": True},
+                        {"name": "Total Site in config", "value": len(Bqckup().list()), "inline": True},
                         {"name": "Total Size", "value": f"{bytes_to('m',total_size)} MB", "inline": True},
                         {"name": "Largest Site Files", "value": f"{largest_content.get('Key').split('/')[1]} ({bytes_to('m', largest_content.get('Size'))} MB)", "inline": True},
+                        {"name": "List site in storage", "value": '\n'.join(list_site_in_storage), "inline": True},
                         {"name": "Failed Site", "value": failed_site, "inline": True},
                     ]
                 payload = {
