@@ -45,7 +45,7 @@ def report():
                 difference_with_prev_content = abs(difference_in_days(content.get('LastModified').timestamp(), prev_content.get('LastModified').timestamp()))
 
                 # check the interval is correct with backup
-                if difference_with_prev_content > interval :
+                if difference_with_prev_content != interval :
                     if 'interval' not in reason:
                         reason['error'].append(f"backup interval is not same as set in site configuration ({site['options']['interval']}) type {type}")
                     reason['interval'] = True
