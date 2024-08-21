@@ -16,7 +16,6 @@ from rich import print
 from rich.console import Group, Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.progress import Progress
 from helpers.utility import get_disk_size, display_disk_table, confirm_with_timeout, validate_path
 from helpers.network import download_files, generate_short_link
 from humanfriendly import format_size, format_timespan
