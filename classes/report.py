@@ -2,7 +2,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from lib.notifications.discord import send_notification
 from datetime import datetime
 from helpers import bytes_to
-from helpers.datetime import difference_in_days
+from helpers.datetime import difference_in_days, interval_in_number
 from helpers.utility import split_list
 from models.log import Log
 from classes.bqckup import Bqckup
@@ -77,7 +77,7 @@ class Report:
                     for site in sites.values():
                         filter_two_month_ago_and_by_same_site = lambda content: ((content.get('LastModified').timestamp() >= first_day_of_two_month_ago) and (content.get('Key').split('/')[1] == site['name']))
                         contents_from_two_month_ago = list(filter(filter_two_month_ago_and_by_same_site, backups.get('Contents')))
-                        interval = Bqckup()._interval_in_number(site['options']['interval'])
+                        interval = interval_in_number(site['options']['interval'])
 
                         if not contents_from_two_month_ago: 
                             continue

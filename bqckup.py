@@ -53,6 +53,7 @@ def migrate():
 @ bq_cli.command()
 def summary(site = None):
     from rich.progress import Progress, SpinnerColumn, TextColumn
+    from helpers.datetime import interval_in_number
     from helpers import bytes_to
     from datetime import datetime
 
@@ -100,7 +101,7 @@ def summary(site = None):
         
         interval = backup['options']['interval']
         last_modified = last_content['LastModified']
-        to_compare = Bqckup()._interval_in_number(interval)
+        to_compare = interval_in_number(interval)
 
         print("\n================================================================\n")
         print(f"Backup Name                     : {backup['name']}")
