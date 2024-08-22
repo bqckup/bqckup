@@ -31,9 +31,6 @@ signal.signal(signal.SIGINT, signal_handler)
 
 class Bqckup:
     def __init__(self):
-        if not os.path.exists(SITE_CONFIG_PATH):
-            os.makedirs(SITE_CONFIG_PATH)
-
         Yml_Checker.checker()
         try:
             s3.check_connection()
