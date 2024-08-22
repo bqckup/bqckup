@@ -105,3 +105,14 @@ def validate_path(directory_name: str) -> Path:
 
 def split_list(lst, chunk_size):
         return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
+
+def isset(self, key, array = None):
+    if array is not None:
+        try:
+            print (key)
+            array[key]
+            return True
+        except:
+            return False
+    else:
+        return key in globals()
