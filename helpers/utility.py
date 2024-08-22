@@ -101,3 +101,17 @@ def validate_path(directory_name: str) -> Path:
         return Path(directory_name)
     except Exception as e:
         raise typer.BadParameter(f"\nThe path '{directory_name}' is not valid: {e}")
+
+
+def split_list(lst, chunk_size):
+        return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
+
+def isset(key, array = None):
+    if array is not None:
+        try:
+            array[key]
+            return True
+        except:
+            return False
+    else:
+        return key in globals()

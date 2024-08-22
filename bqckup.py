@@ -16,7 +16,6 @@ from rich import print
 from rich.console import Group, Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.progress import Progress
 from helpers.utility import get_disk_size, display_disk_table, confirm_with_timeout, validate_path
 from helpers.network import download_files, generate_short_link
 from humanfriendly import format_size, format_timespan
@@ -24,6 +23,10 @@ from humanfriendly import format_size, format_timespan
 
 bq_cli = typer.Typer()
 
+# @ bq_cli.command()
+# def report():
+#     from classes.report import Report
+#     Report().send()
 
 @ bq_cli.command()
 def migrate():
@@ -50,6 +53,7 @@ def migrate():
 @ bq_cli.command()
 def summary(site = None):
     from rich.progress import Progress, SpinnerColumn, TextColumn
+    from helpers.datetime import interval_in_number
     from helpers import bytes_to
     from datetime import datetime
 
@@ -97,7 +101,7 @@ def summary(site = None):
         
         interval = backup['options']['interval']
         last_modified = last_content['LastModified']
-        to_compare = Bqckup()._interval_in_number(interval)
+        to_compare = interval_in_number(interval)
 
         print("\n================================================================\n")
         print(f"Backup Name                     : {backup['name']}")
@@ -293,7 +297,9 @@ def test_config():
 
 @ bq_cli.command()
 def run(force: bool = False, site : str = None):
+    from classes.report import Report
     Bqckup().backup(force=force, site=site)
+    Report().send()
 
 
 @ bq_cli.command()

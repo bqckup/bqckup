@@ -14,7 +14,7 @@ from helpers.file import remove_folder
 from hashlib import sha256
 from lib.notifications.discord import send_notification
 from rich import print
-from helpers.datetime import time_since, get_today, difference_in_days
+from helpers.datetime import time_since, get_today, difference_in_days, interval_in_number
 from helpers.network import get_server_ip
 from classes.yml_checker import Yml_Checker
 
@@ -37,9 +37,6 @@ class Bqckup:
         except Exception as e:
             print(f"[red]{e}[/red]")
             quit()
-
-        if not os.path.exists(SITE_CONFIG_PATH):
-            os.makedirs(SITE_CONFIG_PATH)
             
     def _send_notification(self, backup_name, messages, additional_data):
         fields = [
@@ -106,14 +103,6 @@ class Bqckup:
             
         return None
     
-    def _interval_in_number(self, interval: str) -> int:
-        if interval == 'weekly':
-            return 7
-        elif interval == 'monthly':
-            return 30
-        return 1
-        
-    
     def list(self):
         files = File().get_file_list(SITE_CONFIG_PATH)
         files = [file for file in files if file.endswith('.yml')]
@@ -132,7 +121,7 @@ class Bqckup:
             # Next Backup
             results[index]['next_backup'] = False
             if results[index]['last_backup']:
-                next_backup_in_date = datetime.fromtimestamp(results[index]['last_backup'] + (self._interval_in_number(bqckup['options']['interval']) * 86400)).strftime('%d/%m/%Y 00:00:00')
+                next_backup_in_date = datetime.fromtimestamp(results[index]['last_backup'] + (interval_in_number(bqckup['options']['interval']) * 86400)).strftime('%d/%m/%Y 00:00:00')
                 results[index]['next_backup'] = time_since(datetime.strptime(next_backup_in_date, '%d/%m/%Y %H:%M:%S').timestamp(), time.time(), reverse=True)
             
         return results
@@ -166,7 +155,7 @@ class Bqckup:
                 interval = backup['options']['interval']
                 last_backup = last_log.created_at
                 last_backup = abs(difference_in_days(last_backup, time.time()))
-                to_compare = self._interval_in_number(interval)
+                to_compare = interval_in_number(interval)
                 
                 # Not enough time has passed
                 if not force and last_backup < to_compare:
