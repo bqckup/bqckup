@@ -35,10 +35,12 @@ class Report:
             hash_value_notification = sha256(f"{storage}_{get_today("%B")}".encode()).hexdigest()
             if NotificationLog().select().where(NotificationLog.hash == hash_value_notification).exists():
                 continue
-            print ('make report for this month')
+            
+            print (f"make report this month for '{storage}'")
             try:
                 with Progress(SpinnerColumn(),TextColumn("[progress.description]{task.description}"),transient=True,) as progress:
                     task = progress.add_task(description=f"Fetching and calculate data for storage '{storage}'...", total=None)
+
                     # get data from s3
                     backups = s3(storage).list()
                     # get data from log
@@ -62,12 +64,12 @@ class Report:
                     
                     # get content for this month from backups s3
                     filter_this_month = lambda content: content.get('LastModified').month == datetime.now().month
-                    contents = list(filter(filter_this_month, backups.get('Contents')))
+                    backups_this_month = list(filter(filter_this_month, backups.get('Contents')))
 
                     # list site in storage
                     list_site_in_storage = []
-                    for content in contents:
-                        site_name = content.get('Key').split('/')[1]
+                    for backup in backups_this_month:
+                        site_name = backup.get('Key').split('/')[1]
                         ignore = ['config', 'storages.yml']
                         if site_name not in list_site_in_storage and site_name not in ignore:
                             list_site_in_storage.append(site_name)
@@ -75,30 +77,36 @@ class Report:
                     # check site
                     list_error_site_need_to_check = dict()
                     for site in sites.values():
-                        filter_two_month_ago_and_by_same_site = lambda content: ((content.get('LastModified').timestamp() >= first_day_of_two_month_ago) and (content.get('Key').split('/')[1] == site['name']))
-                        contents_from_two_month_ago = list(filter(filter_two_month_ago_and_by_same_site, backups.get('Contents')))
+                        filter_two_month_ago_and_by_same_site_name = lambda content: ((content.get('LastModified').timestamp() >= first_day_of_two_month_ago) and (content.get('Key').split('/')[1] == site['name']))
+                        backups_from_two_month_ago = list(filter(filter_two_month_ago_and_by_same_site_name, backups.get('Contents')))
                         interval = interval_in_number(site['options']['interval'])
 
-                        if not contents_from_two_month_ago: 
+                        if not backups_from_two_month_ago: 
                             continue
 
-                        contents_database = list(filter(lambda x: x.get('Key').split('.')[-2] == 'sql', contents_from_two_month_ago))
-                        contents_files = list(filter(lambda x: x.get('Key').split('.')[-2] != 'sql', contents_from_two_month_ago))
-                
-                        error_database = self._check_site(contents_database, interval, site, 'sql')
-                        error_files = self._check_site(contents_files, interval, site, 'files')
+                        # split backups to database and files
+                        backups_database = list(filter(lambda x: x.get('Key').split('.')[-2] == 'sql', backups_from_two_month_ago))
+                        backups_files = list(filter(lambda x: x.get('Key').split('.')[-2] != 'sql', backups_from_two_month_ago))
+
+                        # check site
+                        error_database = self._check_site(backups_database, interval, site, 'sql')
+                        error_files = self._check_site(backups_files, interval, site, 'files')
+                        
+                        # merge error
                         error = error_database + error_files
+
+                        # if error found add to list by site name
                         if len(error) > 0:
                             list_error_site_need_to_check[site['name']] = error
 
                     # calculate size
-                    largest_content = max(contents, key=lambda x: x['Size'])
+                    largest_backup = max(backups_this_month, key=lambda x: x['Size'])
                     total_size = 0
-                    for content in contents:
-                        total_size += content['Size']
+                    for backup in backups_this_month:
+                        total_size += backup['Size']
 
                     # list message site need to check
-                    site_need_to_check = []
+                    embeds_site_need_to_check = []
                     for site_name in list_error_site_need_to_check:
                         embeds = {
                                 'title': f'need to check at site {site_name}',
@@ -107,7 +115,7 @@ class Report:
                                 "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
                             }
                         
-                        site_need_to_check.append(embeds)
+                        embeds_site_need_to_check.append(embeds)
 
                     # list all backups for this month
                     fields = [
@@ -116,7 +124,7 @@ class Report:
                             {"name": "Storage", "value": storage, "inline": True},
                             {"name": "Total Site on config", "value": len(Bqckup().list()), "inline": True},
                             {"name": "Total Size", "value": f"{bytes_to('m',total_size)} MB", "inline": True},
-                            {"name": "Largest Site Files", "value": f"{largest_content.get('Key').split('/')[1]} ({bytes_to('m', largest_content.get('Size'))} MB)", "inline": True},
+                            {"name": "Largest Site Files", "value": f"{largest_backup.get('Key').split('/')[1]} ({bytes_to('m', largest_backup.get('Size'))} MB)", "inline": True},
                             {"name": "List site in storage", "value": '\n'.join(list_site_in_storage), "inline": True},
                             {"name": "Failed Site", "value": failed_site, "inline": True},
                         ]
@@ -133,8 +141,8 @@ class Report:
                     # send to discord
                     send_notification(payload)
 
-                    site_need_to_check = split_list(site_need_to_check, 10)
-                    for embeds in site_need_to_check:
+                    embeds_site_need_to_check = split_list(embeds_site_need_to_check, 10)
+                    for embeds in embeds_site_need_to_check:
                         payload = {"embeds" : embeds}
                         send_notification(payload)
 
@@ -145,29 +153,29 @@ class Report:
                 print(f"[red]Failed to send data to discord, {str(e)}[/red]")
         return True
     
-    def _check_site(self, contents, interval, site, type):
+    def _check_site(self, backups, interval, site, type):
         # reverse content to check from the latest backup
-        contents.reverse()
+        backups.reverse()
 
         # init
         reason = {'error': [], 'status':[]}
 
-        for i, content in enumerate(contents):
-            if isset(i+1, content):
-                prev_content = contents[i+1]
-                difference_with_prev_content = abs(difference_in_days(content.get('LastModified').timestamp(), prev_content.get('LastModified').timestamp()))
+        for i, backup in enumerate(backups):
+            if isset(i+1, backups):
+                previous_backup = backups[i+1]
+                difference_with_previous_backup = abs(difference_in_days(backup.get('LastModified').timestamp(), previous_backup.get('LastModified').timestamp()))
 
                 # check the interval is correct with backup
-                if difference_with_prev_content != interval :
+                if difference_with_previous_backup != interval :
                     #check to make sure the error is write once
                     if 'interval' not in reason['status']:
                         reason['error'].append(f"backup interval is not same as set in site configuration ({site['options']['interval']}) type {type}")
                     reason['status'].append('interval')
 
-                # check the size is not same with next content
-                if content.get('Size') == prev_content.get('Size'):
+                # check the size is not same with next backup
+                if backup.get('Size') == previous_backup.get('Size'):
                     if "size" not in reason['status']:
-                        reason['error'].append(f"backup size is same at {content.get('Key')}")
+                        reason['error'].append(f"backup size is same at {backup.get('Key')}")
                     reason['status'].append('size')
         
         # return only error message
