@@ -23,6 +23,11 @@ from humanfriendly import format_size, format_timespan
 
 bq_cli = typer.Typer()
 
+# @ bq_cli.command()
+# def report():
+#     from classes.report import Report
+#     Report().send()
+
 @ bq_cli.command()
 def migrate():
     from models import database
