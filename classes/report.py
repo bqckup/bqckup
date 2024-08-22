@@ -168,7 +168,7 @@ class Report:
                 if content.get('Size') == prev_content.get('Size'):
                     if "size" not in reason['status']:
                         reason['error'].append(f"backup size is same at {content.get('Key')}")
-                    reason['status'].append('interval')
+                    reason['status'].append('size')
         
         # return only error message
         return reason['error']
