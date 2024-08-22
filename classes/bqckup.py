@@ -17,6 +17,7 @@ from rich import print
 from helpers.datetime import time_since, get_today, difference_in_days
 from helpers.network import get_server_ip
 from classes.yml_checker import Yml_Checker
+from classes.report import Report
 
 class ConfigExceptions(Exception):
     pass
@@ -31,15 +32,17 @@ signal.signal(signal.SIGINT, signal_handler)
 
 class Bqckup:
     def __init__(self):
+        if not os.path.exists(SITE_CONFIG_PATH):
+            os.makedirs(SITE_CONFIG_PATH)
+
         Yml_Checker.checker()
         try:
             s3.check_connection()
         except Exception as e:
             print(f"[red]{e}[/red]")
             quit()
-
-        if not os.path.exists(SITE_CONFIG_PATH):
-            os.makedirs(SITE_CONFIG_PATH)
+        
+        Report().send()
             
     def _send_notification(self, backup_name, messages, additional_data):
         fields = [

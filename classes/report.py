@@ -11,9 +11,20 @@ from classes.s3 import s3
 from helpers.network import get_server_ip
 from bqckup import VERSION
 from rich import print
+from classes.config import Config
+import calendar
+from hashlib import sha256
+from models.notification_log import NotificationLog
 
 class Report:
     def send(self):
+        if Config().read('notification', 'monthly_report_enabled') != '1':
+            return
+        
+        last_day_of_month = calendar.monthrange(datetime.now().year, datetime.now().month)[1]
+        if datetime.now().day != last_day_of_month:
+            return
+        
         storages = Storage().list()
         sites = Bqckup().list()
 
@@ -21,6 +32,10 @@ class Report:
         first_day_of_two_month_ago = datetime.now().replace(day=1, month=datetime.now().month - 1).timestamp()
 
         for storage in storages:
+            hash_value_notification = sha256(storage.encode()).hexdigest()
+            if NotificationLog().select().where(NotificationLog.hash == hash_value_notification).exists():
+                continue
+            print ('make report for this month')
             try:
                 with Progress(SpinnerColumn(),TextColumn("[progress.description]{task.description}"),transient=True,) as progress:
                     task = progress.add_task(description=f"Fetching and calculate data for storage '{storage}'...", total=None)
@@ -123,8 +138,9 @@ class Report:
                         payload = {"embeds" : embeds}
                         send_notification(payload)
 
+                    NotificationLog().create(hash=hash_value_notification, sent_at=int(datetime.now().timestamp()))  
                     progress.update(task, completed=True)
-                    print ('[green]success send data to discord[/green]')
+                    print ('[green]success send report to discord[/green]')
             except Exception as e:
                 print(f"[red]Failed to send data to discord, {str(e)}[/red]")
         return True
