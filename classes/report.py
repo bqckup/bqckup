@@ -18,7 +18,7 @@ from models.notification_log import NotificationLog
 
 class Report:
     def send(self):
-        if Config().read('notification', 'monthly_report_enabled') != '1':
+        if Config().read('notification', 'enabled') != '1' and Config().read('notification', 'monthly_report_enabled') != '1':
             return
         
         last_day_of_month = calendar.monthrange(datetime.now().year, datetime.now().month)[1]
