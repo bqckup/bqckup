@@ -17,7 +17,6 @@ from rich import print
 from helpers.datetime import time_since, get_today, difference_in_days
 from helpers.network import get_server_ip
 from classes.yml_checker import Yml_Checker
-from classes.report import Report
 
 class ConfigExceptions(Exception):
     pass

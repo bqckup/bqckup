@@ -23,12 +23,6 @@ from humanfriendly import format_size, format_timespan
 
 bq_cli = typer.Typer()
 
-
-@ bq_cli.command()
-def report():
-    from classes.report import Report
-    Report().send()
-
 @ bq_cli.command()
 def migrate():
     from models import database
@@ -297,7 +291,9 @@ def test_config():
 
 @ bq_cli.command()
 def run(force: bool = False, site : str = None):
+    from classes.report import Report
     Bqckup().backup(force=force, site=site)
+    Report().send()
 
 
 @ bq_cli.command()
