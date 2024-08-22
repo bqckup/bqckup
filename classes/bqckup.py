@@ -41,8 +41,6 @@ class Bqckup:
         except Exception as e:
             print(f"[red]{e}[/red]")
             quit()
-        
-        Report().send()
             
     def _send_notification(self, backup_name, messages, additional_data):
         fields = [
