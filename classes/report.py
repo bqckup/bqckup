@@ -2,8 +2,8 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from lib.notifications.discord import send_notification
 from datetime import datetime
 from helpers import bytes_to
-from helpers.datetime import difference_in_days, interval_in_number
-from helpers.utility import split_list
+from helpers.datetime import difference_in_days, interval_in_number, get_today
+from helpers.utility import split_list, isset
 from models.log import Log
 from classes.bqckup import Bqckup
 from classes.storage import Storage
@@ -146,24 +146,29 @@ class Report:
         return True
     
     def _check_site(self, contents, interval, site, type):
+        # reverse content to check from the latest backup
         contents.reverse()
-        reason = dict()
-        reason['error'] = []
+
+        # init
+        reason = {'error': [], 'status':[]}
+
         for i, content in enumerate(contents):
-            if i+1 < len(contents) and contents[i+1]:
+            if isset(i+1, content):
                 prev_content = contents[i+1]
                 difference_with_prev_content = abs(difference_in_days(content.get('LastModified').timestamp(), prev_content.get('LastModified').timestamp()))
 
                 # check the interval is correct with backup
                 if difference_with_prev_content != interval :
-                    if 'interval' not in reason:
+                    #check to make sure the error is write once
+                    if 'interval' not in reason['status']:
                         reason['error'].append(f"backup interval is not same as set in site configuration ({site['options']['interval']}) type {type}")
-                    reason['interval'] = True
+                    reason['status'].append('interval')
 
                 # check the size is not same with next content
                 if content.get('Size') == prev_content.get('Size'):
-                    if "size" not in reason:
+                    if "size" not in reason['status']:
                         reason['error'].append(f"backup size is same at {content.get('Key')}")
-                    reason["size"] = True
+                    reason['status'].append('interval')
         
+        # return only error message
         return reason['error']
