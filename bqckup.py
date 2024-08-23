@@ -419,9 +419,15 @@ def get_list(name: str, json: bool = False):
 def check_update(update: bool = False):
     import wget
     from packaging import version
+    import json
+    from helpers.utility import get_os_version
     try:
-        latest_version = requests.get(
-            'https://download.bqckup.com/latest.txt').text.strip()
+        # latest_version = requests.get(
+        #     'https://download.bqckup.com/latest.txt').text.strip()
+        release = requests.get(
+            'https://api.github.com/repos/bqckup/bqckup/releases/latest').text.strip()
+        release = json.loads(release)
+        latest_version = (release['tag_name'])
     except Exception as e:
         print(f"[red] Failed to check update, {str(e)} [/red]")
     else:
@@ -431,22 +437,38 @@ def check_update(update: bool = False):
         if same_version:
             print(
                 f"[bold green]You are using the latest version of Bqckup[/bold green]")
-            return
+            return        
+        
+        # get asset for ubuntu from github
+        asset_ubuntu = None
+        for asset in release['assets']:
+            name = asset['name'].split('-')
+            if name[0] == 'ubuntu':
+                ubuntu_version = f"{name[1]}.{name[2]}"
+                if ubuntu_version == get_os_version():
+                    asset_ubuntu = asset
 
-        if need_update and update:
+        if not asset_ubuntu:
+            print(f"[red] your current ubuntu version ({get_os_version()}) is not match any available version [/red]")
+        else :
+            print(f"[green] Found new version bqckup for ubuntu {get_os_version()} [/green]")
+
+        if need_update and update and asset_ubuntu:
             import shutil
             tmp_file = "/tmp/bqckup.tar.gz"
             new_bqckup = "/tmp/bqckup"
 
             try:
                 wget.download(
-                    f"https://downloads.bqckup.com/{latest_version}/bqckup.tar.gz", tmp_file)
+                    f"{asset_ubuntu['browser_download_url']}", tmp_file)
                 os.system(f"tar xvf {tmp_file} -C /tmp")
+                os.unlink(tmp_file)
+
             except Exception as e:
                 print(f"[red] Failed to download update, {str(e)} [/red]")
                 return
             else:
-                if os.path.exist(new_bqckup):
+                if os.path.exists(new_bqckup):
                     shutil.move(new_bqckup, "/usr/bin/bqckup")
                     print(f"[green] Bqckup updated successfully [/green]")
                     os.system("/usr/bin/bqckup get-information")

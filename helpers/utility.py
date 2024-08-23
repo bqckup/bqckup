@@ -5,6 +5,19 @@ from humanfriendly import format_size
 from rich.table import Table
 from rich import print
 
+def get_os_version():
+    # get ubuntu version
+    name = ''
+    if os.path.isfile('/etc/lsb-release'):
+        lines = open('/etc/lsb-release').read().split('\n')
+        for line in lines:
+            if line.startswith('DISTRIB_DESCRIPTION='):
+                name = line.split('=')[1]
+                if name[0]=='"' and name[-1]=='"':
+                    return name[1:-1].split(' ')[1]
+    print ("[red] Failed to get your OS version [/red]")
+    return name
+
 # remove protocol and slash
 def clearDomain(domain):
     import re
