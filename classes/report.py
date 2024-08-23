@@ -21,9 +21,9 @@ class Report:
         if Config().read('notification', 'enabled') != '1' and Config().read('notification', 'monthly_report_enabled') != '1':
             return
         
-        last_day_of_month = calendar.monthrange(datetime.now().year, datetime.now().month)[1]
-        if datetime.now().day != last_day_of_month:
-            return
+        # last_day_of_month = calendar.monthrange(datetime.now().year, datetime.now().month)[1]
+        # if datetime.now().day != last_day_of_month:
+        #     return
         
         storages = Storage().list()
         sites = Bqckup().list()
@@ -32,9 +32,9 @@ class Report:
         first_day_of_two_month_ago = datetime.now().replace(day=1, month=datetime.now().month - 1).timestamp()
 
         for storage in storages:
-            hash_value_notification = sha256(f"{storage}_{get_today("%B")}".encode()).hexdigest()
-            if NotificationLog().select().where(NotificationLog.hash == hash_value_notification).exists():
-                continue
+            hash_value_notification = sha256(f"{storage}_{get_today("%B_%Y")}".encode()).hexdigest()
+            # if NotificationLog().select().where(NotificationLog.hash == hash_value_notification).exists():
+            #     continue
             
             print (f"make report this month for '{storage}'")
             try:
@@ -53,13 +53,17 @@ class Report:
 
                     # count the failed site in logs
                     logs = {}
+                    failed_logs_description = {}
                     for failed_log in failed_logs:
                         if failed_log.name in logs:
                             logs[failed_log.name] += 1
+                            failed_logs_description[failed_log.name].append(failed_log.description)
                         else:
                             logs[failed_log.name] = 1
+                            failed_logs_description[failed_log.name] = [failed_log.description]
                     failed_site = ''
                     for log in logs:
+                        failed_logs_description[log] = list(set(failed_logs_description[log]))
                         failed_site += f"{log} ({logs[log]} fail)\n"
                     
                     # get content for this month from backups s3
@@ -105,12 +109,34 @@ class Report:
                     for backup in backups_this_month:
                         total_size += backup['Size']
 
+                    # format list site in storage
+                    list_failed_site_logs = logs.keys()
+                    failed_site = logs
+                    message_list_site_in_storage = ''
+                    for site in list_site_in_storage:
+                        message_list_site_in_storage += site
+                        if site in list_failed_site_logs:
+                            message_list_site_in_storage += f" ({logs[site]} fail)"
+                        if site in list_error_site_need_to_check:
+                            message_list_site_in_storage += ' <-- need to check'
+                        message_list_site_in_storage += '\n'
+
                     # list message site need to check
                     embeds_site_need_to_check = []
                     for site_name in list_error_site_need_to_check:
+                        message_list_site_need_to_check = ''
+                        unique_error = list(set(list_error_site_need_to_check[site_name]))
+                        for i, error in enumerate(unique_error):
+                            message_list_site_need_to_check += f"{i + 1}. {error} \n"
+
+                        # merge with failed logs
+                        if site_name in failed_logs_description:
+                            message_list_site_need_to_check += f"\nFailed logs: \n"
+                            for i, log in enumerate(failed_logs_description[site_name]):
+                                message_list_site_need_to_check += f"{i + 1}. {log} \n"
                         embeds = {
-                                'title': f'need to check at site {site_name}',
-                                'description' : '\n'.join(list_error_site_need_to_check[site_name]),
+                                'title': f"need to check at site '{site_name}'",
+                                'description' : message_list_site_need_to_check,
                                 'color' : 15548997,
                                 "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
                             }
@@ -125,8 +151,8 @@ class Report:
                             {"name": "Total Site on config", "value": len(Bqckup().list()), "inline": True},
                             {"name": "Total Size", "value": f"{bytes_to('m',total_size)} MB", "inline": True},
                             {"name": "Largest Site Files", "value": f"{largest_backup.get('Key').split('/')[1]} ({bytes_to('m', largest_backup.get('Size'))} MB)", "inline": True},
-                            {"name": "List site in storage", "value": '\n'.join(list_site_in_storage), "inline": True},
-                            {"name": "Failed Site", "value": failed_site, "inline": True},
+                            {"name": "List site in storage", "value": message_list_site_in_storage, "inline": True},
+                            # {"name": "Failed Site", "value": failed_site, "inline": True},
                         ]
                     payload = {
                             "embeds": [{
@@ -169,7 +195,7 @@ class Report:
                 if difference_with_previous_backup != interval :
                     #check to make sure the error is write once
                     if 'interval' not in reason['status']:
-                        reason['error'].append(f"backup interval is not same as set in site configuration ({site['options']['interval']}) type {type}")
+                        reason['error'].append(f"backup interval is not same as set in site configuration")
                     reason['status'].append('interval')
 
                 # check the size is not same with next backup
