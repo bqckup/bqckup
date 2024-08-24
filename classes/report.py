@@ -167,7 +167,7 @@ class Report:
                             {"name": "Total Size", "value": f"{bytes_to('m',total_size)} MB", "inline": True},
                             {"name": "Largest Site Files", "value": f"{largest_backup.get('Key').split('/')[1]} ({bytes_to('m', largest_backup.get('Size'))} MB)", "inline": True},
                             {"name": "List site in storage", "value": message_list_site_in_storage, "inline": False},
-                            {"name": "", "value": f"```ansi\n{self.YELLOW_ASTERISK}\t: Site is available in storage, but not in config\n{self.RED_ASTERISK}\t: Issue Found```", "inline": False},
+                            {"name": "", "value": f"```ansi\n{self.YELLOW_ASTERISK} : Site is available in storage, but not in config\n{self.RED_ASTERISK} : Issue Found```", "inline": False},
                             # {"name": "Failed Site", "value": failed_site, "inline": True},
                         ]
                     payload = {
