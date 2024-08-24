@@ -21,9 +21,9 @@ class Report:
         if Config().read('notification', 'enabled') != '1' and Config().read('notification', 'monthly_report_enabled') != '1':
             return
         
-        # last_day_of_month = calendar.monthrange(datetime.now().year, datetime.now().month)[1]
-        # if datetime.now().day != last_day_of_month:
-        #     return
+        last_day_of_month = calendar.monthrange(datetime.now().year, datetime.now().month)[1]
+        if datetime.now().day != last_day_of_month:
+            return
         
         storages = Storage().list()
         sites = Bqckup().list()
@@ -33,8 +33,8 @@ class Report:
 
         for storage in storages:
             hash_value_notification = sha256(f"{storage}_{get_today("%B_%Y")}".encode()).hexdigest()
-            # if NotificationLog().select().where(NotificationLog.hash == hash_value_notification).exists():
-            #     continue
+            if NotificationLog().select().where(NotificationLog.hash == hash_value_notification).exists():
+                continue
             
             print (f"make report this month for '{storage}'")
             try:
