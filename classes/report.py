@@ -55,12 +55,13 @@ class Report:
                     logs = {}
                     failed_logs_description = {}
                     for failed_log in failed_logs:
+                        created_at = datetime.fromtimestamp(failed_log.created_at).strftime('%Y-%m-%d %H:%M:%S')
                         if failed_log.name in logs:
                             logs[failed_log.name] += 1
-                            failed_logs_description[failed_log.name].append(failed_log.description)
+                            failed_logs_description[failed_log.name].append(f"{failed_log.description} ({created_at})")
                         else:
                             logs[failed_log.name] = 1
-                            failed_logs_description[failed_log.name] = [failed_log.description]
+                            failed_logs_description[failed_log.name] = [f"{failed_log.description} ({created_at})"]
                     failed_site = ''
                     for log in logs:
                         failed_logs_description[log] = list(set(failed_logs_description[log]))
@@ -109,7 +110,7 @@ class Report:
                     for backup in backups_this_month:
                         total_size += backup['Size']
 
-                    # format list site in storage
+                    # format message list site in storage
                     list_failed_site_logs = logs.keys()
                     failed_site = logs
                     message_list_site_in_storage = ''
@@ -122,9 +123,9 @@ class Report:
                             message_list_site_in_storage += site
 
                         if site in list_failed_site_logs:
-                            message_list_site_in_storage += f" ({logs[site]} fail)"
+                            message_list_site_in_storage += f" [2;31m({logs[site]} fail)[0m"
                         if site in list_error_site_need_to_check:
-                            message_list_site_in_storage += ' [2;31m <-- need to check [0m'
+                            message_list_site_in_storage += ' [2;31m<-- need to check [0m'
                         message_list_site_in_storage += '\n'
                     message_list_site_in_storage += '```'
 
@@ -141,6 +142,7 @@ class Report:
                             message_list_site_need_to_check += f"\nFailed logs: \n"
                             for i, log in enumerate(failed_logs_description[site_name]):
                                 message_list_site_need_to_check += f"{i + 1}. {log} \n"
+
                         embeds = {
                                 'title': f"need to check at site '{site_name}' in storage '{storage}'",
                                 'description' : message_list_site_need_to_check,
@@ -158,16 +160,17 @@ class Report:
                             {"name": "Total Site on config", "value": len(Bqckup().list()), "inline": True},
                             {"name": "Total Size", "value": f"{bytes_to('m',total_size)} MB", "inline": True},
                             {"name": "Largest Site Files", "value": f"{largest_backup.get('Key').split('/')[1]} ({bytes_to('m', largest_backup.get('Size'))} MB)", "inline": True},
-                            {"name": "List site in storage", "value": message_list_site_in_storage, "inline": True},
+                            {"name": "List site in storage", "value": message_list_site_in_storage, "inline": False},
+                            {"name": "", "value": "```ansi\n[2;33myellow [0m: your site not in config\n```", "inline": False},
                             # {"name": "Failed Site", "value": failed_site, "inline": True},
                         ]
                     payload = {
                             "embeds": [{
-                                "title": f"Report this {datetime.now().strftime('%B %Y')}",
+                                "title": f"Report this {get_today("%B_%Y")}",
                                 "description": f"This is an automated notification to inform you that the bqckup information.",
                                 "color": 30646,
                                 "fields": fields,
-                                "footer": {"text": "yellow : your site not in config\nIf this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
+                                "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
                             }, ]
                         }
                     
