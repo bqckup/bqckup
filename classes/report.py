@@ -135,7 +135,7 @@ class Report:
                             for i, log in enumerate(failed_logs_description[site_name]):
                                 message_list_site_need_to_check += f"{i + 1}. {log} \n"
                         embeds = {
-                                'title': f"need to check at site '{site_name}'",
+                                'title': f"need to check at site '{site_name}' in storage '{storage}'",
                                 'description' : message_list_site_need_to_check,
                                 'color' : 15548997,
                                 "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
