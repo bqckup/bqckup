@@ -113,13 +113,20 @@ class Report:
                     list_failed_site_logs = logs.keys()
                     failed_site = logs
                     message_list_site_in_storage = ''
+                    message_list_site_in_storage += '```ansi\n'
+                    list_site_name_in_config = list(map(lambda x: x['name'], sites.values()))
                     for site in list_site_in_storage:
-                        message_list_site_in_storage += site
+                        if site not in list_site_name_in_config:
+                            message_list_site_in_storage += f"[2;33m{site}[0m"
+                        else:
+                            message_list_site_in_storage += site
+
                         if site in list_failed_site_logs:
                             message_list_site_in_storage += f" ({logs[site]} fail)"
                         if site in list_error_site_need_to_check:
-                            message_list_site_in_storage += ' <-- need to check'
+                            message_list_site_in_storage += ' [2;31m <-- need to check [0m'
                         message_list_site_in_storage += '\n'
+                    message_list_site_in_storage += '```'
 
                     # list message site need to check
                     embeds_site_need_to_check = []
@@ -160,7 +167,7 @@ class Report:
                                 "description": f"This is an automated notification to inform you that the bqckup information.",
                                 "color": 30646,
                                 "fields": fields,
-                                "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
+                                "footer": {"text": "yellow : your site not in config\nIf this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
                             }, ]
                         }
                     
