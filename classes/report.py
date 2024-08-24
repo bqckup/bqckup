@@ -146,7 +146,7 @@ class Report:
                         embeds = {
                                 'title': f"need to check at site '{site_name}' in storage '{storage}'",
                                 'description' : message_list_site_need_to_check,
-                                'color' : 15548997,
+                                'color' : 16713736,
                                 "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
                             }
                         
