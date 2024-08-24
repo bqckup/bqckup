@@ -17,6 +17,10 @@ from hashlib import sha256
 from models.notification_log import NotificationLog
 
 class Report:
+
+    RED_ASTERISK = '[2;31m*[0m'
+    YELLOW_ASTERISK = '[2;33m*[0m'
+
     def send(self):
         if Config().read('notification', 'enabled') != '1' and Config().read('notification', 'monthly_report_enabled') != '1':
             return
@@ -117,15 +121,17 @@ class Report:
                     message_list_site_in_storage += '```ansi\n'
                     list_site_name_in_config = list(map(lambda x: x['name'], sites.values()))
                     for site in list_site_in_storage:
-                        if site not in list_site_name_in_config:
-                            message_list_site_in_storage += f"[2;33m{site}[0m"
+                        if site in list_error_site_need_to_check:
+                            message_list_site_in_storage += self.RED_ASTERISK
+                        elif site not in list_site_name_in_config:
+                            message_list_site_in_storage += self.YELLOW_ASTERISK
                         else:
-                            message_list_site_in_storage += site
+                            message_list_site_in_storage += ' '
+
+                        message_list_site_in_storage += site
 
                         if site in list_failed_site_logs:
                             message_list_site_in_storage += f" [2;31m({logs[site]} fail)[0m"
-                        if site in list_error_site_need_to_check:
-                            message_list_site_in_storage += ' [2;31m<-- need to check [0m'
                         message_list_site_in_storage += '\n'
                     message_list_site_in_storage += '```'
 
@@ -144,7 +150,7 @@ class Report:
                                 message_list_site_need_to_check += f"{i + 1}. {log} \n"
 
                         embeds = {
-                                'title': f"need to check at site '{site_name}' in storage '{storage}'",
+                                'title': f"Issue Report : '{site_name}' at '{storage}'",
                                 'description' : message_list_site_need_to_check,
                                 'color' : 16713736,
                                 "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
@@ -161,7 +167,7 @@ class Report:
                             {"name": "Total Size", "value": f"{bytes_to('m',total_size)} MB", "inline": True},
                             {"name": "Largest Site Files", "value": f"{largest_backup.get('Key').split('/')[1]} ({bytes_to('m', largest_backup.get('Size'))} MB)", "inline": True},
                             {"name": "List site in storage", "value": message_list_site_in_storage, "inline": False},
-                            {"name": "", "value": "```ansi\n[2;33myellow [0m: your site not in config\n```", "inline": False},
+                            {"name": "", "value": f"```ansi\n{self.YELLOW_ASTERISK}\t: Site is available in storage, but not in config\n{self.RED_ASTERISK}\t: Issue Found```", "inline": False},
                             # {"name": "Failed Site", "value": failed_site, "inline": True},
                         ]
                     payload = {
