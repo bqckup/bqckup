@@ -55,7 +55,7 @@ class Report:
                     logs = {}
                     failed_logs_description = {}
                     for failed_log in failed_logs:
-                        created_at = datetime.fromtimestamp(failed_log.created_at).strftime('%Y-%m-%d %H:%M:%S')
+                        created_at = datetime.fromtimestamp(failed_log.created_at).strftime('%Y-%B-%d %H:%M:%S')
                         if failed_log.name in logs:
                             logs[failed_log.name] += 1
                             failed_logs_description[failed_log.name].append(f"{failed_log.description} ({created_at})")
