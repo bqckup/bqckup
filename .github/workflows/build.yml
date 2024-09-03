@@ -1,0 +1,48 @@
+name: check-installation
+on:
+  workflow_dispatch: 
+  push: 
+    branches:
+      - 1.x
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build & Install
+        run: |
+          make && make install
+        
+      - name: get bqckup version
+        run: |
+          version=$(python -c "exec(open('constant/__init__.py').read()); print(f'v{VERSION}')")
+          echo "VERSION=$version" >> $GITHUB_ENV
+
+      - uses: a7ul/tar-action@v1.2.0
+        id: compress
+        with:
+          command: c
+          cwd: ./dist
+          files: |
+            bqckup
+          outPath: ./bqckup-${{ env.VERSION }}-${{ matrix.os }}.tar.gz
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: ${{ env.VERSION }}
+          generate_release_notes: true
+          files: |
+            ./bqckup-${{ env.VERSION }}-${{ matrix.os }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
