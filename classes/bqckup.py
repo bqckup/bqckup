@@ -1,4 +1,4 @@
-import os, time, shutil
+import os, time, shutil, signal, sys
 from classes.database import Database
 from classes.storage import Storage
 from classes.tar import Tar
@@ -14,19 +14,29 @@ from helpers.file import remove_folder
 from hashlib import sha256
 from lib.notifications.discord import send_notification
 from rich import print
-from helpers.datetime import time_since, get_today, difference_in_days
+from helpers.datetime import time_since, get_today, difference_in_days, interval_in_number
 from helpers.network import get_server_ip
-
 from classes.yml_checker import Yml_Checker
 
 class ConfigExceptions(Exception):
     pass
 
+def signal_handler(sig, frame):
+    Log().delete().where(Log.status == Log.__ON_PROGRESS__).execute()
+
+    print ("\n[red]Aborted.[/red]")
+    sys.exit(0)
+    
+signal.signal(signal.SIGINT, signal_handler)
+
 class Bqckup:
     def __init__(self):
         Yml_Checker.checker()
-        if not os.path.exists(SITE_CONFIG_PATH):
-            os.makedirs(SITE_CONFIG_PATH)
+        try:
+            s3.check_connection()
+        except Exception as e:
+            print(f"[red]{e}[/red]")
+            quit()
             
     def _send_notification(self, backup_name, messages, additional_data):
         fields = [
@@ -93,14 +103,6 @@ class Bqckup:
             
         return None
     
-    def _interval_in_number(self, interval: str) -> int:
-        if interval == 'weekly':
-            return 7
-        elif interval == 'monthly':
-            return 30
-        return 1
-        
-    
     def list(self):
         files = File().get_file_list(SITE_CONFIG_PATH)
         files = [file for file in files if file.endswith('.yml')]
@@ -119,7 +121,7 @@ class Bqckup:
             # Next Backup
             results[index]['next_backup'] = False
             if results[index]['last_backup']:
-                next_backup_in_date = datetime.fromtimestamp(results[index]['last_backup'] + (self._interval_in_number(bqckup['options']['interval']) * 86400)).strftime('%d/%m/%Y 00:00:00')
+                next_backup_in_date = datetime.fromtimestamp(results[index]['last_backup'] + (interval_in_number(bqckup['options']['interval']) * 86400)).strftime('%d/%m/%Y 00:00:00')
                 results[index]['next_backup'] = time_since(datetime.strptime(next_backup_in_date, '%d/%m/%Y %H:%M:%S').timestamp(), time.time(), reverse=True)
             
         return results
@@ -153,7 +155,7 @@ class Bqckup:
                 interval = backup['options']['interval']
                 last_backup = last_log.created_at
                 last_backup = abs(difference_in_days(last_backup, time.time()))
-                to_compare = self._interval_in_number(interval)
+                to_compare = interval_in_number(interval)
                 
                 # Not enough time has passed
                 if not force and last_backup < to_compare:
@@ -181,8 +183,8 @@ class Bqckup:
             
             tmp_path = os.path.join(BQ_PATH, 'tmp', f"{backup.get('name')}")
 
-            if(backup.get('options').get('disabled')):
-                print(f"[red]Backup for {backup.get('name')} is disabled[/red]")
+            if(not backup.get('enabled')):
+                print(f"[red]Backup for {backup.get('name')} is not enabled[/red]")
                 return False
             
             if Log().select().where((Log.name == backup.get('name')) & (Log.status == Log.__ON_PROGRESS__)).exists():

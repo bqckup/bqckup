@@ -194,3 +194,10 @@ def timeSince(time=False):
         return str(day_diff / 30) + " months ago"
 
     return str(day_diff / 365) + " years ago"
+
+def interval_in_number( interval: str) -> int:
+    if interval == 'weekly':
+        return 7
+    elif interval == 'monthly':
+        return 30
+    return 1

@@ -20,6 +20,9 @@ anonymous_statistic=1
 ; Enable or disable notification
 enabled=0
 
+; reports will be sent at the end of every month, make sure notification are enabled
+monthly_report_enabled=0
+
 ; Currently Only Discord is supported
 channel=discord
 

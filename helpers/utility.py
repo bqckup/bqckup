@@ -5,6 +5,19 @@ from humanfriendly import format_size
 from rich.table import Table
 from rich import print
 
+def get_os_version():
+    # get ubuntu version
+    name = ''
+    if os.path.isfile('/etc/lsb-release'):
+        lines = open('/etc/lsb-release').read().split('\n')
+        for line in lines:
+            if line.startswith('DISTRIB_DESCRIPTION='):
+                name = line.split('=')[1]
+                if name[0]=='"' and name[-1]=='"':
+                    return name[1:-1].split(' ')[1]
+    print ("[red] Failed to get your OS version [/red]")
+    return name
+
 # remove protocol and slash
 def clearDomain(domain):
     import re
@@ -101,3 +114,17 @@ def validate_path(directory_name: str) -> Path:
         return Path(directory_name)
     except Exception as e:
         raise typer.BadParameter(f"\nThe path '{directory_name}' is not valid: {e}")
+
+
+def split_list(lst, chunk_size):
+        return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
+
+def isset(key, array = None):
+    if array is not None:
+        try:
+            array[key]
+            return True
+        except:
+            return False
+    else:
+        return key in globals()

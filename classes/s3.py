@@ -105,3 +105,19 @@ class s3(object):
             raise Exception("Msg : %s\n " % e)
         else:
             return link
+    
+    @classmethod
+    def check_connection(self, storage = None):
+        from constant import STORAGE_CONFIG_PATH
+        from classes.yml_parser import Yml_Parser
+        storage_name = None
+        try:
+            if storage:
+                storage_name = storage
+                self(storage).client.head_bucket(Bucket=self(storage).bucket_name)
+            else:
+                for storage in Yml_Parser.parse(STORAGE_CONFIG_PATH)['storages']:
+                    storage_name = storage
+                    self(storage).client.head_bucket(Bucket=self(storage).bucket_name)                
+        except:
+            raise Exception(f" Error : Unable to connect to S3. Please verify your configuration settings for storage '{storage_name}'")

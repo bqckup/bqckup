@@ -1,7 +1,10 @@
 bqckup:
   name: domain
+  enabled: no
   path:
     - /var/www/html
+  exclude_path:
+    - cache
   database:
     type: mysql
     host: localhost
@@ -11,9 +14,8 @@ bqckup:
     name: database
   options:
     storage: dummy
-    interval: daily #can be daily, weekly, yearly 
+    interval: daily #can be daily, weekly, monthly 
     retention: '7'
-    disabled: true
     save_locally: no
     save_locally_path: /etc/bqckup/tmp
     notification_email: email@example.com
