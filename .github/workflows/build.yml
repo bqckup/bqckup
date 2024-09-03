@@ -3,7 +3,7 @@ on:
   workflow_dispatch: 
   push: 
     branches:
-      - 1.x
+      - 1x
 jobs:
   build:
     strategy:
