@@ -193,7 +193,7 @@ class Bqckup:
             
             if not File().is_exists(tmp_path):
                 os.makedirs(tmp_path)
-                
+
             compressed_file = os.path.join(tmp_path, f"{int(time.time())}.tar.gz")
             
             log_compressed_files = Log().write({
@@ -207,7 +207,20 @@ class Bqckup:
             print(f"\nStarting backup for {backup.get('name')}\n")
                                     
             print("Compressing files ...")
-            compressed_file = Tar().compress(backup.get('path'),compressed_file, backup_config.get('exclude_path', []))
+            
+            if(backup['options']['follow_symlink']):
+                resolved_paths = []
+                for path, folders, files in os.walk(backup.get('path')[0]):
+                    for file in files:
+                        file_path = os.path.join(path, file)
+                        if os.path.islink(file_path):
+                            resolved_paths.append(os.readlink(file_path))
+                        else:
+                            resolved_paths.append(file_path)
+                compressed_file = Tar().compress(resolved_paths, compressed_file, backup_config.get('exclude_path', []))         
+            else:
+                compressed_file = Tar().compress(backup.get('path'),compressed_file, backup_config.get('exclude_path', []))
+                
             last_compressed_file_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__FILES__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
             
             if last_compressed_file_backup:

@@ -36,7 +36,7 @@ class Report:
         first_day_of_two_month_ago = datetime.now().replace(day=1, month=datetime.now().month - 1).timestamp()
 
         for storage in storages:
-            hash_value_notification = sha256(f"{storage}_{get_today("%B_%Y")}".encode()).hexdigest()
+            hash_value_notification = sha256(f"{storage}_{get_today('%B_%Y')}".encode()).hexdigest()
             if NotificationLog().select().where(NotificationLog.hash == hash_value_notification).exists():
                 continue
             
@@ -172,7 +172,7 @@ class Report:
                         ]
                     payload = {
                             "embeds": [{
-                                "title": f"Report this {get_today("%B_%Y")}",
+                                "title": f"Report this {get_today('%B_%Y')}",
                                 "description": f"This is an automated notification to inform you that the bqckup information.",
                                 "color": 30646,
                                 "fields": fields,
