@@ -107,7 +107,7 @@ def summary(site = None):
         print(f"Backup Name                     : {backup['name']}")
         print(f"Last Backup                     : {last_modified.strftime('%d/%m/%Y %H:%M:%S')}")
         print(f"Last backup file size and name  : {format_size(last_size)} ({last_folder}) ")
-        print(f"Total size of a bqckup          : {bytes_to(total_size)}")
+        print(f"Total size of a bqckup          : {format_size(total_size)}")
         print(f"Total files                     : {backups['KeyCount']}")
         print(f"Storage Name                    : {backup['options']['storage']}")
         print(f"Schedule                        : {interval}")
