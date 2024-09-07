@@ -207,34 +207,25 @@ class Bqckup:
             print(f"\nStarting backup for {backup.get('name')}\n")
                                     
             print("Compressing files ...")
-
             resolved_paths = set()
+            added_files = set()
 
             for root, dirs, files in os.walk(backup.get('path')[0]):
-                for dir_name in dirs:
-                    dir_path = os.path.join(root, dir_name)
+                for name in dirs:
+                    dir_path = os.path.join(root, name)
                     real_path = os.path.realpath(dir_path)
-                    
+
                     if backup.get('options')['follow_symlink']:
-                        if os.path.isdir(real_path) and real_path not in resolved_paths:
+                        if os.path.isdir(real_path) and real_path not in added_files:
                             resolved_paths.add(real_path)
+                            added_files.add(real_path)
                     else:
-                        if not os.path.islink(dir_path) and dir_path not in resolved_paths:
+                        if not os.path.islink(dir_path) and os.path.isdir(dir_path) and dir_path not in added_files:
                             resolved_paths.add(dir_path)
+                            added_files.add(dir_path)
 
-                for file_name in files:
-                    file_path = os.path.join(root, file_name)
-                    real_path = os.path.realpath(file_path)
 
-                    if backup.get('options')['follow_symlink']:
-                        if os.path.isfile(real_path) and real_path not in resolved_paths:
-                            resolved_paths.add(real_path)
-                    else:
-                        if not os.path.islink(file_path) and file_path not in resolved_paths:
-                            resolved_paths.add(file_path)
-                            
-                            
-            compressed_file = Tar().compress(resolved_paths, compressed_file,  backup_config.get('exclude_path', []))
+            compressed_file = Tar().compress(resolved_paths, compressed_file, backup.get('options')['follow_symlink'], backup_config.get('exclude_path', []))
             last_compressed_file_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__FILES__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
             
             if last_compressed_file_backup:
