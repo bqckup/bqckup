@@ -208,18 +208,25 @@ class Bqckup:
                                     
             print("Compressing files ...")
             
-            if(backup['options']['follow_symlink']):
-                resolved_paths = []
-                for path, folders, files in os.walk(backup.get('path')[0]):
-                    for file in files:
-                        file_path = os.path.join(path, file)
+            resolved_paths = []
+
+            for path, folders, files in os.walk(backup.get('path')[0]):
+                for file in files:
+                    file_path = os.path.join(path, file)
+                    if backup['options']['follow_symlink']:
                         if os.path.islink(file_path):
                             resolved_paths.append(os.readlink(file_path))
                         else:
                             resolved_paths.append(file_path)
-                compressed_file = Tar().compress(resolved_paths, compressed_file, backup_config.get('exclude_path', []))         
+                    else:
+                        if not os.path.islink(file_path):
+                            resolved_paths.append(file_path)
+
+            if backup['options']['follow_symlink']:
+                compressed_file = Tar().compress(resolved_paths, compressed_file, backup_config.get('exclude_path', []))
             else:
-                compressed_file = Tar().compress(backup.get('path'),compressed_file, backup_config.get('exclude_path', []))
+                compressed_file = Tar().compress(resolved_paths, compressed_file, backup_config.get('exclude_path', []))
+
                 
             last_compressed_file_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__FILES__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
             
