@@ -135,7 +135,7 @@ def history(site = None, filter_latest_days : int = 7):
                 status = "[red]Failed[/red]"
 
             last_backup = datetime.fromtimestamp(log.created_at).strftime('%d/%m/%Y %H:%M:%S')
-            size = format_size(log.size)
+            size = format_size(log.file_size)
             time_consume = log.time_consume
             file_name = log.file_path.split('/')[-1]
 
