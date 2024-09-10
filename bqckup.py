@@ -54,7 +54,6 @@ def migrate():
 def summary(site = None):
     from rich.progress import Progress, SpinnerColumn, TextColumn
     from helpers.datetime import interval_in_number
-    from helpers import bytes_to
     from datetime import datetime
 
     bqckups = Bqckup().list()
@@ -106,8 +105,8 @@ def summary(site = None):
         print("\n================================================================\n")
         print(f"Backup Name                     : {backup['name']}")
         print(f"Last Backup                     : {last_modified.strftime('%d/%m/%Y %H:%M:%S')}")
-        print(f"Last backup file size and name  : {bytes_to('m', last_size)} mb ({last_folder}) ")
-        print(f"Total size of a bqckup          : {bytes_to('m', total_size)} mb")
+        print(f"Last backup file size and name  : {format_size( last_size)} ({last_folder}) ")
+        print(f"Total size of a bqckup          : {format_size( total_size)}")
         print(f"Total files                     : {backups['KeyCount']}")
         print(f"Storage Name                    : {backup['options']['storage']}")
         print(f"Schedule                        : {interval}")
@@ -121,7 +120,6 @@ def summary(site = None):
 def history(site = None, filter_latest_days : int = 7):
     from models.log import Log
     from datetime import datetime
-    from helpers import bytes_to
 
     # check if site is empty
     if site is None :
@@ -137,14 +135,7 @@ def history(site = None, filter_latest_days : int = 7):
                 status = "[red]Failed[/red]"
 
             last_backup = datetime.fromtimestamp(log.created_at).strftime('%d/%m/%Y %H:%M:%S')
-            if log.file_size >= 1e+9:
-                # if size is greater than 1 gb
-                size = f"{bytes_to('g', log.file_size)} GB"
-            elif log.file_size >= 1000000:
-                # if size is greater than 1 mb
-                size = f"{bytes_to('m', log.file_size)} MB"
-            else:
-                size = f"{bytes_to('k', log.file_size)} KB"
+            size = format_size(log.file_size)
             time_consume = log.time_consume
             file_name = log.file_path.split('/')[-1]
 
