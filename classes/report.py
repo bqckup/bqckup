@@ -1,7 +1,6 @@
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from lib.notifications.discord import send_notification
 from datetime import datetime
-from helpers import bytes_to
 from helpers.datetime import difference_in_days, interval_in_number, get_today
 from helpers.utility import split_list, isset
 from models.log import Log
@@ -15,6 +14,7 @@ from classes.config import Config
 import calendar
 from hashlib import sha256
 from models.notification_log import NotificationLog
+from humanfriendly import format_size
 
 class Report:
 
@@ -36,7 +36,7 @@ class Report:
         first_day_of_two_month_ago = datetime.now().replace(day=1, month=datetime.now().month - 1).timestamp()
 
         for storage in storages:
-            hash_value_notification = sha256(f"{storage}_{get_today("%B_%Y")}".encode()).hexdigest()
+            hash_value_notification = sha256(f"{storage}_{get_today('%B_%Y')}".encode()).hexdigest()
             if NotificationLog().select().where(NotificationLog.hash == hash_value_notification).exists():
                 continue
             
@@ -164,15 +164,15 @@ class Report:
                             {"name": "Bqckup Version", "value": VERSION, "inline": True},
                             {"name": "Storage", "value": storage, "inline": True},
                             {"name": "Total Site on config", "value": len(Bqckup().list()), "inline": True},
-                            {"name": "Total Size", "value": f"{bytes_to('m',total_size)} MB", "inline": True},
-                            {"name": "Largest Site Files", "value": f"{largest_backup.get('Key').split('/')[1]} ({bytes_to('m', largest_backup.get('Size'))} MB)", "inline": True},
+                            {"name": "Total Size", "value": f"{format_size(total_size)}", "inline": True},
+                            {"name": "Largest Site Files", "value": f"{largest_backup.get('Key').split('/')[1]} ({format_size( largest_backup.get('Size'))})", "inline": True},
                             {"name": "List site in storage", "value": message_list_site_in_storage, "inline": False},
                             {"name": "", "value": f"```ansi\n{self.YELLOW_ASTERISK} : Site is available in storage, but not in config\n{self.RED_ASTERISK} : Issue Found```", "inline": False},
                             # {"name": "Failed Site", "value": failed_site, "inline": True},
                         ]
                     payload = {
                             "embeds": [{
-                                "title": f"Report this {get_today("%B_%Y")}",
+                                "title": f"Report this {get_today('%B_%Y')}",
                                 "description": f"This is an automated notification to inform you that the bqckup information.",
                                 "color": 30646,
                                 "fields": fields,
