@@ -5,18 +5,23 @@ from classes.tar import Tar
 from classes.file import File
 from classes.config import Config
 from classes.yml_parser import Yml_Parser
+from classes.progress import ProgressSpinner
+from classes.yml_checker import Yml_Checker
+from classes.s3 import s3
 from models.log import Log
 from models.notification_log import NotificationLog
 from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
-from classes.s3 import s3
 from datetime import datetime
 from helpers.file import remove_folder
 from hashlib import sha256
 from lib.notifications.discord import send_notification
-from rich import print
 from helpers.datetime import time_since, get_today, difference_in_days, interval_in_number
 from helpers.network import get_server_ip
-from classes.yml_checker import Yml_Checker
+from rich import print
+from rich.table import Table
+from rich.panel import Panel
+from rich.text import Text
+from humanfriendly import format_size, format_timespan
 
 class ConfigExceptions(Exception):
     pass
@@ -210,20 +215,29 @@ class Bqckup:
                 "storage": backup['options']['storage']
             })
             
-            print(f"\nStarting backup for {backup.get('name')}\n")
-                                    
-            print("Compressing files ...")
+            print(f"\n[green]Starting backup for {backup.get('name')}[/green]\n")     
 
             compressed_file = Tar().compress(backup.get('path'), compressed_file, backup.get('options')['follow_symlink'],backup_config.get('exclude_path', []))
             last_compressed_file_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__FILES__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
             
             if last_compressed_file_backup:
-                print(f"Previous: {last_compressed_file_backup.file_size}")
-                print(f"Current: {os.stat(compressed_file).st_size}")
+                print("Backup File Compressed")
+                
+                table = Table(show_header=True)
+
+                table.add_column("Description")
+                table.add_column("Detail")
+                
+                table.add_row("Previous Size", format_size(last_compressed_file_backup.file_size))
+                table.add_row("Current Size", format_size(os.stat(compressed_file).st_size))
+                table.add_row("Time Consume", format_timespan(last_compressed_file_backup.time_consume))
+                
+                print(table)
             
             if last_compressed_file_backup and os.stat(compressed_file).st_size == last_compressed_file_backup.file_size:
-                print(f"[red]\nBased on file size, there is no changes detected for {compressed_file}[/red]\n")
-                self._send_notification(backup.get('name'), "Based on file size, there is no changes detected", {"name": "File name", "value": os.path.basename(compressed_file), "inline": False})                    
+                    print(f"[red]Based on file size, there is no changes detected for {compressed_file}[/red]\n")
+
+                    self._send_notification(backup.get('name'), "Based on file size, there is no changes detected", {"name": "File name", "value": os.path.basename(compressed_file), "inline": False})                    
 
             
             Log().update(file_size=os.stat(compressed_file).st_size).where(Log.id == log_compressed_files.id).execute()
@@ -231,34 +245,38 @@ class Bqckup:
             sql_path = os.path.join(tmp_path, f"{int(time.time())}.sql.gz")
             
             if backup.get('database'):
-                print("Exporting database...")
-                 # Database export
-                
-                log_database = Log().write({
-                    "name": backup['name'],
-                    "file_path": sql_path,
-                    "description": "Database Backup is in Progress",
-                    "type": Log.__DATABASE__,
-                    "storage": backup['options']['storage'],
-                })
-                
-                Database().export(
-                    sql_path,
-                    db_user=backup.get('database').get('user'),
-                    db_password=backup.get('database').get('password'),
-                    db_name=backup.get('database').get('name'),
-                )
-                
-                
-                last_log_db_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__DATABASE__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
+                with ProgressSpinner("Exporting database..."):
+                    log_database = Log().write({
+                        "name": backup['name'],
+                        "file_path": sql_path,
+                        "description": "Database Backup is in Progress",
+                        "type": Log.__DATABASE__,
+                        "storage": backup['options']['storage'],
+                    })
+                    Database().export(
+                        sql_path,
+                        db_user=backup.get('database').get('user'),
+                        db_password=backup.get('database').get('password'),
+                        db_name=backup.get('database').get('name'),
+                    )
+                    last_log_db_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__DATABASE__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
 
                 if last_log_db_backup:
-                    print(f"Previous: {last_log_db_backup.file_size}")
-                    print(f"Current: {os.stat(sql_path).st_size}")
+                    print("Database Compressed")
+                    
+                    table = Table(show_header=True)
+
+                    table.add_column("Description")
+                    table.add_column("Detail")
+                    
+                    table.add_row("Previous Size", format_size(last_log_db_backup.file_size))
+                    table.add_row("Current Size", format_size(os.stat(sql_path).st_size))
+                    table.add_row("Time Consume", format_timespan(last_log_db_backup.time_consume))
+                    
+                    print(table)
 
                 if last_log_db_backup and os.stat(sql_path).st_size == last_log_db_backup.file_size:
-                    print(f"\n[red]Based on file size, there is no changes detected for {sql_path}[/red]\n")
-                    self._send_notification(backup.get('name'), "Based on file size, there is no changes detected", {"name": "File name", "value": os.path.basename(sql_path), "inline": False})
+                    print(f"[red]Based on file size, there is no changes detected for {sql_path}[/red]\n")
                 
                 Log().update(file_size=os.stat(sql_path).st_size).where(Log.id == log_database.id).execute()
             
@@ -314,7 +332,7 @@ class Bqckup:
                     _s3.upload(STORAGE_CONFIG_PATH, 'storages.yml', False)
 
                 if os.path.exists(compressed_file):
-                    print(f"Uploading ...")
+                    print(f"\nUploading {compressed_file}")
                     _s3.upload(
                         compressed_file,
                         f"{backup_folder}/{os.path.basename(compressed_file)}"
@@ -324,7 +342,7 @@ class Bqckup:
                     
                 
                 if os.path.exists(sql_path):
-                    print(f"\n\nUploading ...")
+                    print(f"\nUploading {sql_path}")
                     _s3.upload(
                         sql_path,
                         f"{backup_folder}/{os.path.basename(sql_path)}"
@@ -353,7 +371,7 @@ class Bqckup:
                     time_consume = time.time() - time_start
                     Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success", time_consume)
             
-            print(f"\n\n[green]Backup for {backup.get('name')} is done![/green]\n")
+            print(f"\n[green]Backup for {backup.get('name')} is done![/green]\n")
         except Exception as e:
             import traceback
             traceback.print_exc()
