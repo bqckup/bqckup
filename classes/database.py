@@ -22,8 +22,8 @@ class Database:
                 f"--user={db_user}",
                 f"--password={db_password}",
                 db_name,
-                 "--no-tablespaces ",
-                 "--skip-dump-date",
+                "--no-tablespaces ",
+                "--skip-dump-date",
                 "|",
                 "gzip",
                 ">",
@@ -40,8 +40,10 @@ class Database:
                 host=credentials['host'],
                 password=credentials['password'],
                 database=credentials['name'])
+        
         except mysql.connector.Error as e:
             logging.error(e)
             raise DatabaseException("Failed to connect database, see log for details")
         else:
             c.close()
+        return 

@@ -77,33 +77,30 @@ class Bqckup:
             send_notification(payload)
             NotificationLog().create(hash=hashed_payload, sent_at=int(time.time()))
             
-    def validate_config(self, name: str) -> None:
-        print(f"\nChecking {name} config ...")
-        config = self.detail(name)
-        if not config:
-            raise ConfigExceptions(f"Backup {name} not found")
-
-        # validate files
-        for path in config.get('path'):
-            if not os.path.exists(path):
-                raise ConfigExceptions(f"Can't find {path}")
-            
-        # validate database
-        if config.get('database'):
-            if config.get('database').get('type') not in Database().SUPPORTED_DATABASE:
-                raise ConfigExceptions(f"Database type {config.get('database').get('type')} not supported")
-            
-            Database(type=config.get('database').get('type')).test_connection({
-                "user": config.get('database').get('user'),
-                "password": config.get('database').get('password'),
-                "host": config.get('database').get('host'),
-                "name": config.get('database').get('name')
-            })
-            
-        if config.get('options').get('provider') == 's3':
-            Storage().get_storage_detail(config.get('options').get('storage'))
-            
-        print("All OK !")
+    def validate_config(self, name: str) -> bool:
+        try:
+            with ProgressSpinner("Validating config..."):
+                config = self.detail(name)
+                if not config:
+                    raise ConfigExceptions(f"Backup {name} not found")
+                for path in config.get('path'):
+                    if not os.path.exists(path):
+                        raise ConfigExceptions(f"Can't find {path}")
+                if config.get('database'):
+                    if config.get('database').get('type') not in Database().SUPPORTED_DATABASE:
+                        raise ConfigExceptions(f"Database type {config.get('database').get('type')} not supported")
+                    Database(type=config.get('database').get('type')).test_connection({
+                        "user": config.get('database').get('user'),
+                        "password": config.get('database').get('password'),
+                        "host": config.get('database').get('host'),
+                        "name": config.get('database').get('name')
+                    })
+                if config.get('options').get('provider') == 's3':
+                    Storage().get_storage_detail(config.get('options').get('storage'))
+            return True
+        except Exception as e:
+            print(f"[red]Error: {e}[/red]")
+            return False
             
     def detail(self, name: str):
         backups = self.list()
@@ -152,37 +149,51 @@ class Bqckup:
             backups = {0 : self.detail(site)}
         else:
             backups = self.list()
-          
+            
         if not backups:
             print("No backups found")
-            return
-        
-        for i in backups:
-            backup = backups[i]
-            # self.validate_config(backup['name'])
-            last_log = self.get_last_log(backup['name'])
-            
-            if last_log:
-                interval = backup['options']['interval']
-                last_backup = last_log.created_at
-                last_backup = abs(difference_in_days(last_backup, time.time()))
-                to_compare = interval_in_number(interval)
-                
-                # Not enough time has passed
-                if not force and last_backup < to_compare:
-                    print("\n=========================================")
-                    print(f"Backup Name: {backup['name']}")
-                    print(f"Current Date: {time.strftime('%d/%m/%Y %H:%M:%S', time.localtime())}")
-                    print(f"Last Backup: {datetime.fromtimestamp(last_log.created_at).strftime('%d/%m/%Y %H:%M:%S')}")
-                    print(f"Next bqckup: {datetime.fromtimestamp(last_log.created_at + (to_compare * 86400)).strftime('%d/%m/%Y 00:00:00')}")
-                    print(f"Day passed: {last_backup}")
-                    print(f"Interval: {interval}")
-                    print(f"\nBackup for {backup['name']} is not needed yet...")
-                    print("=========================================\n")
-                    print(f"Visit: https://bqckup.com\n")
-                    continue
-                
-            self.do_backup(backup)
+            return          
+
+        valid_backups = {}
+        for k, v in backups.items():
+            try:
+                if self.validate_config(v['name']):
+                    valid_backups[k] = v
+                else:
+                    print(f"[red]Validation for {v['name']} failed[/red]\n")
+            except Exception as e:
+                print(f"[red]Error during validation for {v['name']}: {e}[/red]\n")
+
+        backups = valid_backups      
+
+        for backup in backups.values():
+            try:
+                last_log = self.get_last_log(backup['name'])
+                if last_log:
+                    interval = backup['options']['interval']
+                    last_backup = last_log.created_at
+                    last_backup = abs(difference_in_days(last_backup, time.time()))
+                    to_compare = interval_in_number(interval)
+
+                    # Not enough time has passed
+                    if not force and last_backup < to_compare:
+                        print("\n=========================================")
+                        print(f"Backup Name: {backup['name']}")
+                        print(f"Current Date: {time.strftime('%d/%m/%Y %H:%M:%S', time.localtime())}")
+                        print(f"Last Backup: {datetime.fromtimestamp(last_log.created_at).strftime('%d/%m/%Y %H:%M:%S')}")
+                        print(f"Next bqckup: {datetime.fromtimestamp(last_log.created_at + (to_compare * 86400)).strftime('%d/%m/%Y 00:00:00')}")
+                        print(f"Day passed: {last_backup}")
+                        print(f"Interval: {interval}")
+                        print(f"\nBackup for {backup['name']} is not needed yet...")
+                        print("=========================================\n")
+                        print(f"Visit: https://bqckup.com\n")
+                        continue
+                    
+
+                    self.do_backup(backup)
+            except Exception as e:
+                print(f"[red]Error during backup for {backup['name']}: {e}[/red]")
+                continue
     
     # Upload
     def do_backup(self, backup_config):
@@ -215,25 +226,23 @@ class Bqckup:
                 "storage": backup['options']['storage']
             })
             
-            print(f"\n[green]Starting backup for {backup.get('name')}[/green]\n")     
+            print(f"[green]Starting backup for {backup.get('name')}[/green]\n")     
 
             compressed_file = Tar().compress(backup.get('path'), compressed_file, backup.get('options')['follow_symlink'],backup_config.get('exclude_path', []))
             last_compressed_file_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__FILES__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
             
             if last_compressed_file_backup:
+                
+                previous_size = format_size(last_compressed_file_backup.file_size)
+                current_size = format_size(os.stat(compressed_file).st_size)
+                time_consume = format_timespan(last_compressed_file_backup.time_consume)
+                print("=========================================")
                 print("Backup File Compressed")
+                print(f"Previous Size\t: {previous_size}")
+                print(f"Current Size\t: {current_size}")
+                print(f"Time Consumed\t: {time_consume}")
+                print("=========================================")
                 
-                table = Table(show_header=True)
-
-                table.add_column("Description")
-                table.add_column("Detail")
-                
-                table.add_row("Previous Size", format_size(last_compressed_file_backup.file_size))
-                table.add_row("Current Size", format_size(os.stat(compressed_file).st_size))
-                table.add_row("Time Consume", format_timespan(last_compressed_file_backup.time_consume))
-                
-                print(table)
-            
             if last_compressed_file_backup and os.stat(compressed_file).st_size == last_compressed_file_backup.file_size:
                     print(f"[red]Based on file size, there is no changes detected for {compressed_file}[/red]\n")
 
@@ -260,20 +269,18 @@ class Bqckup:
                         db_name=backup.get('database').get('name'),
                     )
                     last_log_db_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__DATABASE__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
-
+                    
                 if last_log_db_backup:
+                    
+                    previous_size = format_size(last_log_db_backup.file_size)
+                    current_size = format_size(os.stat(sql_path).st_size)
+                    time_consume = format_timespan(last_log_db_backup.time_consume)
+                    print("=========================================")
                     print("Database Compressed")
-                    
-                    table = Table(show_header=True)
-
-                    table.add_column("Description")
-                    table.add_column("Detail")
-                    
-                    table.add_row("Previous Size", format_size(last_log_db_backup.file_size))
-                    table.add_row("Current Size", format_size(os.stat(sql_path).st_size))
-                    table.add_row("Time Consume", format_timespan(last_log_db_backup.time_consume))
-                    
-                    print(table)
+                    print(f"Previous Size\t: {previous_size}")
+                    print(f"Current Size\t: {current_size}")
+                    print(f"Time Consumed\t: {time_consume}")
+                    print("=========================================")
 
                 if last_log_db_backup and os.stat(sql_path).st_size == last_log_db_backup.file_size:
                     print(f"[red]Based on file size, there is no changes detected for {sql_path}[/red]\n")
@@ -371,7 +378,7 @@ class Bqckup:
                     time_consume = time.time() - time_start
                     Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success", time_consume)
             
-            print(f"\n[green]Backup for {backup.get('name')} is done![/green]\n")
+            print(f"\n[green]Backup for {backup.get('name')} is done![/green]")
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -391,7 +398,6 @@ class Bqckup:
             self._send_notification(backup.get('name'), f"Error: {e}", None)
                 
             print(f"[{backup.get('name')}] Error: {e}.")
-         
-    
+            
     def remove(self):
         pass
