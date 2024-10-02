@@ -2,7 +2,7 @@ import os, sys, boto3
 from boto3.s3.transfer import TransferConfig
 from botocore.config import Config
 from classes.config import Config as bqckup_config
-from classes.progresspercentage import ProgressPercentage
+from classes.progress import ProgressPercentage
 from classes.storage import Storage
 
 class s3(object):
@@ -70,7 +70,7 @@ class s3(object):
                 self.bucket_name,
                 newFileName,
                 Config=config,
-                Callback=ProgressPercentage(pathFile) if showProgress else None,
+                Callback=ProgressPercentage(pathFile, label="Uploading") if showProgress else None,
             )
         except Exception as errorMsg:
             print(
