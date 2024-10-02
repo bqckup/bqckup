@@ -1,6 +1,7 @@
 import requests
 from pathlib import Path
 from rich.progress import Progress
+from rich import print
 
 def get_server_ip():
     try:
@@ -39,7 +40,7 @@ def download_files(file, target, _s3):
         
         total_size = backup['Size']
         with Progress() as progress:
-            task = progress.add_task(f"{backup_file_path}", total=total_size)
+            task = progress.add_task(f"{backup_file_path}", total=total_size, transient=True )
             
             def progress_callback(bytes_transferred):
                 progress.update(task, advance=bytes_transferred)

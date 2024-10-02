@@ -1,4 +1,5 @@
 import logging, os
+import subprocess
 
 # Database Exceptions
 class DatabaseException(Exception):
@@ -16,7 +17,20 @@ class Database:
         self.type = type.lower()
         
     def export(self, output: str, db_user: str, db_password: str, db_name: str) -> None:
-        os.system(f"mysqldump -u {db_user} -p'{db_password}' {db_name} --no-tablespaces --skip-dump-date | gzip > {output}")
+        command = [
+                "mysqldump",
+                f"--user={db_user}",
+                f"--password={db_password}",
+                db_name,
+                "--no-tablespaces ",
+                "--skip-dump-date",
+                "|",
+                "gzip",
+                ">",
+                output
+            ]        
+        with open(os.devnull, 'w') as devnull:
+                subprocess.run(" ".join(command), shell=True, stdout=devnull, stderr=devnull)
     
     def test_connection(self, credentials: dict) -> bool:
         import mysql.connector
@@ -26,8 +40,10 @@ class Database:
                 host=credentials['host'],
                 password=credentials['password'],
                 database=credentials['name'])
+        
         except mysql.connector.Error as e:
             logging.error(e)
             raise DatabaseException("Failed to connect database, see log for details")
         else:
             c.close()
+        return 

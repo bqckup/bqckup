@@ -173,7 +173,14 @@ class Report:
                     payload = {
                             "embeds": [{
                                 "title": f"Report this {get_today('%B_%Y')}",
-                                "description": f"This is an automated notification to inform you that the bqckup information.",
+                                "description": (
+                                                    "We have not detected any changes. There could be 2 reasons for this:\n"
+                                                    "1. The application is rarely used.\n"
+                                                    "2. There might be an issue with the database backup process.\n\n"
+                                                    "We recommend the following steps:\n"
+                                                    "1. Check the storage (S3) bucket {bucket_name}. If the database size is less than 1 KB or seems unusual, it likely means the backup did not complete successfully.\n"
+                                                    "2. Attempt to force a backup by running `bqckup --site {domain_name} --force` to ensure the backup process is functioning correctly."
+                                        ),                                
                                 "color": 30646,
                                 "fields": fields,
                                 "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
