@@ -190,7 +190,7 @@ class Bqckup:
                         continue
                     
 
-                    self.do_backup(backup)
+                self.do_backup(backup)
             except Exception as e:
                 print(f"[red]Error during backup for {backup['name']}: {e}[/red]")
                 continue
