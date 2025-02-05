@@ -8,7 +8,7 @@ Flask-Login
 Flask-WTF
 gunicorn
 hurry.filesize
-mysql-connector-python
+mysql-connector-python==8.0.20
 peewee
 pyinstaller
 python-decouple
