@@ -1,4 +1,4 @@
-boto3
+boto3==1.35.99
 configparser
 emails
 Flask
