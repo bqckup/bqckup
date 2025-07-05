@@ -192,6 +192,20 @@ class Bqckup:
                         print("Visit: https://bqckup.com\n")
                         continue
 
+                if not backup.get("enabled"):
+                    print(f"[red]Backup for {backup.get('name')} is not enabled[/red]")
+                    continue
+
+                if (
+                    Log()
+                    .select()
+                    .where(
+                        Log.name == backup.get("name")
+                        and Log.status == Log.__ON_PROGRESS__
+                    ).exists()
+                ):
+                    print(f"Backup for {backup.get('name')} is already running...")
+
                 if backup.get("incremental"):
                     self.incremental_backup(backup)
                 else:
@@ -209,14 +223,6 @@ class Bqckup:
             backup_folder = f"{backup.get('name')}/{get_today()}"
             
             tmp_path = os.path.join(BQ_PATH, 'tmp', f"{backup.get('name')}")
-
-            if(not backup.get('enabled')):
-                print(f"[red]Backup for {backup.get('name')} is not enabled[/red]")
-                return False
-            
-            if Log().select().where((Log.name == backup.get('name')) & (Log.status == Log.__ON_PROGRESS__)).exists():
-                print(f"Backup for {backup.get('name')} is already running...")
-                return False
             
             if not File().is_exists(tmp_path):
                 os.makedirs(tmp_path)
@@ -409,21 +415,8 @@ class Bqckup:
     ) -> None:
         time_start = time.time()
 
-        if not config.get("enabled"):
-            print(f"[red]Backup for {config.get('name')} is not enabled[/red]")
-            return
-
         if config.get("options").get("provider") != "s3":
             raise RuntimeError("Currently, incremental backup only support S3 provider")
-
-        if (
-            Log()
-            .select()
-            .where(Log.name == config["name"] and Log.status == Log.__ON_PROGRESS__)
-            .exists()
-        ):
-            print(f"Backup for {config['name']} is already running...")
-            return
 
         print(f"[green]Starting backup for {config['name']}[/green]\n")
 
