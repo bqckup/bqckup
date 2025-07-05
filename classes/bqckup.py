@@ -531,12 +531,11 @@ class Bqckup:
         )
 
         last_log = (
-            Log()
-            .select()
+            Log.select()
             .where(
-                Log.name == config["name"]
-                and Log.type == Log.__DATABASE__
-                and Log.file_size != 0
+                (Log.name == config["name"])
+                & (Log.type == Log.__DATABASE__)
+                & (Log.file_size != 0)
             )
             .order_by(Log.id.desc())
             .get_or_none()
