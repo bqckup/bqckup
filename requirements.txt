@@ -18,6 +18,7 @@ requests
 rich
 rq
 ruamel.yaml
+toml
 typer
 packaging
 humanfriendly
