@@ -119,6 +119,7 @@ class Rustic:
         config = {
             "global": {
                 "no-progress": True,
+                "check-index": True,
                 "log-level": "info",
             },
             "repository": {
