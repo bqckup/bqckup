@@ -1,3 +1,4 @@
+from os.path import join as path_join
 from pathlib import Path
 from typing import Any
 from subprocess import CompletedProcess
@@ -5,7 +6,8 @@ import json
 import toml
 import subprocess
 
-from constant import RUSTIC_CONFIG_PATH
+from constant import RUSTIC_CONFIG_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
+from classes.config import Config as bqckup_config
 
 
 class RusticConfigError(Exception): ...
@@ -15,7 +17,12 @@ class RusticError(Exception): ...
 
 
 class Rustic:
-    def __init__(self, site_config: dict[str, Any], storage_config: dict[str, Any]):
+    def __init__(
+        self,
+        site_config: dict[str, Any],
+        storage_config: dict[str, Any],
+        include_config: bool = False,
+    ):
         # Site Config:
         #     name: domain
         #     enabled: no
@@ -48,6 +55,13 @@ class Rustic:
         #     endpoint: dummy
         #     primary: no
 
+        # Include config file
+        if include_config and bqckup_config().read("bqckup", "config_backup"):
+            site_config["path"] += (
+                STORAGE_CONFIG_PATH,
+                path_join(SITE_CONFIG_PATH, site_config["name"]) + ".yml",
+            )
+
         self.site_config = site_config
         self.storage_config = storage_config[site_config["options"]["storage"]]
         self.__subprocess_args = {
@@ -57,6 +71,32 @@ class Rustic:
         }
         self.check_config()
         self.dump_config()
+
+    @property
+    def root_folder_name(self):
+        return bqckup_config().read("bqckup", "root_folder_name")
+
+    @property
+    def snapshots(self) -> list[dict[str, Any]]:
+        output: CompletedProcess = subprocess.run(
+            [
+                "rustic",
+                "snapshots",
+                "--use-profile",
+                self.site_config["name"],
+                "--json",
+            ],
+            **self.__subprocess_args,
+        )
+
+        parsed_output = json.loads(output.stdout)
+
+        try:
+            return parsed_output[0][1]
+        except IndexError:
+            return []
+        except Exception as e:
+            raise RusticError("Error while getting snapshots:", e)
 
     def backup(self) -> dict[str, int | str]:
         """Running Backup
@@ -97,6 +137,33 @@ class Rustic:
             "total_size": summary["total_bytes_processed"],
         }
 
+    def restore(self, snapshot: str, target: str = None):
+        """Restore backup
+
+        Args:
+            snapshot (str): snapshot id or latest
+
+        Raises:
+            RusticError: No snapshots available
+        """
+
+        if len(self.snapshots) < 1:
+            raise RusticError("No snapshots found.")
+
+        for path in self.site_config["path"]:
+            destination = str(Path(target) / Path(path).name) if target else path
+            command = [
+                "rustic",
+                "--use-profile",
+                self.site_config["name"],
+                "restore",
+                f"{snapshot}:{path}",
+                destination,
+            ]  # command: rustic -P domain.com restore latest:/var/www/html /var/www/html
+
+            subprocess.run(command, **self.__subprocess_args)
+            print(f"[OK] {path}")
+
     def check_config(self):
         """Check rustic configuration from sites
 
@@ -114,7 +181,11 @@ class Rustic:
             raise RusticConfigError("Password can't be empty")
 
     def dump_config(self) -> Path:
-        """Generate rustic config parsed from storage and site config"""
+        """Generate rustic config parsed from storage and site config
+
+        Returns:
+            Path: path to config file
+        """
 
         config = {
             "global": {
@@ -131,7 +202,7 @@ class Rustic:
                     "region": self.storage_config["region"],
                     "bucket": self.storage_config["bucket"],
                     "endpoint": self.storage_config["endpoint"],
-                    "root": f"/{self.site_config['name']}/incremental",
+                    "root": f"/{self.root_folder_name}/{self.site_config['name']}/incremental",
                 },
             },
             "backup": {
