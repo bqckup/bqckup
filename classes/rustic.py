@@ -21,7 +21,7 @@ class Rustic:
         self,
         site_config: dict[str, Any],
         storage_config: dict[str, Any],
-        include_config: bool = False,
+        include_config: bool = True,
     ):
         # Site Config:
         #     name: domain
