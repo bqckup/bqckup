@@ -46,7 +46,7 @@ class Bqckup:
             print(f"[red]{e}[/red]")
             sys.exit()
             
-    def _send_notification(self, backup_name, messages, additional_data = None):
+    def _send_notification(self, backup_name, messages, additional_data = None, override: dict = {}):
         fields = [
             {"name": "Server IP", "value": get_server_ip(), "inline": True},
             {"name": "Name", "value": backup_name, "inline": True},
@@ -72,7 +72,7 @@ class Bqckup:
                 "color": 15548997,
                 "fields": fields,
                 "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
-            }]
+            } | override]
         }
         
         hashed_payload = sha256(str(payload).encode()).hexdigest()                    
@@ -469,7 +469,6 @@ class Bqckup:
             )
 
             result = None
-
             with ProgressSpinner("doing incremental backup..."):
                 result = rustic.backup()
 
@@ -497,8 +496,35 @@ class Bqckup:
                 time_consume=time.time() - time_start,
                 description=f"File Backup Failed: {e}",
             ).where(Log.id == logs.id).execute()
-            self._send_notification(config.get("name"), f"Error: {e}")
             print(f"[{config['name']}] Error: {e}")
+
+            self._send_notification(
+                config["name"],
+                f"Error: {e}",
+                override={
+                    "title": f"Incremental Backup Failed for {config['name']}",
+                    "description": (
+                        "An error occurred while checking the repository. Possible causes include:\n"
+                        "1. A problematic pack or isn't referenced in the index.\n"
+                        "2. A corrupted snapshot.\n"
+                        "3. A broken Rustic repository (for example, due to disk issues).\n"
+                        "\n"
+                        "Note: Restore cannot proceed if there is a damaged data pack or snapshot. You will need to create a fresh backup to resolve the issue.\n"
+                        "\n"
+                        "We recommend the following steps:\n"
+                        "1. Inspect the repository:\n"
+                        " `rustic check`\n"
+                        "2. Attempt to repair the index and snapshots:\n"
+                        " `rustic repair index && rustic repair snapshot`\n"
+                        "3. If the error persists, verify with Restic:\n"
+                        " `restic check`\n"
+                        "4. Follow any suggestions or instructions provided by Restic.\n"
+                        "5. Force a new backup to confirm that the backup process still works:\n"
+                        " `bqckup --site {domain_name} --force`\n"
+                    ),
+                },
+            )
+
             return
 
     def backup_database(self, config: dict) -> Path:

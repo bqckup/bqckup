@@ -13,6 +13,9 @@ from classes.config import Config as bqckup_config
 class RusticConfigError(Exception): ...
 
 
+class RusticIndexError(Exception): ...
+
+
 class RusticError(Exception): ...
 
 
@@ -69,8 +72,10 @@ class Rustic:
             "text": True,
             "check": True,
         }
+
         self.check_config()
         self.dump_config()
+        self.check()
 
     @property
     def root_folder_name(self):
@@ -97,6 +102,17 @@ class Rustic:
             return []
         except Exception as e:
             raise RusticError("Error while getting snapshots:", e)
+
+    def check(self):
+        subprocess.run(
+            [
+                "rustic",
+                "check",
+                "--use-profile",
+                self.site_config["name"],
+            ],
+            **self.__subprocess_args,
+        )
 
     def backup(self) -> dict[str, int | str]:
         """Running Backup
