@@ -41,7 +41,7 @@ class Bqckup:
             s3.check_connection()
         except Exception as e:
             print(f"[red]{e}[/red]")
-            quit()
+            sys.exit()
             
     def _send_notification(self, backup_name, messages, additional_data):
         fields = [

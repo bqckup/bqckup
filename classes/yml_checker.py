@@ -32,5 +32,5 @@ class Yml_Checker:
                 is_error = True
         
         if is_error:
-            quit()
+            sys.exit()
 

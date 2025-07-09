@@ -3,8 +3,7 @@ setup:
 	./venv/bin/pip3 install -r ./requirements.txt
 
 install:
-	./venv/bin/pyinstaller ./bqckup.py --onefile --add-data 'templates:templates' --add-data 'static:static'	
+	./venv/bin/pyinstaller ./bqckup.py --onefile --add-data 'templates:templates' --add-data 'static:static' --collect-submodules shellingham
 
 clean:
 	rm -rf ./venv/ ./dist/ ./build/ *.spec
-
