@@ -1,5 +1,7 @@
 import os, time, shutil, signal, sys
+from typing import Any
 from classes.database import Database
+from classes.rustic import Rustic
 from classes.storage import Storage
 from classes.tar import Tar
 from classes.file import File
@@ -14,6 +16,7 @@ from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
 from datetime import datetime
 from helpers.file import remove_folder
 from hashlib import sha256
+from pathlib import Path
 from lib.notifications.discord import send_notification
 from helpers.datetime import time_since, get_today, difference_in_days, interval_in_number
 from helpers.network import get_server_ip
@@ -43,7 +46,7 @@ class Bqckup:
             print(f"[red]{e}[/red]")
             sys.exit()
             
-    def _send_notification(self, backup_name, messages, additional_data):
+    def _send_notification(self, backup_name, messages, additional_data = None, override: dict = {}):
         fields = [
             {"name": "Server IP", "value": get_server_ip(), "inline": True},
             {"name": "Name", "value": backup_name, "inline": True},
@@ -69,7 +72,7 @@ class Bqckup:
                 "color": 15548997,
                 "fields": fields,
                 "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
-            }]
+            } | override]
         }
         
         hashed_payload = sha256(str(payload).encode()).hexdigest()                    
@@ -186,11 +189,27 @@ class Bqckup:
                         print(f"Interval: {interval}")
                         print(f"\nBackup for {backup['name']} is not needed yet...")
                         print("=========================================\n")
-                        print(f"Visit: https://bqckup.com\n")
+                        print("Visit: https://bqckup.com\n")
                         continue
-                    
 
-                self.do_backup(backup)
+                if not backup.get("enabled"):
+                    print(f"[red]Backup for {backup.get('name')} is not enabled[/red]")
+                    continue
+
+                if (
+                    Log()
+                    .select()
+                    .where(
+                        Log.name == backup.get("name")
+                        and Log.status == Log.__ON_PROGRESS__
+                    ).exists()
+                ):
+                    print(f"Backup for {backup.get('name')} is already running...")
+
+                if backup.get("incremental"):
+                    self.incremental_backup(backup)
+                else:
+                    self.do_backup(backup)
             except Exception as e:
                 print(f"[red]Error during backup for {backup['name']}: {e}[/red]")
                 continue
@@ -204,14 +223,6 @@ class Bqckup:
             backup_folder = f"{backup.get('name')}/{get_today()}"
             
             tmp_path = os.path.join(BQ_PATH, 'tmp', f"{backup.get('name')}")
-
-            if(not backup.get('enabled')):
-                print(f"[red]Backup for {backup.get('name')} is not enabled[/red]")
-                return False
-            
-            if Log().select().where((Log.name == backup.get('name')) & (Log.status == Log.__ON_PROGRESS__)).exists():
-                print(f"Backup for {backup.get('name')} is already running...")
-                return False
             
             if not File().is_exists(tmp_path):
                 os.makedirs(tmp_path)
@@ -374,7 +385,7 @@ class Bqckup:
                                 shutil.move(sql_path, save_locally_path)
                             except Exception as e:
                                 print(f"Failed to save locally: {e}")
-                        
+
                     time_consume = time.time() - time_start
                     Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success", time_consume)
             
@@ -398,6 +409,180 @@ class Bqckup:
             self._send_notification(backup.get('name'), f"Error: {e}", None)
                 
             print(f"[{backup.get('name')}] Error: {e}.")
-            
+
+    def incremental_backup(
+        self, config: dict[str, Any], include_database: bool = False
+    ) -> None:
+        time_start = time.time()
+
+        if config.get("options").get("provider") != "s3":
+            raise RuntimeError("Currently, incremental backup only support S3 provider")
+
+        print(f"[green]Starting backup for {config['name']}[/green]\n")
+
+        # Database backup
+        db_dump_path = self.backup_database(config)
+        if include_database:
+            config["path"].append(db_dump_path)
+        else:
+            print(f"Uploading {db_dump_path}...")
+            s3(storage_name=config.get("options").get("storage")).upload(
+                db_dump_path, Path(config.get("name")) / get_today() / db_dump_path.name
+            )
+
+        # Save backup in local
+        should_save_locally = config.get("options").get("save_locally")
+        save_locally_path = Path(
+            config.get("options").get("save_locally_path", "/etc/bqckup/tmp")
+        )  # If not set it will be at /etc/bqckup/tmp
+
+        if not should_save_locally:
+            db_dump_path.unlink(missing_ok=True)
+        elif should_save_locally and save_locally_path:
+            print("Saving locally ...")
+
+            if not save_locally_path.is_dir():
+                raise Exception(
+                    f"Save locally path {save_locally_path} is not a directory"
+                )
+
+            save_locally_path: Path = save_locally_path / config["name"]
+            if not save_locally_path.is_dir():  # if directory not exists; create
+                save_locally_path.mkdir(parents=True, exist_ok=True)
+
+            shutil.move(db_dump_path, save_locally_path)
+
+        # File backup
+        try:
+            logs: Log = Log().write(
+                {
+                    "name": config["name"],
+                    "file_path": "/dev/null",  # replaced by snapshots id
+                    "description": "File backup is in progress...",
+                    "type": Log.__FILES__,
+                    "storage": config["options"]["storage"],
+                }
+            )
+
+            rustic: Rustic = Rustic(
+                config, Yml_Parser.parse(STORAGE_CONFIG_PATH)["storages"]
+            )
+
+            result = None
+            with ProgressSpinner("doing incremental backup..."):
+                result = rustic.backup()
+
+            Log.update(
+                status=Log.__SUCCESS__,
+                time_consume=time.time() - time_start,
+                file_size=result["total_size"],
+                file_path=result["id"],  # rustic snapshots id
+                description="File Backup Success",
+            ).where(Log.id == logs.id).execute()
+
+            print("=========================================")
+            print("Backup complete")
+            print("New Files\t:", result["new"])
+            print("Changed Files\t:", result["changed"])
+            print("Unchanged Files\t:", result["unchanged"])
+            print("Data Uploaded\t:", format_size(result["uploaded"]))
+            print("Total Size\t:", format_size(result["total_size"]))
+            print("Time Consumed\t:", format_timespan(result["total_duration"]))
+            print("=========================================")
+
+        except Exception as e:
+            Log.update(
+                status=Log.__FAILED__,
+                time_consume=time.time() - time_start,
+                description=f"File Backup Failed: {e}",
+            ).where(Log.id == logs.id).execute()
+            print(f"[{config['name']}] Error: {e}")
+
+            self._send_notification(
+                config["name"],
+                f"Error: {e}",
+                override={
+                    "title": f"Incremental Backup Failed for {config['name']}",
+                    "description": (
+                        "An error occurred while backup the repository.\n"
+                        "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
+                    ),
+                },
+            )
+
+            return
+
+    def backup_database(self, config: dict) -> Path:
+        """
+        Returns:
+            Path: return path to exported database
+        """
+
+        if not config.get("database"):
+            return
+
+        tmp_path: Path = Path(BQ_PATH) / "tmp" / config["name"]
+        backup_path = tmp_path / f"{int(time.time())}.sql.gz"
+        time_start = time.time()
+
+        current_log: Log = Log().write(
+            {
+                "name": config["name"],
+                "description": "Database Backup is in Progress",
+                "type": Log.__DATABASE__,
+                "storage": config["options"]["storage"],
+                "file_path": backup_path,
+            }
+        )
+
+        last_log = (
+            Log.select()
+            .where(
+                (Log.name == config["name"])
+                & (Log.type == Log.__DATABASE__)
+                & (Log.file_size != 0)
+            )
+            .order_by(Log.id.desc())
+            .get_or_none()
+        )
+
+        if not tmp_path.exists() or not tmp_path.is_dir():
+            tmp_path.mkdir(parents=True, exist_ok=True)
+
+        with ProgressSpinner("Exporting database"):
+            Database().export(
+                str(backup_path) if isinstance(backup_path, Path) else backup_path,
+                db_user=config["database"]["user"],
+                db_password=config["database"]["password"],
+                db_name=config["database"]["name"],
+            )
+
+        current_size = backup_path.stat().st_size
+        Log.update(
+            file_size=current_size,
+            status=Log.__SUCCESS__,
+            time_consume=time.time() - time_start,
+            description="Database Backup Success",
+        ).where(Log.id == current_log.id).execute()
+
+        if last_log:
+            previous_size = format_size(last_log.file_size)
+            time_consume = format_timespan(current_log.time_consume)
+            current_size = format_size(current_size)
+
+            print("=========================================")
+            print("Database Compressed")
+            print(f"Previous Size\t: {previous_size}")
+            print(f"Current Size\t: {current_size}")
+            print(f"Time Consumed\t: {time_consume}")
+            print("=========================================")
+
+            if previous_size == current_size:
+                print(
+                    f"[red]Based on file size, there is no changes detected for {backup_path}[/red]\n"
+                )
+
+        return backup_path
+
     def remove(self):
         pass
