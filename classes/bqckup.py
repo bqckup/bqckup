@@ -504,23 +504,8 @@ class Bqckup:
                 override={
                     "title": f"Incremental Backup Failed for {config['name']}",
                     "description": (
-                        "An error occurred while checking the repository. Possible causes include:\n"
-                        "1. A problematic pack or isn't referenced in the index.\n"
-                        "2. A corrupted snapshot.\n"
-                        "3. A broken Rustic repository (for example, due to disk issues).\n"
-                        "\n"
-                        "Note: Restore cannot proceed if there is a damaged data pack or snapshot. You will need to create a fresh backup to resolve the issue.\n"
-                        "\n"
-                        "We recommend the following steps:\n"
-                        "1. Inspect the repository:\n"
-                        " `rustic check`\n"
-                        "2. Attempt to repair the index and snapshots:\n"
-                        " `rustic repair index && rustic repair snapshot`\n"
-                        "3. If the error persists, verify with Restic:\n"
-                        " `restic check`\n"
-                        "4. Follow any suggestions or instructions provided by Restic.\n"
-                        "5. Force a new backup to confirm that the backup process still works:\n"
-                        " `bqckup --site {domain_name} --force`\n"
+                        "An error occurred while backup the repository.\n"
+                        "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
                     ),
                 },
             )
