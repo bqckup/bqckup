@@ -206,7 +206,7 @@ class Bqckup:
                 ):
                     print(f"Backup for {backup.get('name')} is already running...")
 
-                if backup.get("incremental"):
+                if backup.get("incremental").get('enable'):
                     self.incremental_backup(backup)
                 else:
                     self.do_backup(backup)
@@ -489,6 +489,21 @@ class Bqckup:
             print("Total Size\t:", format_size(result["total_size"]))
             print("Time Consumed\t:", format_timespan(result["total_duration"]))
             print("=========================================")
+
+            try:
+                rustic.check_repository()
+            except Exception as e:
+                self._send_notification(
+                    config["name"],
+                    f"Error: {e}",
+                    override={
+                        "title": f"Repository Check Failed for {config['name']}",
+                        "description": (
+                            "An error occurred check repository.\n"
+                            "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
+                        ),
+                    },
+                )
 
         except Exception as e:
             Log.update(
