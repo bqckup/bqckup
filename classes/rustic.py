@@ -228,7 +228,7 @@ class Rustic:
                 "one-file-system": True,
                 "snapshots": [{"sources": self.site_config["path"]}],
                 "globs": [
-                    f"!{i}" for i in self.site_config["exclude_path"]
+                    f"!{i}" for i in self.site_config.get("exclude_path", [])
                 ],  # !/tmp/dir1 # see https://github.com/rustic-rs/rustic/discussions/1194#discussioncomment-10298116
             },
             "forget": {"keep-daily": int(self.site_config["options"]["retention"])},
