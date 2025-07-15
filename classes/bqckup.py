@@ -491,8 +491,10 @@ class Bqckup:
             print("=========================================")
 
             try:
-                rustic.check_repository()
+                with ProgressSpinner("checking repository..."):
+                    rustic.check_repository()
             except Exception as e:
+                print(f"[{site_config['name']}] Error while checking repository.")
                 self._send_notification(
                     config["name"],
                     f"Error: {e}",
