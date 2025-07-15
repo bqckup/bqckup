@@ -75,7 +75,6 @@ class Rustic:
 
         self.check_config()
         self.dump_config()
-        self.check()
 
     @property
     def root_folder_name(self):
@@ -103,7 +102,7 @@ class Rustic:
         except Exception as e:
             raise RusticError("Error while getting snapshots:", e)
 
-    def check(self):
+    def check_repository(self):
         subprocess.run(
             [
                 "rustic",
@@ -188,7 +187,7 @@ class Rustic:
             RusticConfigError: password empty
         """
 
-        rustic_config: dict | None = self.site_config.get("rustic")
+        rustic_config: dict | None = self.site_config.get("incremental")
 
         if rustic_config is None:
             raise RusticConfigError("Rustic not configured")
@@ -211,7 +210,7 @@ class Rustic:
             },
             "repository": {
                 "repository": "opendal:s3",
-                "password": str(self.site_config["rustic"]["password"]),
+                "password": str(self.site_config["incremental"]["password"]),
                 "options": {
                     "access_key_id": self.storage_config["access_key_id"],
                     "secret_access_key": self.storage_config["secret_access_key"],

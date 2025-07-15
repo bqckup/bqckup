@@ -1,8 +1,8 @@
 bqckup:
   name: domain
   enabled: no
-  incremental: yes
-  rustic:
+  incremental:
+    enabled: yes
     password: dummy # required if incremental
   path:
     - /var/www/html
