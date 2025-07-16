@@ -2,7 +2,7 @@ bqckup:
   name: domain
   enabled: no
   incremental:
-    enabled: yes
+    enable: yes
     password: dummy # required if incremental
   path:
     - /var/www/html
