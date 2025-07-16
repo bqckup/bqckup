@@ -411,29 +411,29 @@ class Bqckup:
             print(f"[{backup.get('name')}] Error: {e}.")
 
     def incremental_backup(
-        self, config: dict[str, Any], include_database: bool = False
+        self, site_config: dict[str, Any], include_database: bool = False
     ) -> None:
         time_start = time.time()
 
-        if config.get("options").get("provider") != "s3":
+        if site_config.get("options").get("provider") != "s3":
             raise RuntimeError("Currently, incremental backup only support S3 provider")
 
-        print(f"[green]Starting backup for {config['name']}[/green]\n")
+        print(f"[green]Starting backup for {site_config['name']}[/green]\n")
 
         # Database backup
-        db_dump_path = self.backup_database(config)
+        db_dump_path = self.backup_database(site_config)
         if include_database:
-            config["path"].append(db_dump_path)
+            site_config["path"].append(db_dump_path)
         else:
             print(f"Uploading {db_dump_path}...")
-            s3(storage_name=config.get("options").get("storage")).upload(
-                db_dump_path, Path(config.get("name")) / get_today() / db_dump_path.name
+            s3(storage_name=site_config.get("options").get("storage")).upload(
+                db_dump_path, Path(site_config.get("name")) / get_today() / db_dump_path.name
             )
 
         # Save backup in local
-        should_save_locally = config.get("options").get("save_locally")
+        should_save_locally = site_config.get("options").get("save_locally")
         save_locally_path = Path(
-            config.get("options").get("save_locally_path", "/etc/bqckup/tmp")
+            site_config.get("options").get("save_locally_path", "/etc/bqckup/tmp")
         )  # If not set it will be at /etc/bqckup/tmp
 
         if not should_save_locally:
@@ -446,7 +446,7 @@ class Bqckup:
                     f"Save locally path {save_locally_path} is not a directory"
                 )
 
-            save_locally_path: Path = save_locally_path / config["name"]
+            save_locally_path: Path = save_locally_path / site_config["name"]
             if not save_locally_path.is_dir():  # if directory not exists; create
                 save_locally_path.mkdir(parents=True, exist_ok=True)
 
@@ -456,16 +456,16 @@ class Bqckup:
         try:
             logs: Log = Log().write(
                 {
-                    "name": config["name"],
+                    "name": site_config["name"],
                     "file_path": "/dev/null",  # replaced by snapshots id
                     "description": "File backup is in progress...",
                     "type": Log.__FILES__,
-                    "storage": config["options"]["storage"],
+                    "storage": site_config["options"]["storage"],
                 }
             )
 
             rustic: Rustic = Rustic(
-                config, Yml_Parser.parse(STORAGE_CONFIG_PATH)["storages"]
+                site_config, Yml_Parser.parse(STORAGE_CONFIG_PATH)["storages"]
             )
 
             result = None
@@ -496,10 +496,10 @@ class Bqckup:
             except Exception as e:
                 print(f"[{site_config['name']}] Error while checking repository.")
                 self._send_notification(
-                    config["name"],
+                    site_config["name"],
                     f"Error: {e}",
                     override={
-                        "title": f"Repository Check Failed for {config['name']}",
+                        "title": f"Repository Check Failed for {site_config['name']}",
                         "description": (
                             "An error occurred check repository.\n"
                             "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
@@ -513,13 +513,13 @@ class Bqckup:
                 time_consume=time.time() - time_start,
                 description=f"File Backup Failed: {e}",
             ).where(Log.id == logs.id).execute()
-            print(f"[{config['name']}] Error: {e}")
+            print(f"[{site_config['name']}] Error: {e}")
 
             self._send_notification(
-                config["name"],
+                site_config["name"],
                 f"Error: {e}",
                 override={
-                    "title": f"Incremental Backup Failed for {config['name']}",
+                    "title": f"Incremental Backup Failed for {site_config['name']}",
                     "description": (
                         "An error occurred while backup the repository.\n"
                         "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
