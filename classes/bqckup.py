@@ -126,6 +126,7 @@ class Bqckup:
             log = self.get_last_log(bqckup['name'])
             results[index] = {}
             results[index] = bqckup
+            results[index]['config_path'] = file
             results[index]['file_name'] = file_name
             results[index]['last_backup'] = log.created_at if log else None
             

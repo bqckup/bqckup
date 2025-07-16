@@ -60,10 +60,7 @@ class Rustic:
 
         # Include config file
         if include_config and bqckup_config().read("bqckup", "config_backup"):
-            site_config["path"] += (
-                STORAGE_CONFIG_PATH,
-                path_join(SITE_CONFIG_PATH, site_config["name"]) + ".yml",
-            )
+            site_config["path"] += (STORAGE_CONFIG_PATH, site_config["config_path"])
 
         self.site_config = site_config
         self.storage_config = storage_config[site_config["options"]["storage"]]
