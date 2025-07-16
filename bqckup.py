@@ -444,6 +444,11 @@ def get_list(name: str, json: bool = False):
         print(results)
     else:
         for i, backup in enumerate(backups.get("Contents")):
+
+            # Skip rustic repository
+            if "incremental" in backup["Key"]:
+                continue
+
             backup["Key"] = backup["Key"].replace("bqckup/", "")
             table.add_row(
                 str(i + 1),
