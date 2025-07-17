@@ -1,4 +1,3 @@
-from os.path import join as path_join
 from pathlib import Path
 from typing import Any
 from subprocess import CompletedProcess
@@ -6,7 +5,7 @@ import json
 import toml
 import subprocess
 
-from constant import RUSTIC_CONFIG_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
+from constant import RUSTIC_CONFIG_PATH
 from classes.config import Config as bqckup_config
 
 
@@ -24,7 +23,6 @@ class Rustic:
         self,
         site_config: dict[str, Any],
         storage_config: dict[str, Any],
-        include_config: bool = True,
     ):
         # Site Config:
         #     name: domain
@@ -57,10 +55,6 @@ class Rustic:
         #     region: dummy
         #     endpoint: dummy
         #     primary: no
-
-        # Include config file
-        if include_config and bqckup_config().read("bqckup", "config_backup"):
-            site_config["path"] += (STORAGE_CONFIG_PATH, site_config["config_path"])
 
         self.site_config = site_config
         self.storage_config = storage_config[site_config["options"]["storage"]]
