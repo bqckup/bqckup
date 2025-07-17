@@ -8,13 +8,14 @@ from helpers.network import get_server_ip
 class UnauthorizedError(Exception): ...
 
 
-base_url = Config().read("notification", "service_management_url")
-
-
 def get_credential(bucket_name: str):
-    r = requests.post(
-        f"{base_url}/bqckup/get/{bucket_name}", data={"ip_address": get_server_ip()}
-    )
+    url = Config().read("storage", "remote_storage_endpoint")
+    payload = {
+        "ip_address": get_server_ip(),
+        "bucket_name": bucket_name
+    }
+
+    r = requests.post(url, data=payload)
 
     if r.status_code == 401:
         raise UnauthorizedError(f"Unauthorized: {r.json().get('message', '')}")
@@ -32,8 +33,9 @@ def send_backup_summary(
     finish_at: int,
     status: str,
 ):
+    url = Config().read("webhooks", "after_backup_completed")
     r = requests.post(
-        f"{base_url}/bqckup/store",
+        url,
         data={
             "ip_address": get_server_ip(),
             "domain": domain,
