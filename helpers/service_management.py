@@ -4,11 +4,21 @@ import requests
 from classes.config import Config
 from helpers.network import get_server_ip
 
+
+class UnauthorizedError(Exception): ...
+
+
 base_url = Config().read("notification", "service_management_url")
 
 
 def get_credential(bucket_name: str):
-    r = requests.get(f"{base_url}/bqckup/get/{bucket_name}")
+    r = requests.post(
+        f"{base_url}/bqckup/get/{bucket_name}", data={"ip_address": get_server_ip()}
+    )
+
+    if r.status_code == 401:
+        raise UnauthorizedError(f"Unauthorized: {r.json().get('message', '')}")
+
     if r.status_code != 200:
         raise requests.RequestException(r)
 
@@ -25,7 +35,7 @@ def send_backup_summary(
     r = requests.post(
         f"{base_url}/bqckup/store",
         data={
-            "ip_address": get_server_ip(),  # TODO: delete this
+            "ip_address": get_server_ip(),
             "domain": domain,
             "hostname": gethostname(),
             "data_added": new_data,
@@ -34,6 +44,9 @@ def send_backup_summary(
             "status": status,
         },
     )
+
+    if r.status_code == 401:
+        raise UnauthorizedError(f"Unauthorized: {r.json().get('message', '')}")
 
     if r.status_code != 201:
         raise requests.RequestException("Error while sending summary data.")

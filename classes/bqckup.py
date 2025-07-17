@@ -426,8 +426,9 @@ class Bqckup:
 
         bucket_name = site_config.get("options").get("storage")
         try:
-            storage_config = Storage().get_storage_detail(bucket_name)
-            _s3 = s3(storage_name=bucket_name)
+            with ProgressSpinner("fetching credentials..."):
+                storage_config = Storage().get_storage_detail(bucket_name)
+                _s3 = s3(storage_name=bucket_name)
 
         except RequestException as e:
             message = f"Can't fetch credential for {storage_config['bucket']} | {site_config['name']}"
