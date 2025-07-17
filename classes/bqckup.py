@@ -421,6 +421,15 @@ class Bqckup:
 
         print(f"[green]Starting backup for {site_config['name']}[/green]\n")
 
+        if Config().read('bqckup', 'config_backup'):
+            _s3 = s3(storage_name=site_config.get("options").get("storage"))
+            _s3.upload(
+                Path(SITE_CONFIG_PATH) / site_config["file_name"],
+                f"config/{site_config.get('name')}.yml",
+                False,
+            )
+            _s3.upload(STORAGE_CONFIG_PATH, "storages.yml", False)
+
         # Database backup
         db_dump_path = self.backup_database(site_config)
         if include_database:
