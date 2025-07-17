@@ -1,8 +1,11 @@
 storages:
   dummy:
     bucket: dummy
+    primary: no
+    remote: yes
+
+    # required if not remote
     access_key_id: dummy
     secret_access_key: dummy
     region: dummy
     endpoint: dummy
-    primary: no
