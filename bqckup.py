@@ -1,4 +1,5 @@
 import getpass
+from typing_extensions import Annotated
 import typer
 import os
 import requests
@@ -7,11 +8,13 @@ import ruamel.yaml as yaml
 from classes.bqckup import Bqckup
 from classes.database import Database
 from classes.config import Config
+from classes.progress import ProgressSpinner
+from classes.rustic import Rustic
 from classes.storage import Storage
 from classes.s3 import s3
 from pathlib import Path
-from typing import List
-from constant import VERSION, SITE_CONFIG_PATH, BQ_PATH
+from typing import List, Optional
+from constant import STORAGE_CONFIG_PATH, VERSION, SITE_CONFIG_PATH, BQ_PATH
 from rich import print
 from rich.console import Group, Console
 from rich.table import Table
@@ -441,6 +444,11 @@ def get_list(name: str, json: bool = False):
         print(results)
     else:
         for i, backup in enumerate(backups.get("Contents")):
+
+            # Skip rustic repository
+            if "incremental" in backup["Key"]:
+                continue
+
             backup["Key"] = backup["Key"].replace("bqckup/", "")
             table.add_row(
                 str(i + 1),
@@ -620,6 +628,47 @@ def download_latest(name: str, target: str = None, silent: bool = False):
     except Exception as e:
         print(f"[red]An error occurred: {e}[/red]")
 
+@bq_cli.command()
+def restore(
+    site: str,
+    snapshot: str = "latest",
+    target: str = None,
+):
+    """Restore for incremental backup"""
+
+    from classes.yml_parser import Yml_Parser
+
+    bqckup = Bqckup()
+
+    for _, v in bqckup.list().items():
+        if site_name := v.get("name"):
+            if site_name != site:
+                continue
+
+            # Create directory if not exists
+            if (paths := v.get("path")) and isinstance(paths, list):
+                for p in paths:
+                    Path(p).mkdir(parents=True, exist_ok=True)
+
+            if not bqckup.validate_config(site_name):
+                print(f"Invalid configuration for {site_name}")
+
+            # try:
+            #     with ProgressSpinner("getting credentials..."):
+            #         storage_config = Storage().get_storage_detail(v.get('options').get('storage'))
+            # except Exception:
+            #     print("Error while getting credential.")
+
+            with ProgressSpinner("Restoring backups..."):
+                Rustic(
+                    v, Yml_Parser.parse(STORAGE_CONFIG_PATH)["storages"],
+                    # storage_config
+                ).restore(snapshot=snapshot, target=target)
+
+            print("[bold green]Restore complete![/bold green]")
+            return
+
+    print(f"[red]Site [bold]{site}[/bold] not found![/red]")
 
 def get_version(version: bool):
     if version:

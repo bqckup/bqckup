@@ -1,34 +1,32 @@
 import os, sys, boto3
 from boto3.s3.transfer import TransferConfig
 from botocore.config import Config
+from botocore.exceptions import ClientError
 from classes.config import Config as bqckup_config
 from classes.progress import ProgressPercentage
 from classes.storage import Storage
 
+
 class s3(object):
     def __init__(self, storage_name: str):
         self.storage = Storage().get_storage_detail(storage_name)
-        self.root_folder_name = bqckup_config().read('bqckup', 'root_folder_name')
+        self.root_folder_name = bqckup_config().read("bqckup", "root_folder_name")
         self.clientInit()
-        self.bucket_name = self.storage['bucket']
-        
+        self.bucket_name = self.storage["bucket"]
+
     def clientInit(self):
         session = boto3.session.Session()
         try:
             self.client = session.client(
                 "s3",
-                region_name=self.storage['region'],
-                endpoint_url=self.storage['endpoint'],
-                aws_access_key_id=self.storage['access_key_id'],
-                aws_secret_access_key=self.storage['secret_access_key'],
-                config=Config(
-                    retries = dict(
-                        max_attempts = 5
-                    )
-                )
+                region_name=self.storage["region"],
+                endpoint_url=self.storage["endpoint"],
+                aws_access_key_id=self.storage["access_key_id"],
+                aws_secret_access_key=self.storage["secret_access_key"],
+                config=Config(retries=dict(max_attempts=5)),
             )
         except Exception as e:
-            print(f"Failed to connect because : {e}") 
+            print(f"Failed to connect because : {e}")
             self.client = False
 
     def isAuthorized(self):
@@ -40,13 +38,14 @@ class s3(object):
         if not len(files):
             return 0
 
-
-        return sum([int(f["Size"]) for f in files.get('Contents')])
+        return sum([int(f["Size"]) for f in files.get("Contents")])
 
     # prefix for filtering
     def list(self, prefix="", Delimiter=""):
         try:
-            files = self.client.list_objects_v2(Bucket=self.bucket_name, Prefix=prefix, Delimiter=Delimiter)
+            files = self.client.list_objects_v2(
+                Bucket=self.bucket_name, Prefix=prefix, Delimiter=Delimiter
+            )
         except KeyError:
             return []  # empty array
         else:
@@ -56,6 +55,7 @@ class s3(object):
         No directoris/folders in s3
         format name : token_site.com_date.zip
     """
+
     def upload(self, pathFile, newFileName, showProgress=True):
         newFileName = os.path.join(self.root_folder_name, newFileName)
         config = TransferConfig(
@@ -70,12 +70,14 @@ class s3(object):
                 self.bucket_name,
                 newFileName,
                 Config=config,
-                Callback=ProgressPercentage(pathFile, label="Uploading") if showProgress else None,
+                Callback=(
+                    ProgressPercentage(pathFile, label="Uploading")
+                    if showProgress
+                    else None
+                ),
             )
         except Exception as errorMsg:
-            print(
-                "File: {} , Upload error, reason: {}\n".format(pathFile, errorMsg)
-            )
+            print("File: {} , Upload error, reason: {}\n".format(pathFile, errorMsg))
             raise Exception("Msg : {}\n".format(errorMsg))
 
     # fileName = Key
@@ -83,41 +85,51 @@ class s3(object):
         try:
             self.client.delete_object(Bucket=self.bucket_name, Key=fileName)
         except Exception as errorMsg:
-            print(
-                "File: {} Delete failed, reason: {}\n".format(fileName, errorMsg)
-            )
+            print("File: {} Delete failed, reason: {}\n".format(fileName, errorMsg))
             raise Exception("Msg : {}\n".format(errorMsg))
 
-    def generate_link(self, file_name=False, time_to_expire=86400):
+    def check_if_object_exists(self, bucket_name, key):
         try:
+            self.client.head_object(Bucket=bucket_name, Key=key)
+            return True
+        except ClientError as e:
+            return False
+
+    def generate_link(self, file_name=False, time_to_expire=86400):
+        key = f"{self.root_folder_name}/{file_name}"
+
+        try:
+            if not self.check_if_object_exists(self.bucket_name, key):
+                raise Exception(f"File {file_name} not found in storage")
+
             link = self.client.generate_presigned_url(
                 ClientMethod="get_object",
                 Params={
                     "Bucket": self.bucket_name,
-                    "Key": f"{self.root_folder_name}/{file_name}",
+                    "Key": key,
                     "ResponseContentDisposition": f"attachment; filename={file_name}",
                 },
-                ExpiresIn=time_to_expire,# One Day
+                ExpiresIn=time_to_expire,  # One Day
             )
-        except Exception as e:
-            print("Get link download failed, reason {}".format(e))
-            link = False
-            raise Exception("Msg : %s\n " % e)
-        else:
             return link
-    
+        except Exception as e:
+            raise Exception(f"Failed to generate link, Msg: {e}")
+
     @classmethod
-    def check_connection(self, storage = None):
+    def check_connection(self, storage=None):
         from constant import STORAGE_CONFIG_PATH
         from classes.yml_parser import Yml_Parser
+
         storage_name = None
         try:
             if storage:
                 storage_name = storage
                 self(storage).client.head_bucket(Bucket=self(storage).bucket_name)
             else:
-                for storage in Yml_Parser.parse(STORAGE_CONFIG_PATH)['storages']:
+                for storage in Yml_Parser.parse(STORAGE_CONFIG_PATH)["storages"]:
                     storage_name = storage
-                    self(storage).client.head_bucket(Bucket=self(storage).bucket_name)                
+                    self(storage).client.head_bucket(Bucket=self(storage).bucket_name)
         except:
-            raise Exception(f" Error : Unable to connect to S3. Please verify your configuration settings for storage '{storage_name}'")
+            raise Exception(
+                f" Error : Unable to connect to S3. Please verify your configuration settings for storage '{storage_name}'"
+            )
