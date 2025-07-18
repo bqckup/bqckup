@@ -633,9 +633,6 @@ def restore(
     site: str,
     snapshot: str = "latest",
     target: str = None,
-    with_config: Annotated[
-        Optional[bool], typer.Option("--with-config/--files-only")
-    ] = False,
 ):
     """Restore for incremental backup"""
 
@@ -656,11 +653,16 @@ def restore(
             if not bqckup.validate_config(site_name):
                 print(f"Invalid configuration for {site_name}")
 
+            # try:
+            #     with ProgressSpinner("getting credentials..."):
+            #         storage_config = Storage().get_storage_detail(v.get('options').get('storage'))
+            # except Exception:
+            #     print("Error while getting credential.")
+
             with ProgressSpinner("Restoring backups..."):
                 Rustic(
-                    bqckup.detail(site_name),
-                    Yml_Parser.parse(STORAGE_CONFIG_PATH)["storages"],
-                    with_config,
+                    v, Yml_Parser.parse(STORAGE_CONFIG_PATH)["storages"],
+                    # storage_config
                 ).restore(snapshot=snapshot, target=target)
 
             print("[bold green]Restore complete![/bold green]")
