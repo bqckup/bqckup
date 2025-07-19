@@ -245,11 +245,13 @@ class Bqckup:
 
             compressed_file = Tar().compress(backup.get('path'), compressed_file, backup.get('options')['follow_symlink'],backup_config.get('exclude_path', []))
             last_compressed_file_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__FILES__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
-            
+
+            compressed_file_size = os.stat(compressed_file).st_size
+
             if last_compressed_file_backup:
                 
                 previous_size = format_size(last_compressed_file_backup.file_size)
-                current_size = format_size(os.stat(compressed_file).st_size)
+                current_size = format_size(compressed_file_size)
                 time_consume = format_timespan(last_compressed_file_backup.time_consume)
                 print("=========================================")
                 print("Backup File Compressed")
@@ -394,7 +396,9 @@ class Bqckup:
                     Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success", time_consume)
             
             print(f"\n[green]Backup for {backup.get('name')} is done![/green]")
+            backup_status = "completed"
         except Exception as e:
+            backup_status = "failed"
             import traceback
             traceback.print_exc()
 
@@ -413,6 +417,21 @@ class Bqckup:
             self._send_notification(backup.get('name'), f"Error: {e}", None)
                 
             print(f"[{backup.get('name')}] Error: {e}.")
+
+        finally:
+            try:
+                with ProgressSpinner("sending data..."):
+                    send_backup_summary(
+                        domain=backup.get("name"),
+                        total_size=compressed_file_size,
+                        new_data=compressed_file_size,
+                        start_at=int(time_start),
+                        finish_at=int(time.time()),
+                        status=backup_status,
+                        backup_method="tar",
+                    )
+            except Exception as e:
+                print(f"Error: {e}")
 
     def incremental_backup(
         self, site_config: dict[str, Any], include_database: bool = False
@@ -571,6 +590,7 @@ class Bqckup:
                         start_at=int(time_start),
                         finish_at=int(time.time()),
                         status=backup_status,
+                        backup_method="incremental"
                     )
             except Exception as e:
                 print(f"Error: {e}")

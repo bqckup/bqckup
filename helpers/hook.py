@@ -32,6 +32,7 @@ def send_backup_summary(
     start_at: int,
     finish_at: int,
     status: str,
+    backup_method: str, # can be `tar` or `incremental`
 ) -> None:
     url = Config().read("webhooks", "after_backup_completed")
     r = requests.post(
@@ -44,6 +45,7 @@ def send_backup_summary(
             "start_at": start_at,
             "finish_at": finish_at,
             "status": status,
+            "backup_method": backup_method
         },
     )
     if r.status_code != 201:
