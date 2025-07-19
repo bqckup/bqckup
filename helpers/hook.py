@@ -19,7 +19,7 @@ def get_credential(bucket_name: str) -> dict[str, str]:
 
     if r.status_code != 200:
         raise requests.RequestException(
-            f"{json.get('error', 'Error')}: {json.get('message') or str(json)}",
+            f"{json.get('error', 'Error')} {bucket_name}: {json.get('message') or str(json)}",
             response=r,
         )
 

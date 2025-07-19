@@ -135,7 +135,9 @@ class s3(object):
             )
 
     @staticmethod
-    def check_all_storage_connection():
+    def check_all_storage_connection() -> None:
+        """Check bucket connection"""
+
         for storage in Storage().get_all_storage():
             try:
                 boto3.client(
@@ -146,5 +148,5 @@ class s3(object):
                     aws_secret_access_key=storage["secret_access_key"],
                     config=Config(retries=dict(max_attempts=5)),
                 ).head_bucket(Bucket=storage["bucket"])
-            except Exception:
-                print(f"Failed check for {storage["bucket"]}")
+            except Exception as e:
+                raise Exception(f"{e.__class__.__name__}: Failed connection check for {storage['bucket']} -> {e}")

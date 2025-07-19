@@ -42,13 +42,14 @@ signal.signal(signal.SIGINT, signal_handler)
 class Bqckup:
     def __init__(self):
         Yml_Checker.checker()
+
         try:
             with ProgressSpinner("checking storage connection..."):
                 s3.check_all_storage_connection()
         except Exception as e:
             print(f"[red]{e}[/red]")
             sys.exit()
-            
+
     def _send_notification(self, backup_name, messages, additional_data = None, override: dict = {}):
         fields = [
             {"name": "Server IP", "value": get_server_ip(), "inline": True},
@@ -448,22 +449,8 @@ class Bqckup:
         print(f"[green]Starting backup for {site_config['name']}[/green]\n")
 
         bucket_name = site_config.get("options").get("storage")
-        try:
-            with ProgressSpinner("getting credentials..."):
-                storage_config = Storage().get_storage_detail(bucket_name)
-                _s3 = s3(storage_name=bucket_name)
-
-        except RequestException as e:
-            message = f"Can't get credential for {storage_config['bucket']} | {site_config['name']}"
-            print(message)
-            self._send_notification(
-                site_config["name"],
-                f"Error: {e}",
-                override={
-                    "title": message,
-                    "description": None,
-                },
-            )
+        storage_config = Storage().get_storage_detail(bucket_name)
+        _s3 = s3(storage_name=bucket_name)
 
         if Config().read("bqckup", "config_backup"):
             _s3.upload(STORAGE_CONFIG_PATH, "storages.yml", False)
