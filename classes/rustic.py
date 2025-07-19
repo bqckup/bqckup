@@ -64,9 +64,6 @@ class Rustic:
             "check": True,
         }
 
-        self.check_config()
-        self.dump_config()
-
     @property
     def root_folder_name(self):
         return bqckup_config().read("bqckup", "root_folder_name")
@@ -239,3 +236,7 @@ class Rustic:
         config_path.chmod(0o600)
 
         return config_path
+
+    def check_and_dump(self):
+        self.check_config()
+        self.dump_config()

@@ -657,8 +657,15 @@ def restore(
             except Exception:
                 print("Error while getting credential.")
 
+            try:
+                rustic = Rustic(v, storage_config)
+                rustic.check_and_dump()
+            except Exception as e:
+                print(e)
+                return
+
             with ProgressSpinner("Restoring backups..."):
-                Rustic(v, storage_config).restore(snapshot=snapshot, target=target)
+                rustic.restore(snapshot=snapshot, target=target)
 
             print("[bold green]Restore complete![/bold green]")
             return

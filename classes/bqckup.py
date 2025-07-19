@@ -210,7 +210,11 @@ class Bqckup:
                 ):
                     print(f"Backup for {backup.get('name')} is already running...")
 
-                if backup.get("incremental").get('enable'):
+                if (
+                    (incremental := backup.get("incremental"))
+                    and incremental is not None
+                    and incremental.get("enable")
+                ):
                     self.incremental_backup(backup)
                 else:
                     self.do_backup(backup)
@@ -515,8 +519,8 @@ class Bqckup:
             )
 
             rustic = Rustic(site_config, storage_config)
+            rustic.check_and_dump()
 
-            result = None
             with ProgressSpinner("doing incremental backup..."):
                 result = rustic.backup()
 
@@ -585,8 +589,8 @@ class Bqckup:
                 with ProgressSpinner("sending data..."):
                     send_backup_summary(
                         domain=site_config["name"],
-                        total_size=result["total_size"],
-                        new_data=result["uploaded"],
+                        total_size=result.get("total_size", -1),
+                        new_data=result.get("uploaded", 0),
                         start_at=int(time_start),
                         finish_at=int(time.time()),
                         status=backup_status,
