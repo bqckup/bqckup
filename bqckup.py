@@ -636,8 +636,6 @@ def restore(
 ):
     """Restore for incremental backup"""
 
-    from classes.yml_parser import Yml_Parser
-
     bqckup = Bqckup()
 
     for _, v in bqckup.list().items():
@@ -653,17 +651,14 @@ def restore(
             if not bqckup.validate_config(site_name):
                 print(f"Invalid configuration for {site_name}")
 
-            # try:
-            #     with ProgressSpinner("getting credentials..."):
-            #         storage_config = Storage().get_storage_detail(v.get('options').get('storage'))
-            # except Exception:
-            #     print("Error while getting credential.")
+            try:
+                with ProgressSpinner("getting credentials..."):
+                    storage_config = Storage().get_storage_detail(v.get('options').get('storage'))
+            except Exception:
+                print("Error while getting credential.")
 
             with ProgressSpinner("Restoring backups..."):
-                Rustic(
-                    v, Yml_Parser.parse(STORAGE_CONFIG_PATH)["storages"],
-                    # storage_config
-                ).restore(snapshot=snapshot, target=target)
+                Rustic(v, storage_config).restore(snapshot=snapshot, target=target)
 
             print("[bold green]Restore complete![/bold green]")
             return

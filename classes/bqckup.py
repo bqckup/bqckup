@@ -11,7 +11,7 @@ from classes.yml_parser import Yml_Parser
 from classes.progress import ProgressSpinner
 from classes.yml_checker import Yml_Checker
 from classes.s3 import s3
-from helpers.service_management import send_backup_summary
+from helpers.hook import send_backup_summary
 from models.log import Log
 from models.notification_log import NotificationLog
 from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
@@ -426,12 +426,12 @@ class Bqckup:
 
         bucket_name = site_config.get("options").get("storage")
         try:
-            with ProgressSpinner("fetching credentials..."):
+            with ProgressSpinner("getting credentials..."):
                 storage_config = Storage().get_storage_detail(bucket_name)
                 _s3 = s3(storage_name=bucket_name)
 
         except RequestException as e:
-            message = f"Can't fetch credential for {storage_config['bucket']} | {site_config['name']}"
+            message = f"Can't get credential for {storage_config['bucket']} | {site_config['name']}"
             print(message)
             self._send_notification(
                 site_config["name"],
@@ -566,6 +566,7 @@ class Bqckup:
                 with ProgressSpinner("sending data..."):
                     send_backup_summary(
                         domain=site_config["name"],
+                        total_size=result["total_size"],
                         new_data=result["uploaded"],
                         start_at=int(time_start),
                         finish_at=int(time.time()),

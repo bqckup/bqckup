@@ -1,5 +1,5 @@
 from classes.yml_parser import Yml_Parser
-from helpers.service_management import get_credential
+from helpers.hook import get_credential
 from constant import STORAGE_CONFIG_PATH
 
 
@@ -12,7 +12,7 @@ class Storage:
 
     def get_storage_detail(self, name: str) -> dict:
         try:
-            storage = self.parsed_storage["storages"][name]
+            storage: dict = self.parsed_storage["storages"][name]
 
             if not storage.get("remote"):
                 return storage
