@@ -10,6 +10,9 @@ class Storage:
     def __init__(self):
         self.parsed_storage = Yml_Parser.parse(STORAGE_CONFIG_PATH)
 
+    def get_all_storage(self) -> list[dict]:
+        return [self.get_storage_detail(storage_name) for storage_name in self.list()]
+
     def get_storage_detail(self, name: str) -> dict:
         try:
             storage: dict = self.parsed_storage["storages"][name]

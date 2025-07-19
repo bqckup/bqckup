@@ -1,10 +1,11 @@
 from socket import gethostname
+from functools import cache
 import requests
 import sys
 
 from classes.config import Config
 
-
+@cache
 def get_credential(bucket_name: str) -> dict[str, str]:
     base_url = Config().read("storage", "remote_storage_endpoint")
 

@@ -133,3 +133,18 @@ class s3(object):
             raise Exception(
                 f" Error : Unable to connect to S3. Please verify your configuration settings for storage '{storage_name}'"
             )
+
+    @staticmethod
+    def check_all_storage_connection():
+        for storage in Storage().get_all_storage():
+            try:
+                boto3.client(
+                    "s3",
+                    region_name=storage["region"],
+                    endpoint_url=storage["endpoint"],
+                    aws_access_key_id=storage["access_key_id"],
+                    aws_secret_access_key=storage["secret_access_key"],
+                    config=Config(retries=dict(max_attempts=5)),
+                ).head_bucket(Bucket=storage["bucket"])
+            except Exception:
+                print(f"Failed check for {storage["bucket"]}")

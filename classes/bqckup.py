@@ -42,12 +42,12 @@ signal.signal(signal.SIGINT, signal_handler)
 class Bqckup:
     def __init__(self):
         Yml_Checker.checker()
-        # TODO: enable this
-        # try:
-        #     s3.check_connection()
-        # except Exception as e:
-        #     print(f"[red]{e}[/red]")
-        #     sys.exit()
+        try:
+            with ProgressSpinner("checking storage connection..."):
+                s3.check_all_storage_connection()
+        except Exception as e:
+            print(f"[red]{e}[/red]")
+            sys.exit()
             
     def _send_notification(self, backup_name, messages, additional_data = None, override: dict = {}):
         fields = [
