@@ -148,8 +148,7 @@ class Bqckup:
     def get_logs(self, name: str):
         return list(Log().select().where(Log.name == name))
     
-    def backup(self, force:bool = False, site:str = None):
-
+    def backup(self, force: bool = False, site: str = None, backup_method: str = None):
         """
             Need to optimize this code
         """
@@ -210,6 +209,13 @@ class Bqckup:
                     ).exists()
                 ):
                     print(f"Backup for {backup.get('name')} is already running...")
+
+                if backup_method == "incremental":
+                    self.incremental_backup(backup)
+                    continue
+                elif backup_method == "full":
+                    self.do_backup(backup)
+                    continue
 
                 if (
                     (incremental := backup.get("incremental"))
