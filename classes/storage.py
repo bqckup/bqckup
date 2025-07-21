@@ -17,12 +17,12 @@ class Storage:
         try:
             storage: dict = self.parsed_storage["storages"][name]
 
-            if not storage.get("remote"):
-                return storage
+            if remote_url := storage.get("remote_url"):
+                return storage | get_credential(
+                    remote_url
+                )  # Merge config from file and remote
 
-            return storage | get_credential(
-                storage["bucket"]
-            )  # Merge config from file and remote
+            return storage
 
         except KeyError:
             raise StorageException(f"Storage {name} doesn't exists")

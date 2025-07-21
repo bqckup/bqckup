@@ -29,8 +29,5 @@ channel=discord
 ; Webhook URL
 discord_webhook_url=
 
-[storage]
-remote_storage_endpoint=
-
 [webhooks]
 after_backup_completed=

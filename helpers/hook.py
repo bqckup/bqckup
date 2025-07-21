@@ -9,25 +9,20 @@ from constant import CONFIG_PATH
 
 
 @cache
-def get_credential(bucket_name: str) -> dict[str, str]:
-    base_url = Config().read("storage", "remote_storage_endpoint", print_error=False)
-
+def get_credential(base_url: str) -> dict[str, str]:
     try:
-        r = requests.get(f"{base_url}/{bucket_name}")
+        r = requests.get(base_url)
         json: dict = r.json()
-    except MissingSchema:
-        print(
-            f"Remote storage is enabled, but `remote_storage_endpoint` is missing or invalid in `{CONFIG_PATH}`."
-        )
-        sys.exit(1)
-
     except JSONDecodeError:
         print("Error while decode json.")
+        sys.exit(1)
+    except Exception:
+        print(f"Error while request to {base_url}.")
         sys.exit(1)
 
     if r.status_code != 200:
         raise RequestException(
-            f"{json.get('error', 'Error')} {bucket_name}: {json.get('message') or str(json)}",
+            f"{json.get('error', 'Error')} {base_url}: {json.get('message') or str(json)}",
             response=r,
         )
 
