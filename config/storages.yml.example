@@ -6,3 +6,5 @@ storages:
     region: dummy
     endpoint: dummy
     primary: no
+
+    remote_url: https://dummy.com/get?token=admin#1234
