@@ -13,7 +13,7 @@ from classes.rustic import Rustic
 from classes.storage import Storage
 from classes.s3 import s3
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 from constant import STORAGE_CONFIG_PATH, VERSION, SITE_CONFIG_PATH, BQ_PATH
 from rich import print
 from rich.console import Group, Console
@@ -335,10 +335,28 @@ def test_config():
 
 
 @bq_cli.command()
-def run(force: bool = False, site: str = None):
+def run(
+    force: bool = False,
+    site: str = None,
+    incremental: Annotated[bool, typer.Option("--incremental", "-i")] = None,
+    full: Annotated[bool, typer.Option("--full", "-f")] = None,
+):
     from classes.report import Report
 
-    Bqckup().backup(force=force, site=site)
+    backup_method = None
+    if incremental and full:
+        print("Can't running incremental and full backup at same time.")
+        return
+    elif incremental:
+        backup_method = "incremental"
+    elif full:
+        backup_method = "full"
+
+    Bqckup().backup(
+        force=force,
+        site=site,
+        backup_method=backup_method,
+    )
     Report().send()
 
 
@@ -636,8 +654,6 @@ def restore(
 ):
     """Restore for incremental backup"""
 
-    from classes.yml_parser import Yml_Parser
-
     bqckup = Bqckup()
 
     for _, v in bqckup.list().items():
@@ -653,17 +669,21 @@ def restore(
             if not bqckup.validate_config(site_name):
                 print(f"Invalid configuration for {site_name}")
 
-            # try:
-            #     with ProgressSpinner("getting credentials..."):
-            #         storage_config = Storage().get_storage_detail(v.get('options').get('storage'))
-            # except Exception:
-            #     print("Error while getting credential.")
+            try:
+                with ProgressSpinner("getting credentials..."):
+                    storage_config = Storage().get_storage_detail(v.get('options').get('storage'))
+            except Exception:
+                print("Error while getting credential.")
+
+            try:
+                rustic = Rustic(v, storage_config)
+                rustic.check_and_dump()
+            except Exception as e:
+                print(e)
+                return
 
             with ProgressSpinner("Restoring backups..."):
-                Rustic(
-                    v, Yml_Parser.parse(STORAGE_CONFIG_PATH)["storages"],
-                    # storage_config
-                ).restore(snapshot=snapshot, target=target)
+                rustic.restore(snapshot=snapshot, target=target)
 
             print("[bold green]Restore complete![/bold green]")
             return

@@ -1,7 +1,8 @@
 import os, time, shutil, signal, sys
 from typing import Any
+from requests import RequestException
 from classes.database import Database
-from classes.rustic import Rustic
+from classes.rustic import Rustic, RusticCheckError
 from classes.storage import Storage
 from classes.tar import Tar
 from classes.file import File
@@ -10,6 +11,7 @@ from classes.yml_parser import Yml_Parser
 from classes.progress import ProgressSpinner
 from classes.yml_checker import Yml_Checker
 from classes.s3 import s3
+from helpers.hook import send_backup_summary
 from models.log import Log
 from models.notification_log import NotificationLog
 from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
@@ -40,12 +42,14 @@ signal.signal(signal.SIGINT, signal_handler)
 class Bqckup:
     def __init__(self):
         Yml_Checker.checker()
+
         try:
-            s3.check_connection()
+            with ProgressSpinner("checking storage connection..."):
+                s3.check_all_storage_connection()
         except Exception as e:
             print(f"[red]{e}[/red]")
             sys.exit()
-            
+
     def _send_notification(self, backup_name, messages, additional_data = None, override: dict = {}):
         fields = [
             {"name": "Server IP", "value": get_server_ip(), "inline": True},
@@ -144,8 +148,7 @@ class Bqckup:
     def get_logs(self, name: str):
         return list(Log().select().where(Log.name == name))
     
-    def backup(self, force:bool = False, site:str = None):
-
+    def backup(self, force: bool = False, site: str = None, backup_method: str = None):
         """
             Need to optimize this code
         """
@@ -207,7 +210,18 @@ class Bqckup:
                 ):
                     print(f"Backup for {backup.get('name')} is already running...")
 
-                if backup.get("incremental").get('enable'):
+                if backup_method == "incremental":
+                    self.incremental_backup(backup)
+                    continue
+                elif backup_method == "full":
+                    self.do_backup(backup)
+                    continue
+
+                if (
+                    (incremental := backup.get("incremental"))
+                    and incremental is not None
+                    and incremental.get("enable")
+                ):
                     self.incremental_backup(backup)
                 else:
                     self.do_backup(backup)
@@ -242,11 +256,13 @@ class Bqckup:
 
             compressed_file = Tar().compress(backup.get('path'), compressed_file, backup.get('options')['follow_symlink'],backup_config.get('exclude_path', []))
             last_compressed_file_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__FILES__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
-            
+
+            compressed_file_size = os.stat(compressed_file).st_size
+
             if last_compressed_file_backup:
                 
                 previous_size = format_size(last_compressed_file_backup.file_size)
-                current_size = format_size(os.stat(compressed_file).st_size)
+                current_size = format_size(compressed_file_size)
                 time_consume = format_timespan(last_compressed_file_backup.time_consume)
                 print("=========================================")
                 print("Backup File Compressed")
@@ -391,7 +407,9 @@ class Bqckup:
                     Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success", time_consume)
             
             print(f"\n[green]Backup for {backup.get('name')} is done![/green]")
+            backup_status = "completed"
         except Exception as e:
+            backup_status = "failed"
             import traceback
             traceback.print_exc()
 
@@ -411,6 +429,21 @@ class Bqckup:
                 
             print(f"[{backup.get('name')}] Error: {e}.")
 
+        finally:
+            try:
+                with ProgressSpinner("sending data..."):
+                    send_backup_summary(
+                        domain=backup.get("name"),
+                        total_size=compressed_file_size,
+                        new_data=compressed_file_size,
+                        start_at=int(time_start),
+                        finish_at=int(time.time()),
+                        status=backup_status,
+                        backup_method="tar",
+                    )
+            except Exception as e:
+                print(f"Error: {e}")
+
     def incremental_backup(
         self, site_config: dict[str, Any], include_database: bool = False
     ) -> None:
@@ -421,14 +454,17 @@ class Bqckup:
 
         print(f"[green]Starting backup for {site_config['name']}[/green]\n")
 
-        if Config().read('bqckup', 'config_backup'):
-            _s3 = s3(storage_name=site_config.get("options").get("storage"))
+        bucket_name = site_config.get("options").get("storage")
+        storage_config = Storage().get_storage_detail(bucket_name)
+        _s3 = s3(storage_name=bucket_name)
+
+        if Config().read("bqckup", "config_backup"):
+            _s3.upload(STORAGE_CONFIG_PATH, "storages.yml", False)
             _s3.upload(
                 Path(SITE_CONFIG_PATH) / site_config["file_name"],
                 f"config/{site_config.get('name')}.yml",
                 False,
             )
-            _s3.upload(STORAGE_CONFIG_PATH, "storages.yml", False)
 
         # Database backup
         db_dump_path = self.backup_database(site_config)
@@ -436,8 +472,9 @@ class Bqckup:
             site_config["path"].append(db_dump_path)
         else:
             print(f"Uploading {db_dump_path}...")
-            s3(storage_name=site_config.get("options").get("storage")).upload(
-                db_dump_path, Path(site_config.get("name")) / get_today() / db_dump_path.name
+            _s3.upload(
+                db_dump_path,
+                Path(site_config.get("name")) / get_today() / db_dump_path.name,
             )
 
         # Save backup in local
@@ -474,11 +511,9 @@ class Bqckup:
                 }
             )
 
-            rustic: Rustic = Rustic(
-                site_config, Yml_Parser.parse(STORAGE_CONFIG_PATH)["storages"]
-            )
+            rustic = Rustic(site_config, storage_config)
+            rustic.check_and_dump()
 
-            result = None
             with ProgressSpinner("doing incremental backup..."):
                 result = rustic.backup()
 
@@ -500,24 +535,28 @@ class Bqckup:
             print("Time Consumed\t:", format_timespan(result["total_duration"]))
             print("=========================================")
 
-            try:
-                with ProgressSpinner("checking repository..."):
-                    rustic.check_repository()
-            except Exception as e:
-                print(f"[{site_config['name']}] Error while checking repository.")
-                self._send_notification(
-                    site_config["name"],
-                    f"Error: {e}",
-                    override={
-                        "title": f"Repository Check Failed for {site_config['name']}",
-                        "description": (
-                            "An error occurred check repository.\n"
-                            "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
-                        ),
-                    },
-                )
+            backup_status = "completed"
+
+            with ProgressSpinner("checking repository..."):
+                rustic.check_repository()
+
+        except RusticCheckError as e:
+            print(f"[{site_config['name']}] Error while checking repository.")
+            self._send_notification(
+                site_config["name"],
+                f"Error: {e}",
+                override={
+                    "title": f"Repository Check Failed for {site_config['name']}",
+                    "description": (
+                        "An error occurred while check the repository.\n"
+                        "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
+                    ),
+                },
+            )
 
         except Exception as e:
+            backup_status = "failed"
+
             Log.update(
                 status=Log.__FAILED__,
                 time_consume=time.time() - time_start,
@@ -537,7 +576,21 @@ class Bqckup:
                 },
             )
 
-            return
+        finally:
+            rustic.dump_config(with_credentials=False)
+            try:
+                with ProgressSpinner("sending data..."):
+                    send_backup_summary(
+                        domain=site_config["name"],
+                        total_size=result.get("total_size", -1),
+                        new_data=result.get("uploaded", 0),
+                        start_at=int(time_start),
+                        finish_at=int(time.time()),
+                        status=backup_status,
+                        backup_method="incremental"
+                    )
+            except Exception as e:
+                print(f"Error: {e}")
 
     def backup_database(self, config: dict) -> Path:
         """
