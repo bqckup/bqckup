@@ -1,6 +1,7 @@
 from classes.yml_parser import Yml_Parser
 from helpers.hook import get_credential
 from constant import STORAGE_CONFIG_PATH
+from typing import Dict, List, Union
 
 
 class StorageException(Exception): ...
@@ -10,17 +11,18 @@ class Storage:
     def __init__(self):
         self.parsed_storage = Yml_Parser.parse(STORAGE_CONFIG_PATH)
 
-    def get_all_storage(self) -> list[dict]:
+    def get_all_storage(self) -> List[Dict]:
         return [self.get_storage_detail(storage_name) for storage_name in self.list()]
 
-    def get_storage_detail(self, name: str) -> dict:
+    def get_storage_detail(self, name: str) -> Dict:
         try:
             storage: dict = self.parsed_storage["storages"][name]
 
             if remote_url := storage.get("remote_url"):
-                return storage | get_credential(
-                    remote_url
-                )  # Merge config from file and remote
+                return {
+                    **storage,
+                    **get_credential(remote_url),
+                }  # Merge config from file and remote
 
             return storage
 
@@ -30,7 +32,7 @@ class Storage:
     def get_parsed_storage(self):
         return self.parsed_storage
 
-    def get_primary_storage(self) -> dict | None:
+    def get_primary_storage(self) -> Union[Dict, None]:
         storages = self.list()
 
         if len(storages) >= 1:
@@ -46,7 +48,7 @@ class Storage:
 
         return None
 
-    def list(self) -> list[str]:
+    def list(self) -> List[str]:
         try:
             return list(self.parsed_storage["storages"].keys())
         except Exception:

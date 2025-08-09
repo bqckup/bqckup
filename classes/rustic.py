@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Union
 from subprocess import CompletedProcess
 import json
 import toml
@@ -21,8 +21,8 @@ class RusticError(Exception): ...
 class Rustic:
     def __init__(
         self,
-        site_config: dict[str, Any],
-        storage_config: dict[str, Any],
+        site_config: Dict[str, Any],
+        storage_config: Dict[str, Any],
     ):
         # Site Config:
         #     name: domain
@@ -69,7 +69,7 @@ class Rustic:
         return bqckup_config().read("bqckup", "root_folder_name")
 
     @property
-    def snapshots(self) -> list[dict[str, Any]]:
+    def snapshots(self) -> List[Dict[str, Any]]:
         output: CompletedProcess = subprocess.run(
             [
                 "rustic",
@@ -104,7 +104,7 @@ class Rustic:
         except subprocess.CalledProcessError as e:
             raise RusticCheckError(e)
 
-    def backup(self) -> dict[str, int | str]:
+    def backup(self) -> Dict[str, Union[int, str]]:
         """Running Backup
 
         Raises:
