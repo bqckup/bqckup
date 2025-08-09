@@ -1,5 +1,5 @@
 import os, time, shutil, signal, sys
-from typing import Any
+from typing import Any, Dict
 from requests import RequestException
 from classes.database import Database
 from classes.rustic import Rustic, RusticCheckError
@@ -50,37 +50,49 @@ class Bqckup:
             print(f"[red]{e}[/red]")
             sys.exit()
 
-    def _send_notification(self, backup_name, messages, additional_data = None, override: dict = {}):
+    def _send_notification(self, backup_name, messages, additional_data=None, override: Dict = {}):
         fields = [
             {"name": "Server IP", "value": get_server_ip(), "inline": True},
             {"name": "Name", "value": backup_name, "inline": True},
-            {"name": "Date", "value": get_today(format="%d-%B-%Y"), "inline":True},
+            {"name": "Date", "value": get_today(format="%d-%B-%Y"), "inline": True},
         ]
-        
+
         if additional_data:
             fields.append(additional_data)
-            
+
         fields.append({"name": "Details", "value": messages, "inline": False})
-        
+
         payload = {
-            "embeds": [{
-                "title": "No Changes Detected",
-                "description": (
-                    "We have not detected any changes. There could be 2 reasons for this:\n"
-                    "1. The application is rarely used.\n"
-                    "2. There might be an issue with the database backup process.\n\n"
-                    "We recommend the following steps:\n"
-                    "1. Check the storage (S3) bucket {bucket_name}. If the database size is less than 1 KB or seems unusual, it likely means the backup did not complete successfully.\n"
-                    "2. Attempt to force a backup by running `bqckup --site {domain_name} --force` to ensure the backup process is functioning correctly."
-                ),
-                "color": 15548997,
-                "fields": fields,
-                "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
-            } | override]
+            "embeds": [
+                {
+                    **{
+                        "title": "No Changes Detected",
+                        "description": (
+                            "We have not detected any changes. There could be 2 reasons for this:\n"
+                            "1. The application is rarely used.\n"
+                            "2. There might be an issue with the database backup process.\n\n"
+                            "We recommend the following steps:\n"
+                            "1. Check the storage (S3) bucket {bucket_name}. If the database size is less than 1 KB or seems unusual, it likely means the backup did not complete successfully.\n"
+                            "2. Attempt to force a backup by running `bqckup --site {domain_name} --force` to ensure the backup process is functioning correctly."
+                        ),
+                        "color": 15548997,
+                        "fields": fields,
+                        "footer": {
+                            "text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"
+                        },
+                    },
+                    **override,
+                }
+            ]
         }
-        
-        hashed_payload = sha256(str(payload).encode()).hexdigest()                    
-        if not NotificationLog().select().where(NotificationLog.hash == hashed_payload).exists():
+
+        hashed_payload = sha256(str(payload).encode()).hexdigest()
+        if (
+            not NotificationLog()
+            .select()
+            .where(NotificationLog.hash == hashed_payload)
+            .exists()
+        ):
             send_notification(payload)
             NotificationLog().create(hash=hashed_payload, sent_at=int(time.time()))
             
@@ -445,7 +457,7 @@ class Bqckup:
                 print(f"Error: {e}")
 
     def incremental_backup(
-        self, site_config: dict[str, Any], include_database: bool = False
+        self, site_config: Dict[str, Any], include_database: bool = False
     ) -> None:
         time_start = time.time()
 
@@ -592,7 +604,7 @@ class Bqckup:
             except Exception as e:
                 print(f"Error: {e}")
 
-    def backup_database(self, config: dict) -> Path:
+    def backup_database(self, config: Dict) -> Path:
         """
         Returns:
             Path: return path to exported database

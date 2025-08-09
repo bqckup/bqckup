@@ -1,15 +1,16 @@
 from socket import gethostname
-from functools import cache
+from functools import lru_cache
 from requests.exceptions import RequestException, MissingSchema, JSONDecodeError
 import requests
 import sys
+from typing import Dict
 
 from classes.config import Config
 from constant import CONFIG_PATH
 
 
-@cache
-def get_credential(base_url: str) -> dict[str, str]:
+@lru_cache(maxsize=None)
+def get_credential(base_url: str) -> Dict[str, str]:
     try:
         r = requests.get(base_url)
         json: dict = r.json()
