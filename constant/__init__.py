@@ -1,8 +1,5 @@
 from os import path
 
-# Debug Mode
-DEBUG = False
-
 # Bqckup Path
 BQ_PATH = "/etc/bqckup"
 

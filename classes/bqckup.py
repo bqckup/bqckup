@@ -14,9 +14,10 @@ from classes.progress import ProgressSpinner
 from classes.yml_checker import Yml_Checker
 from classes.s3 import s3
 from helpers.hook import send_backup_summary
+from helpers.utility import is_debug
 from models.log import Log
 from models.notification_log import NotificationLog
-from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH, DEBUG
+from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
 from datetime import datetime
 from helpers.file import remove_folder
 from hashlib import sha256
@@ -246,7 +247,7 @@ class Bqckup:
                 else:
                     self.do_backup(backup)
             except Exception as e:
-                if DEBUG:
+                if is_debug():
                     traceback.print_exc()
 
                 print(f"[red]Error during backup for {backup['name']}: {e}[/red]")
@@ -567,7 +568,7 @@ class Bqckup:
                 rustic.check_repository()
 
         except RusticCheckError as e:
-            if DEBUG:
+            if is_debug():
                 traceback.print_exc()
 
             print(f"[{site_config['name']}] Error while checking repository.")
@@ -591,7 +592,7 @@ class Bqckup:
         except Exception as e:
             backup_status = "failed"
 
-            if DEBUG:
+            if is_debug():
                 traceback.print_exc()
 
             Log.update(
