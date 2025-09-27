@@ -1,19 +1,3 @@
-import platform
-try:
-    import distro
-    
-    def linux_distribution():
-        return (distro.name(), distro.version(), distro.id())
-    if not hasattr(platform, 'linux_distribution'):
-        platform.linux_distribution = linux_distribution
-except ImportError:
-    def linux_distribution():
-        return ('Linux', '', '')
-    
-    if not hasattr(platform, 'linux_distribution'):
-        platform.linux_distribution = linux_distribution
-
-
 import os, time, shutil, signal, sys
 from typing import Any, Dict
 from requests import RequestException
