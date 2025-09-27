@@ -105,14 +105,15 @@ class Bqckup:
                 for path in config.get('path'):
                     if not os.path.exists(path):
                         raise ConfigExceptions(f"Can't find {path}")
-                if config.get('database'):
-                    if config.get('database').get('type') not in Database().SUPPORTED_DATABASE:
-                        raise ConfigExceptions(f"Database type {config.get('database').get('type')} not supported")
-                    Database(type=config.get('database').get('type')).test_connection({
-                        "user": config.get('database').get('user'),
-                        "password": config.get('database').get('password'),
-                        "host": config.get('database').get('host'),
-                        "name": config.get('database').get('name')
+                if config.get('database') and config.get('database').get('enable'):
+                    database_config = config.get('database')
+                    if database_config.get('type') not in Database().SUPPORTED_DATABASE:
+                        raise ConfigExceptions(f"Database type {database_config.get('type')} not supported")
+                    Database(type=database_config.get('type')).test_connection({
+                        "user": database_config.get('user'),
+                        "password": database_config.get('password'),
+                        "host": database_config.get('host'),
+                        "name": database_config.get('name')
                     })
                 if config.get('options').get('provider') == 's3':
                     Storage().get_storage_detail(config.get('options').get('storage'))
@@ -293,7 +294,7 @@ class Bqckup:
             
             sql_path = os.path.join(tmp_path, f"{int(time.time())}.sql.gz")
             
-            if backup.get('database'):
+            if backup.get('database') and backup.get('database').get('enable'):
                 with ProgressSpinner("Exporting database..."):
                     log_database = Log().write({
                         "name": backup['name'],
@@ -480,36 +481,37 @@ class Bqckup:
 
         # Database backup
         db_dump_path = self.backup_database(site_config)
-        if include_database:
-            site_config["path"].append(db_dump_path)
-        else:
-            print(f"Uploading {db_dump_path}...")
-            _s3.upload(
-                db_dump_path,
-                Path(site_config.get("name")) / get_today() / db_dump_path.name,
-            )
-
-        # Save backup in local
-        should_save_locally = site_config.get("options").get("save_locally")
-        save_locally_path = Path(
-            site_config.get("options").get("save_locally_path", "/etc/bqckup/tmp")
-        )  # If not set it will be at /etc/bqckup/tmp
-
-        if not should_save_locally:
-            db_dump_path.unlink(missing_ok=True)
-        elif should_save_locally and save_locally_path:
-            print("Saving locally ...")
-
-            if not save_locally_path.is_dir():
-                raise Exception(
-                    f"Save locally path {save_locally_path} is not a directory"
+        if db_dump_path:  
+            if include_database:
+                site_config["path"].append(db_dump_path)
+            else:
+                print(f"Uploading {db_dump_path}...")
+                _s3.upload(
+                    db_dump_path,
+                    Path(site_config.get("name")) / get_today() / db_dump_path.name,
                 )
 
-            save_locally_path: Path = save_locally_path / site_config["name"]
-            if not save_locally_path.is_dir():  # if directory not exists; create
-                save_locally_path.mkdir(parents=True, exist_ok=True)
+        if db_dump_path:
+            should_save_locally = site_config.get("options").get("save_locally")
+            save_locally_path = Path(
+                site_config.get("options").get("save_locally_path", "/etc/bqckup/tmp")
+            )  # If not set it will be at /etc/bqckup/tmp
 
-            shutil.move(db_dump_path, save_locally_path)
+            if not should_save_locally:
+                db_dump_path.unlink(missing_ok=True)
+            elif should_save_locally and save_locally_path:
+                print("Saving locally ...")
+
+                if not save_locally_path.is_dir():
+                    raise Exception(
+                        f"Save locally path {save_locally_path} is not a directory"
+                    )
+
+                save_locally_path: Path = save_locally_path / site_config["name"]
+                if not save_locally_path.is_dir():  # if directory not exists; create
+                    save_locally_path.mkdir(parents=True, exist_ok=True)
+
+                shutil.move(db_dump_path, save_locally_path)
 
         # File backup
         try:
@@ -610,7 +612,7 @@ class Bqckup:
             Path: return path to exported database
         """
 
-        if not config.get("database"):
+        if not config.get("database") or not config.get("database").get("enable"):
             return
 
         tmp_path: Path = Path(BQ_PATH) / "tmp" / config["name"]
