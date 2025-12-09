@@ -47,7 +47,6 @@ class Rustic:
         #         save_locally_path: /etc/bqckup/tmp
         #         notification_email: email@example.com
         #         provider: s3
-        # # Selected by options on Site Config
         # Storage Config:
         #     bucket: dummy
         #     access_key_id: dummy
