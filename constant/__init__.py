@@ -15,7 +15,7 @@ CONFIG_PATH = path.join(BQ_PATH, 'bqckup.cnf')
 RUSTIC_CONFIG_PATH = "/etc/rustic"
 
 # Bqckup Information
-VERSION = "1.7.0"
+VERSION = "1.7.1"
 
 # YOURLS Credentials
 YOURLS_HOST = ""

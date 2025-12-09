@@ -50,7 +50,16 @@ class Bqckup:
             print(f"[red]{e}[/red]")
             sys.exit()
 
-    def _send_notification(self, backup_name, messages, additional_data=None, override: Dict = {}):
+    def _send_notification(
+        self,
+        backup_name,
+        title,
+        description=None,
+        messages=None,
+        additional_data=None,
+        footer=None,
+        color=15548997,
+    ):
         fields = [
             {"name": "Server IP", "value": get_server_ip(), "inline": True},
             {"name": "Name", "value": backup_name, "inline": True},
@@ -60,28 +69,19 @@ class Bqckup:
         if additional_data:
             fields.append(additional_data)
 
-        fields.append({"name": "Details", "value": messages, "inline": False})
+        if messages:
+            fields.append({"name": "Details", "value": messages, "inline": False})
 
         payload = {
             "embeds": [
                 {
-                    **{
-                        "title": "No Changes Detected",
-                        "description": (
-                            "We have not detected any changes. There could be 2 reasons for this:\n"
-                            "1. The application is rarely used.\n"
-                            "2. There might be an issue with the database backup process.\n\n"
-                            "We recommend the following steps:\n"
-                            "1. Check the storage (S3) bucket {bucket_name}. If the database size is less than 1 KB or seems unusual, it likely means the backup did not complete successfully.\n"
-                            "2. Attempt to force a backup by running `bqckup --site {domain_name} --force` to ensure the backup process is functioning correctly."
-                        ),
-                        "color": 15548997,
-                        "fields": fields,
-                        "footer": {
-                            "text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"
-                        },
-                    },
-                    **override,
+                    "title": title,
+                    "description": description,
+                    "color": color,
+                    "fields": fields,
+                    "footer": {
+                        "text": footer,
+                    }
                 }
             ]
         }
@@ -105,14 +105,15 @@ class Bqckup:
                 for path in config.get('path'):
                     if not os.path.exists(path):
                         raise ConfigExceptions(f"Can't find {path}")
-                if config.get('database'):
-                    if config.get('database').get('type') not in Database().SUPPORTED_DATABASE:
-                        raise ConfigExceptions(f"Database type {config.get('database').get('type')} not supported")
-                    Database(type=config.get('database').get('type')).test_connection({
-                        "user": config.get('database').get('user'),
-                        "password": config.get('database').get('password'),
-                        "host": config.get('database').get('host'),
-                        "name": config.get('database').get('name')
+                if config.get('database') and config.get('database').get('enable'):
+                    database_config = config.get('database')
+                    if database_config.get('type') not in Database().SUPPORTED_DATABASE:
+                        raise ConfigExceptions(f"Database type {database_config.get('type')} not supported")
+                    Database(type=database_config.get('type')).test_connection({
+                        "user": database_config.get('user'),
+                        "password": database_config.get('password'),
+                        "host": database_config.get('host'),
+                        "name": database_config.get('name')
                     })
                 if config.get('options').get('provider') == 's3':
                     Storage().get_storage_detail(config.get('options').get('storage'))
@@ -187,40 +188,56 @@ class Bqckup:
 
         for backup in backups.values():
             try:
+                if not backup.get("enabled"):
+                    print(f"[red]Backup for {backup.get('name')} is not enabled[/red]")
+                    continue
+
                 last_log = self.get_last_log(backup['name'])
                 if last_log:
                     interval = backup['options']['interval']
-                    last_backup = last_log.created_at
-                    last_backup = abs(difference_in_days(last_backup, time.time()))
+                    last_backup_timestamp = last_log.created_at
+                    days_passed = abs(difference_in_days(last_backup_timestamp, time.time()))
                     to_compare = interval_in_number(interval)
 
-                    # Not enough time has passed
-                    if not force and last_backup < to_compare:
+                    last_log_status = {
+                        Log().__SUCCESS__: "success",
+                        Log().__ON_PROGRESS__: "on-progress",
+                        Log().__FAILED__: "failed",
+                    }.get(last_log.status, "unknown")
+
+                    if last_log.status != Log().__SUCCESS__:
+                        print(f"[yellow]The previous backup for {backup['name']} was not successful.[/yellow]")
+                        print(f"[yellow]Last Status: '{last_log_status}'. Attempted at: {datetime.fromtimestamp(last_backup_timestamp).strftime('%d/%m/%Y %H:%M:%S')}[/yellow]")
+                        self._send_notification(
+                            backup_name=backup.get("name"),
+                            title=f"Previous Backup Not Successful for {backup.get('name')}",
+                            description=(
+                                f"The last backup attempt on {datetime.fromtimestamp(last_backup_timestamp).strftime('%d-%B-%Y')} "
+                                f"did not complete successfully. The last known status was '{last_log_status}'.\n\n"
+                            ),
+                        )
+
+                    if not force and days_passed < to_compare:
                         print("\n=========================================")
                         print(f"Backup Name: {backup['name']}")
                         print(f"Current Date: {time.strftime('%d/%m/%Y %H:%M:%S', time.localtime())}")
-                        print(f"Last Backup: {datetime.fromtimestamp(last_log.created_at).strftime('%d/%m/%Y %H:%M:%S')}")
-                        print(f"Next bqckup: {datetime.fromtimestamp(last_log.created_at + (to_compare * 86400)).strftime('%d/%m/%Y 00:00:00')}")
-                        print(f"Day passed: {last_backup}")
+                        print(f"Last Backup: {datetime.fromtimestamp(last_backup_timestamp).strftime('%d/%m/%Y %H:%M:%S')}")
+                        print(f"Next bqckup: {datetime.fromtimestamp(last_backup_timestamp + (to_compare * 86400)).strftime('%d/%m/%Y 00:00:00')}")
+                        print(f"Day passed: {days_passed}")
                         print(f"Interval: {interval}")
                         print(f"\nBackup for {backup['name']} is not needed yet...")
                         print("=========================================\n")
                         print("Visit: https://bqckup.com\n")
                         continue
 
-                if not backup.get("enabled"):
-                    print(f"[red]Backup for {backup.get('name')} is not enabled[/red]")
-                    continue
+                last_running_log = Log().select().where(
+                    Log.name == backup.get("name")
+                    and Log.status == Log.__ON_PROGRESS__
+                )
 
-                if (
-                    Log()
-                    .select()
-                    .where(
-                        Log.name == backup.get("name")
-                        and Log.status == Log.__ON_PROGRESS__
-                    ).exists()
-                ):
+                if last_running_log.exists():
                     print(f"Backup for {backup.get('name')} is already running...")
+                    continue
 
                 if backup_method == "incremental":
                     self.incremental_backup(backup)
@@ -284,16 +301,35 @@ class Bqckup:
                 print("=========================================")
                 
             if last_compressed_file_backup and os.stat(compressed_file).st_size == last_compressed_file_backup.file_size:
-                    print(f"[red]Based on file size, there is no changes detected for {compressed_file}[/red]\n")
+                print(
+                    f"[red]Based on file size, there is no changes detected for {compressed_file}[/red]\n"
+                )
 
-                    self._send_notification(backup.get('name'), "Based on file size, there is no changes detected", {"name": "File name", "value": os.path.basename(compressed_file), "inline": False})                    
+                self._send_notification(
+                    backup_name=backup.get("name"),
+                    title="No Changes Detected",
+                    messages="Based on file size, there is no changes detected",
+                    description=(
+                        "We have not detected any changes. There could be 2 reasons for this:\n"
+                        "1. The application is rarely used.\n"
+                        "2. There might be an issue with the database backup process.\n\n"
+                        "We recommend the following steps:\n"
+                        "1. Check the storage (S3) bucket {bucket_name}. If the database size is less than 1 KB or seems unusual, it likely means the backup did not complete successfully.\n"
+                        "2. Attempt to force a backup by running `bqckup --site {domain_name} --force` to ensure the backup process is functioning correctly."
+                    ),
+                    footer="If this was a mistake, please create issue here: https://github.com/bqckup/bqckup",
+                    additional_data={
+                        "name": "File name",
+                        "value": os.path.basename(compressed_file),
+                        "inline": False,
+                    },
+                )
 
-            
             Log().update(file_size=os.stat(compressed_file).st_size).where(Log.id == log_compressed_files.id).execute()
             
             sql_path = os.path.join(tmp_path, f"{int(time.time())}.sql.gz")
             
-            if backup.get('database'):
+            if backup.get('database') and backup.get('database').get('enable'):
                 with ProgressSpinner("Exporting database..."):
                     log_database = Log().write({
                         "name": backup['name'],
@@ -427,7 +463,7 @@ class Bqckup:
 
             # If backup failed remove the tmp folder
             remove_folder(tmp_path)
-            
+
             # Separate this two error by it's own exceptions
             time_consume = time.time() - time_start
             if 'log_compressed_files' in locals():
@@ -435,10 +471,13 @@ class Bqckup:
                 
             if 'log_database' in locals():
                 Log().update_status(log_database.id, Log.__FAILED__, f"Database Backup Failed: {e}", time_consume)
-                
-            
-            self._send_notification(backup.get('name'), f"Error: {e}", None)
-                
+
+            self._send_notification(
+                backup.get("name"),
+                title=f"Backup Failed for {backup.get('name')}",
+                messages=f"Error: {e}",
+            )
+
             print(f"[{backup.get('name')}] Error: {e}.")
 
         finally:
@@ -480,36 +519,37 @@ class Bqckup:
 
         # Database backup
         db_dump_path = self.backup_database(site_config)
-        if include_database:
-            site_config["path"].append(db_dump_path)
-        else:
-            print(f"Uploading {db_dump_path}...")
-            _s3.upload(
-                db_dump_path,
-                Path(site_config.get("name")) / get_today() / db_dump_path.name,
-            )
-
-        # Save backup in local
-        should_save_locally = site_config.get("options").get("save_locally")
-        save_locally_path = Path(
-            site_config.get("options").get("save_locally_path", "/etc/bqckup/tmp")
-        )  # If not set it will be at /etc/bqckup/tmp
-
-        if not should_save_locally:
-            db_dump_path.unlink(missing_ok=True)
-        elif should_save_locally and save_locally_path:
-            print("Saving locally ...")
-
-            if not save_locally_path.is_dir():
-                raise Exception(
-                    f"Save locally path {save_locally_path} is not a directory"
+        if db_dump_path:  
+            if include_database:
+                site_config["path"].append(db_dump_path)
+            else:
+                print(f"Uploading {db_dump_path}...")
+                _s3.upload(
+                    db_dump_path,
+                    Path(site_config.get("name")) / get_today() / db_dump_path.name,
                 )
 
-            save_locally_path: Path = save_locally_path / site_config["name"]
-            if not save_locally_path.is_dir():  # if directory not exists; create
-                save_locally_path.mkdir(parents=True, exist_ok=True)
+        if db_dump_path:
+            should_save_locally = site_config.get("options").get("save_locally")
+            save_locally_path = Path(
+                site_config.get("options").get("save_locally_path", "/etc/bqckup/tmp")
+            )  # If not set it will be at /etc/bqckup/tmp
 
-            shutil.move(db_dump_path, save_locally_path)
+            if not should_save_locally:
+                db_dump_path.unlink(missing_ok=True)
+            elif should_save_locally and save_locally_path:
+                print("Saving locally ...")
+
+                if not save_locally_path.is_dir():
+                    raise Exception(
+                        f"Save locally path {save_locally_path} is not a directory"
+                    )
+
+                save_locally_path: Path = save_locally_path / site_config["name"]
+                if not save_locally_path.is_dir():  # if directory not exists; create
+                    save_locally_path.mkdir(parents=True, exist_ok=True)
+
+                shutil.move(db_dump_path, save_locally_path)
 
         # File backup
         try:
@@ -556,14 +596,12 @@ class Bqckup:
             print(f"[{site_config['name']}] Error while checking repository.")
             self._send_notification(
                 site_config["name"],
-                f"Error: {e}",
-                override={
-                    "title": f"Repository Check Failed for {site_config['name']}",
-                    "description": (
-                        "An error occurred while check the repository.\n"
-                        "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
-                    ),
-                },
+                title=f"Repository Check Failed for {site_config['name']}",
+                messages=f"Error: {e}",
+                description=(
+                    "An error occurred while checking rustic repository.\n"
+                    "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
+                ),
             )
 
         except Exception as e:
@@ -578,14 +616,12 @@ class Bqckup:
 
             self._send_notification(
                 site_config["name"],
-                f"Error: {e}",
-                override={
-                    "title": f"Incremental Backup Failed for {site_config['name']}",
-                    "description": (
-                        "An error occurred while backup the repository.\n"
-                        "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
-                    ),
-                },
+                title=f"Incremental Backup Failed for {site_config['name']}",
+                messages=f"Error: {e}",
+                description=(
+                    "An error occurred while backup.\n"
+                    "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
+                ),
             )
 
         finally:
@@ -610,7 +646,7 @@ class Bqckup:
             Path: return path to exported database
         """
 
-        if not config.get("database"):
+        if not config.get("database") or not config.get("database").get("enable"):
             return
 
         tmp_path: Path = Path(BQ_PATH) / "tmp" / config["name"]
