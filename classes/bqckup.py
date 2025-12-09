@@ -1,4 +1,6 @@
 import os, time, shutil, signal, sys
+import traceback
+from subprocess import CalledProcessError
 from typing import Any, Dict
 from requests import RequestException
 from classes.database import Database
@@ -12,6 +14,7 @@ from classes.progress import ProgressSpinner
 from classes.yml_checker import Yml_Checker
 from classes.s3 import s3
 from helpers.hook import send_backup_summary
+from helpers.utility import is_debug
 from models.log import Log
 from models.notification_log import NotificationLog
 from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH
@@ -160,8 +163,14 @@ class Bqckup:
         
     def get_logs(self, name: str):
         return list(Log().select().where(Log.name == name))
-    
-    def backup(self, force: bool = False, site: str = None, backup_method: str = None):
+
+    def backup(
+        self,
+        force: bool = False,
+        site: str = None,
+        backup_method: str = None,
+        keep_credential: bool = False,
+    ):
         """
             Need to optimize this code
         """
@@ -240,7 +249,7 @@ class Bqckup:
                     continue
 
                 if backup_method == "incremental":
-                    self.incremental_backup(backup)
+                    self.incremental_backup(backup, keep_credential=keep_credential)
                     continue
                 elif backup_method == "full":
                     self.do_backup(backup)
@@ -251,10 +260,13 @@ class Bqckup:
                     and incremental is not None
                     and incremental.get("enable")
                 ):
-                    self.incremental_backup(backup)
+                    self.incremental_backup(backup, keep_credential=keep_credential)
                 else:
                     self.do_backup(backup)
             except Exception as e:
+                if is_debug():
+                    traceback.print_exc()
+
                 print(f"[red]Error during backup for {backup['name']}: {e}[/red]")
                 continue
     
@@ -496,7 +508,10 @@ class Bqckup:
                 print(f"Error: {e}")
 
     def incremental_backup(
-        self, site_config: Dict[str, Any], include_database: bool = False
+        self,
+        site_config: Dict[str, Any],
+        include_database: bool = False,
+        keep_credential: bool = False,
     ) -> None:
         time_start = time.time()
 
@@ -593,6 +608,9 @@ class Bqckup:
                 rustic.check_repository()
 
         except RusticCheckError as e:
+            if is_debug():
+                traceback.print_exc()
+
             print(f"[{site_config['name']}] Error while checking repository.")
             self._send_notification(
                 site_config["name"],
@@ -604,8 +622,16 @@ class Bqckup:
                 ),
             )
 
+        except CalledProcessError as e:
+            print("Error while running incremental backup!")
+            print(f"Output: {e.stdout}")
+            print(f"Error: {e.stderr}")
+
         except Exception as e:
             backup_status = "failed"
+
+            if is_debug():
+                traceback.print_exc()
 
             Log.update(
                 status=Log.__FAILED__,
@@ -625,7 +651,7 @@ class Bqckup:
             )
 
         finally:
-            rustic.dump_config(with_credentials=False)
+            rustic.dump_config(with_credentials=keep_credential)
             try:
                 with ProgressSpinner("sending data..."):
                     send_backup_summary(
@@ -635,7 +661,7 @@ class Bqckup:
                         start_at=int(time_start),
                         finish_at=int(time.time()),
                         status=backup_status,
-                        backup_method="incremental"
+                        backup_method="incremental",
                     )
             except Exception as e:
                 print(f"Error: {e}")

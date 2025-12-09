@@ -340,6 +340,7 @@ def run(
     site: str = None,
     incremental: Annotated[bool, typer.Option("--incremental", "-i")] = None,
     full: Annotated[bool, typer.Option("--full", "-f")] = None,
+    keep: Annotated[bool, typer.Option("--keep", "-k")] = False,
 ):
     from classes.report import Report
 
@@ -356,6 +357,7 @@ def run(
         force=force,
         site=site,
         backup_method=backup_method,
+        keep_credential=keep
     )
     Report().send()
 
