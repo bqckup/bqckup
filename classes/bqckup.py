@@ -510,17 +510,16 @@ class Bqckup:
     def incremental_backup(
         self,
         site_config: Dict[str, Any],
-        include_database: bool = False, # TODO: remove
         keep_credential: bool = False,
     ) -> None:
         time_start = time.time()
 
-        if site_config.get("options").get("provider") != "s3":
+        if site_config.get("options", {}).get("provider") != "s3":
             raise RuntimeError("Currently, incremental backup only support S3 provider")
 
         print(f"[green]Starting backup for {site_config['name']}[/green]\n")
 
-        bucket_name = site_config.get("options").get("storage")
+        bucket_name = site_config.get("options", {}).get("storage")
         storage_config = Storage().get_storage_detail(bucket_name)
         _s3 = s3(storage_name=bucket_name)
 
@@ -533,38 +532,7 @@ class Bqckup:
             )
 
         # Database backup
-        db_dump_path = self.backup_database(site_config)
-        if db_dump_path:  
-            if include_database:
-                site_config["path"].append(db_dump_path)
-            else:
-                print(f"Uploading {db_dump_path}...")
-                _s3.upload(
-                    db_dump_path,
-                    Path(site_config.get("name")) / get_today() / db_dump_path.name,
-                )
-
-        if db_dump_path:
-            should_save_locally = site_config.get("options").get("save_locally")
-            save_locally_path = Path(
-                site_config.get("options").get("save_locally_path", "/etc/bqckup/tmp")
-            )  # If not set it will be at /etc/bqckup/tmp
-
-            if not should_save_locally:
-                db_dump_path.unlink(missing_ok=True)
-            elif should_save_locally and save_locally_path:
-                print("Saving locally ...")
-
-                if not save_locally_path.is_dir():
-                    raise Exception(
-                        f"Save locally path {save_locally_path} is not a directory"
-                    )
-
-                save_locally_path: Path = save_locally_path / site_config["name"]
-                if not save_locally_path.is_dir():  # if directory not exists; create
-                    save_locally_path.mkdir(parents=True, exist_ok=True)
-
-                shutil.move(db_dump_path, save_locally_path)
+        self.backup_database(site_config, _s3)
 
         result = {}
 
@@ -689,13 +657,13 @@ class Bqckup:
             except Exception as e:
                 print(f"Error while sending backup summary: {e}")
 
-    def backup_database(self, config: Dict) -> Path:
+    def backup_database(self, config: Dict, s3: s3 | None = None):
         """
         Returns:
             Path: return path to exported database
         """
 
-        if not config.get("database") or not config.get("database").get("enabled"):
+        if not config.get("database") or not config.get("database", {}).get("enabled"):
             return
 
         tmp_path: Path = Path(BQ_PATH) / "tmp" / config["name"]
@@ -723,43 +691,83 @@ class Bqckup:
             .get_or_none()
         )
 
-        if not tmp_path.exists() or not tmp_path.is_dir():
-            tmp_path.mkdir(parents=True, exist_ok=True)
+        try:
+            if not tmp_path.exists() or not tmp_path.is_dir():
+                tmp_path.mkdir(parents=True, exist_ok=True)
 
-        with ProgressSpinner("Exporting database"):
-            Database().export(
-                str(backup_path) if isinstance(backup_path, Path) else backup_path,
-                db_user=config["database"]["user"],
-                db_password=config["database"]["password"],
-                db_name=config["database"]["name"],
-            )
-
-        current_size = backup_path.stat().st_size
-        Log.update(
-            file_size=current_size,
-            status=Log.__SUCCESS__,
-            time_consume=time.time() - time_start,
-            description="Database Backup Success",
-        ).where(Log.id == current_log.id).execute()
-
-        if last_log:
-            previous_size = format_size(last_log.file_size)
-            time_consume = format_timespan(current_log.time_consume)
-            current_size = format_size(current_size)
-
-            print("=========================================")
-            print("Database Compressed")
-            print(f"Previous Size\t: {previous_size}")
-            print(f"Current Size\t: {current_size}")
-            print(f"Time Consumed\t: {time_consume}")
-            print("=========================================")
-
-            if previous_size == current_size:
-                print(
-                    f"[red]Based on file size, there is no changes detected for {backup_path}[/red]\n"
+            with ProgressSpinner("Exporting database"):
+                Database().export(
+                    str(backup_path) if isinstance(backup_path, Path) else backup_path,
+                    db_user=config["database"]["user"],
+                    db_password=config["database"]["password"],
+                    db_name=config["database"]["name"],
                 )
 
-        return backup_path
+            if s3:
+                s3.upload(
+                    backup_path,
+                    Path(config["name"]) / get_today() / backup_path.name,
+                )
 
-    def remove(self):
-        pass
+            current_size = backup_path.stat().st_size
+            Log.update(
+                file_size=current_size,
+                status=Log.__SUCCESS__,
+                time_consume=time.time() - time_start,
+                description="Database Backup Success",
+            ).where(Log.id == current_log.id).execute()
+
+            #
+
+            if last_log:
+                previous_size = format_size(last_log.file_size)
+                time_consume = format_timespan(current_log.time_consume)
+                current_size = format_size(current_size)
+
+                print("=========================================")
+                print("Database Compressed")
+                print(f"Previous Size\t: {previous_size}")
+                print(f"Current Size\t: {current_size}")
+                print(f"Time Consumed\t: {time_consume}")
+                print("=========================================")
+
+                if previous_size == current_size:
+                    print(
+                        f"[red]Based on file size, there is no changes detected for {backup_path}[/red]\n"
+                    )
+
+            should_save_locally: bool = config.get("options", {}).get("save_locally")
+            save_locally_path = Path(
+                config.get("options", {}).get("save_locally_path", "/etc/bqckup/tmp")
+            )  # If not set it will be at /etc/bqckup/tmp
+
+            if not should_save_locally:
+                backup_path.unlink(True)  # remove
+            elif should_save_locally and save_locally_path:
+                print("Saving locally ...")
+                save_locally_path: Path = save_locally_path / config["name"]
+                if not save_locally_path.is_dir():
+                    save_locally_path.mkdir(parents=True, exist_ok=True)
+
+                if backup_path.parent.resolve() != save_locally_path.resolve():
+                    print(f"Moving {backup_path.name} to {save_locally_path}...")
+                    shutil.move(backup_path, save_locally_path)
+                else:
+                    print(
+                        "File is already in the correct local directory. Skipping move."
+                    )
+
+        except Exception as e:
+            Log.update(
+                status=Log.__FAILED__,
+                time_consume=time.time() - time_start,
+                description="Database Backup Failed",
+            ).where(Log.id == current_log.id).execute()
+
+            print(f"failed to backup database: {e}")
+
+            self._send_notification(
+                backup_name=config["name"],
+                title="Database Backup Failed",
+                messages=f"Error: {e}",
+            )
