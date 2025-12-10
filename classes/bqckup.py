@@ -221,7 +221,7 @@ class Bqckup:
                             backup_name=backup.get("name"),
                             title=f"Previous Backup Not Successful for {backup.get('name')}",
                             description=(
-                                f"The last backup attempt on {datetime.fromtimestamp(last_backup_timestamp).strftime('%d-%B-%Y')} "
+                                f"The last backup attempt on {datetime.fromtimestamp(last_backup_timestamp).strftime('%d/%m/%Y %H:%M:%S')} "
                                 f"did not complete successfully. The last known status was '{last_log_status}'.\n\n"
                             ),
                         )
@@ -510,7 +510,7 @@ class Bqckup:
     def incremental_backup(
         self,
         site_config: Dict[str, Any],
-        include_database: bool = False,
+        include_database: bool = False, # TODO: remove
         keep_credential: bool = False,
     ) -> None:
         time_start = time.time()
@@ -566,6 +566,8 @@ class Bqckup:
 
                 shutil.move(db_dump_path, save_locally_path)
 
+        result = {}
+
         # File backup
         try:
             logs: Log = Log().write(
@@ -579,7 +581,7 @@ class Bqckup:
             )
 
             rustic = Rustic(site_config, storage_config)
-            rustic.check_and_dump()
+            rustic.check_and_dump() # TODO: handle error
 
             with ProgressSpinner("doing incremental backup..."):
                 result = rustic.backup()
@@ -611,21 +613,22 @@ class Bqckup:
             if is_debug():
                 traceback.print_exc()
 
+            Log.update(
+                status=Log.__SUCCESS__,
+                time_consume=time.time() - time_start,
+                description=f"File Backup Success, but repository check failed: {e}",
+            ).where(Log.id == logs.id).execute()
+
             print(f"[{site_config['name']}] Error while checking repository.")
             self._send_notification(
                 site_config["name"],
                 title=f"Repository Check Failed for {site_config['name']}",
                 messages=f"Error: {e}",
                 description=(
-                    "An error occurred while checking rustic repository.\n"
+                    "Backup completed successfully, but repository check failed.\n"
                     "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
                 ),
             )
-
-        except CalledProcessError as e:
-            print("Error while running incremental backup!")
-            print(f"Output: {e.stdout}")
-            print(f"Error: {e.stderr}")
 
         except Exception as e:
             backup_status = "failed"
@@ -638,12 +641,32 @@ class Bqckup:
                 time_consume=time.time() - time_start,
                 description=f"File Backup Failed: {e}",
             ).where(Log.id == logs.id).execute()
-            print(f"[{site_config['name']}] Error: {e}")
+
+            print(f"Error while backing up {site_config['name']}: ", end="")
+            err_msg = "unexpected error"
+            err_detail = str(e)
+
+            if isinstance(e, CalledProcessError):
+                err_msg= "command error"
+                err_detail = (
+                    f"Command: {e.cmd}\n"
+                    f"Output: {e.stdout}\n" if e.stdout else ""
+                    f"Error: {e.stderr}\n" if e.stderr else ""
+                )
+            elif isinstance(e, FileNotFoundError):
+                err_msg = "rustic is not installed"
+
+            print(err_msg, err_detail, sep="\n" )
 
             self._send_notification(
                 site_config["name"],
                 title=f"Incremental Backup Failed for {site_config['name']}",
-                messages=f"Error: {e}",
+                messages=err_detail,
+                additional_data={
+                    "name": "Error Message",
+                    "value": err_msg,
+                    "inline": True,
+                },
                 description=(
                     "An error occurred while backup.\n"
                     "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
@@ -664,7 +687,7 @@ class Bqckup:
                         backup_method="incremental",
                     )
             except Exception as e:
-                print(f"Error: {e}")
+                print(f"Error while sending backup summary: {e}")
 
     def backup_database(self, config: Dict) -> Path:
         """
