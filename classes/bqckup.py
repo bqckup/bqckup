@@ -108,7 +108,7 @@ class Bqckup:
                 for path in config.get('path'):
                     if not os.path.exists(path):
                         raise ConfigExceptions(f"Can't find {path}")
-                if config.get('database') and config.get('database').get('enable'):
+                if config.get('database') and config.get('database').get('enabled'):
                     database_config = config.get('database')
                     if database_config.get('type') not in Database().SUPPORTED_DATABASE:
                         raise ConfigExceptions(f"Database type {database_config.get('type')} not supported")
@@ -258,7 +258,7 @@ class Bqckup:
                 if (
                     (incremental := backup.get("incremental"))
                     and incremental is not None
-                    and incremental.get("enable")
+                    and incremental.get("enabled")
                 ):
                     self.incremental_backup(backup, keep_credential=keep_credential)
                 else:
@@ -341,7 +341,7 @@ class Bqckup:
             
             sql_path = os.path.join(tmp_path, f"{int(time.time())}.sql.gz")
             
-            if backup.get('database') and backup.get('database').get('enable'):
+            if backup.get('database') and backup.get('database').get('enabled'):
                 with ProgressSpinner("Exporting database..."):
                     log_database = Log().write({
                         "name": backup['name'],
@@ -695,7 +695,7 @@ class Bqckup:
             Path: return path to exported database
         """
 
-        if not config.get("database") or not config.get("database").get("enable"):
+        if not config.get("database") or not config.get("database").get("enabled"):
             return
 
         tmp_path: Path = Path(BQ_PATH) / "tmp" / config["name"]

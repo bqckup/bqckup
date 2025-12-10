@@ -2,14 +2,14 @@ bqckup:
   name: domain
   enabled: no
   incremental:
-    enable: yes
+    enabled: yes
     password: dummy # required if incremental
   path:
     - /var/www/html
   exclude_path:
     - cache
   database:
-    enable: yes
+    enabled: yes
     type: mysql
     host: localhost
     port: 3306
