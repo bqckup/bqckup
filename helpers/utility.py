@@ -129,8 +129,5 @@ def isset(key, array = None):
     else:
         return key in globals()
 
-def get_env(key:str, default: str):
-    return os.environ.get(key, default=default)
-
 def is_debug():
-    return get_env('BQCKUP_DEBUG', "0") == "1"
+    return os.environ.get('BQCKUP_DEBUG', "0") == "1"
