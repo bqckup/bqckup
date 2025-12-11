@@ -108,7 +108,7 @@ class Bqckup:
                 for path in config.get('path'):
                     if not os.path.exists(path):
                         raise ConfigExceptions(f"Can't find {path}")
-                if config.get('database') and config.get('database').get('enabled'):
+                if config.get("database") and (config.get("database").get("enabled") or config.get("database").get("enable")):
                     database_config = config.get('database')
                     if database_config.get('type') not in Database().SUPPORTED_DATABASE:
                         raise ConfigExceptions(f"Database type {database_config.get('type')} not supported")
@@ -197,7 +197,7 @@ class Bqckup:
 
         for backup in backups.values():
             try:
-                if not backup.get("enabled"):
+                if not (backup.get("enabled") or backup.get("enable")):
                     print(f"[red]Backup for {backup.get('name')} is not enabled[/red]")
                     continue
 
@@ -258,7 +258,7 @@ class Bqckup:
                 if (
                     (incremental := backup.get("incremental"))
                     and incremental is not None
-                    and incremental.get("enabled")
+                    and (incremental.get("enabled") or incremental.get("enable"))
                 ):
                     self.incremental_backup(backup, keep_credential=keep_credential)
                 else:
@@ -341,7 +341,7 @@ class Bqckup:
             
             sql_path = os.path.join(tmp_path, f"{int(time.time())}.sql.gz")
             
-            if backup.get('database') and backup.get('database').get('enabled'):
+            if backup.get("database") and (backup.get("database").get("enabled") or backup.get("database").get("enable")):
                 with ProgressSpinner("Exporting database..."):
                     log_database = Log().write({
                         "name": backup['name'],
@@ -671,7 +671,9 @@ class Bqckup:
             Path: return path to exported database
         """
 
-        if not config.get("database") or not config.get("database", {}).get("enabled"):
+        if not config.get("database") or not \
+            (config.get("database", {}).get("enabled") or \
+             config.get("database", {}).get("enable")):
             return
 
         tmp_path: Path = Path(BQ_PATH) / "tmp" / config["name"]
