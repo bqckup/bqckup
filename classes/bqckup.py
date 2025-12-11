@@ -376,6 +376,9 @@ class Bqckup:
             
             if backup.get('options').get('provider') == 'local':
                 destination = backup.get('options').get('destination')
+                if not destination:
+                    raise Exception("'destination' path must be configured for local provider")
+
                 backup_path = os.path.join(destination, backup_folder)
                 
                 if not os.path.exists(backup_path):
@@ -502,7 +505,6 @@ class Bqckup:
 
         bucket_name = site_config.get("options", {}).get("storage")
         storage_config = Storage().get_storage_detail(bucket_name)
-
 
         result = {}
         rustic = Rustic(site_config, storage_config)
@@ -632,9 +634,6 @@ class Bqckup:
                 print(f"Error while sending backup summary: {e}")
 
     def backup_databases(self, site_config: dict[str, Any], s3: s3 | None):
-        if not s3:
-            return
-
         databases = site_config.get("databases", [])
 
         # For backward compatibility
@@ -649,6 +648,9 @@ class Bqckup:
         should_save_locally: bool = site_config.get("options", {}).get("save_locally", False)
         save_locally_path_str = site_config.get("options", {}).get("save_locally_path", "/etc/bqckup/tmp")
         save_locally_path = Path(save_locally_path_str) if save_locally_path_str else None
+
+        if not s3:
+            should_save_locally = True
 
         for database in databases:
             if not (database.get("enabled") or database.get("enable")):
@@ -772,7 +774,7 @@ class Bqckup:
 
                 if previous_size == current_size:
                     print(
-                        f"[yellow]Based on file size, there is no changes detected for {backup_path.name}[/yellow]\n"
+                        f"[yellow]Based on file size, there is no changes detected for {backup_path.name}[/yellow]"
                     )
 
             if not should_save_locally:
@@ -786,6 +788,10 @@ class Bqckup:
                 if backup_path.parent.resolve() != final_dest_path.resolve():
                     print(f"Moving {backup_path} to {final_dest_path}...")
                     shutil.move(backup_path, final_dest_path)
+                else:
+                    print(f"Database backup located at {backup_path}")
+
+            print()
         except Exception as e:
             print(
                 f"Error while post-processing database backup for {site_name} '{db_label}': {e}"
