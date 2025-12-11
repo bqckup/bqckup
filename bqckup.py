@@ -687,7 +687,6 @@ def restore(
             with ProgressSpinner("Restoring backups..."):
                 rustic.restore(snapshot=snapshot, target=target)
 
-            print("[bold green]Restore complete![/bold green]")
             return
 
     print(f"[red]Site [bold]{site}[/bold] not found![/red]")
