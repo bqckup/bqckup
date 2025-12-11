@@ -4,7 +4,7 @@ from subprocess import CalledProcessError
 from typing import Any, Dict
 from requests import RequestException
 from classes.database import Database
-from classes.rustic import Rustic, RusticCheckError
+from classes.rustic import Rustic, RusticCheckError, RusticConfigError
 from classes.storage import Storage
 from classes.tar import Tar
 from classes.file import File
@@ -535,6 +535,7 @@ class Bqckup:
         self.backup_database(site_config, _s3)
 
         result = {}
+        rustic = Rustic(site_config, storage_config)
 
         # File backup
         try:
@@ -548,8 +549,7 @@ class Bqckup:
                 }
             )
 
-            rustic = Rustic(site_config, storage_config)
-            rustic.check_and_dump() # TODO: handle error
+            rustic.check_and_dump()
 
             with ProgressSpinner("doing incremental backup..."):
                 result = rustic.backup()
@@ -587,11 +587,17 @@ class Bqckup:
                 description=f"File Backup Success, but repository check failed: {e}",
             ).where(Log.id == logs.id).execute()
 
-            print(f"[{site_config['name']}] Error while checking repository.")
+            print(f"({site_config['name']}) Error while checking repository.")
+
             self._send_notification(
                 site_config["name"],
                 title=f"Repository Check Failed for {site_config['name']}",
                 messages=f"Error: {e}",
+                additional_data={
+                    "name": "Command Output",
+                    "value": e.stderr,
+                    "inline": False,
+                },
                 description=(
                     "Backup completed successfully, but repository check failed.\n"
                     "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
@@ -617,12 +623,14 @@ class Bqckup:
             if isinstance(e, CalledProcessError):
                 err_msg= "command error"
                 err_detail = (
-                    f"Command: {e.cmd}\n"
-                    f"Output: {e.stdout}\n" if e.stdout else ""
-                    f"Error: {e.stderr}\n" if e.stderr else ""
+                    f"Command: '{e.cmd}'\n"
+                    f"Output: '{e.stdout}'\n"
+                    f"Error: '{e.stderr}'\n"
                 )
             elif isinstance(e, FileNotFoundError):
                 err_msg = "rustic is not installed"
+            elif isinstance(e, RusticConfigError):
+                err_msg = "invalid configuration"
 
             print(err_msg, err_detail, sep="\n" )
 
@@ -742,7 +750,7 @@ class Bqckup:
             )  # If not set it will be at /etc/bqckup/tmp
 
             if not should_save_locally:
-                backup_path.unlink(True)  # remove
+                backup_path.unlink(True)  # remove file
             elif should_save_locally and save_locally_path:
                 print("Saving locally ...")
                 save_locally_path: Path = save_locally_path / config["name"]
@@ -750,12 +758,8 @@ class Bqckup:
                     save_locally_path.mkdir(parents=True, exist_ok=True)
 
                 if backup_path.parent.resolve() != save_locally_path.resolve():
-                    print(f"Moving {backup_path.name} to {save_locally_path}...")
+                    print(f"Moving {backup_path} to {save_locally_path}...")
                     shutil.move(backup_path, save_locally_path)
-                else:
-                    print(
-                        "File is already in the correct local directory. Skipping move."
-                    )
 
         except Exception as e:
             Log.update(

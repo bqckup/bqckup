@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Any, Dict, List, Union
-from subprocess import CompletedProcess
+from subprocess import CalledProcessError, CompletedProcess
 import json
 import toml
 import subprocess
@@ -12,7 +12,7 @@ from classes.config import Config as bqckup_config
 class RusticConfigError(Exception): ...
 
 
-class RusticCheckError(Exception): ...
+class RusticCheckError(CalledProcessError): ...
 
 
 class RusticError(Exception): ...
@@ -69,6 +69,8 @@ class Rustic:
 
     @property
     def snapshots(self) -> List[Dict[str, Any]]:
+        # only support for rustic with version < 0.10.0
+
         output: CompletedProcess = subprocess.run(
             [
                 "rustic",
@@ -101,7 +103,7 @@ class Rustic:
                 **self.__subprocess_args,
             )
         except subprocess.CalledProcessError as e:
-            raise RusticCheckError(e)
+            raise RusticCheckError(e.returncode, e.cmd, e.output, e.stderr)
 
     def backup(self) -> Dict[str, Union[int, str]]:
         """Running Backup
@@ -177,12 +179,7 @@ class Rustic:
             RusticConfigError: password empty
         """
 
-        rustic_config: dict | None = self.site_config.get("incremental")
-
-        if rustic_config is None:
-            raise RusticConfigError("Rustic not configured")
-
-        if rustic_config.get("password") is None:
+        if self.site_config.get("incremental", {}).get("password") is None:
             raise RusticConfigError("Password can't be empty")
 
     def dump_config(self, with_credentials: bool = True) -> Path:
@@ -200,7 +197,7 @@ class Rustic:
             },
             "repository": {
                 "repository": "opendal:s3",
-                "password": str(self.site_config["incremental"]["password"]),
+                "password": self.site_config.get("incremental", {}).get("password"),
                 "options": {
                     "access_key_id": self.storage_config["access_key_id"],
                     "secret_access_key": self.storage_config["secret_access_key"],
