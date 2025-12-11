@@ -254,13 +254,25 @@ class Bqckup:
                         continue
 
                 last_running_log = Log().select().where(
-                    Log.name == backup.get("name")
-                    and Log.status == Log.__ON_PROGRESS__
+                    (Log.name == backup.get("name"))
+                    & (Log.status == Log.__ON_PROGRESS__)
                 )
 
                 if last_running_log.exists():
                     print(f"Backup for {backup.get('name')} is already running...")
                     continue
+
+                _s3 = None
+                storage_name = backup.get("options", {}).get("storage")
+                if backup.get("options", {}).get("provider") == "s3" and storage_name:
+                    _s3 = s3(storage_name=storage_name)
+                    if Config().read('bqckup', 'config_backup'):
+                        print("Backing up config files...")
+                        config_path = Path(SITE_CONFIG_PATH) / backup["file_name"]
+                        _s3.upload(config_path, f"config/{backup.get('name')}.yml", False)
+                        _s3.upload(STORAGE_CONFIG_PATH, "storages.yml", False)
+
+                self.backup_databases(backup, _s3)
 
                 if backup_method == "incremental":
                     self.incremental_backup(backup, keep_credential=keep_credential)
@@ -283,11 +295,22 @@ class Bqckup:
     # Upload
     def do_backup(self, backup_config):
         time_start = time.time()
+        log_compressed_files = None
+        compressed_file_size = 0
+        summary_payload = {
+            "domain": backup_config.get("name"),
+            "total_size": 0,
+            "new_data": 0,
+            "start_at": int(time_start),
+            "finish_at": None,
+            "status": "failed",
+            "backup_method": "tar",
+        }
+
         try:
             bqckup_config_location = os.path.join(SITE_CONFIG_PATH, backup_config['file_name'])
             backup = Yml_Parser.parse(bqckup_config_location)['bqckup']
             backup_folder = f"{backup.get('name')}/{get_today()}"
-            
             tmp_path = os.path.join(BQ_PATH, 'tmp', f"{backup.get('name')}")
             
             if not File().is_exists(tmp_path):
@@ -309,6 +332,8 @@ class Bqckup:
             last_compressed_file_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__FILES__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
 
             compressed_file_size = os.stat(compressed_file).st_size
+            summary_payload["total_size"] = compressed_file_size
+            summary_payload["new_data"] = compressed_file_size
 
             if last_compressed_file_backup:
                 
@@ -349,42 +374,6 @@ class Bqckup:
 
             Log().update(file_size=os.stat(compressed_file).st_size).where(Log.id == log_compressed_files.id).execute()
             
-            sql_path = os.path.join(tmp_path, f"{int(time.time())}.sql.gz")
-            
-            if backup.get("database") and (backup.get("database").get("enabled") or backup.get("database").get("enable")):
-                with ProgressSpinner("Exporting database..."):
-                    log_database = Log().write({
-                        "name": backup['name'],
-                        "file_path": sql_path,
-                        "description": "Database Backup is in Progress",
-                        "type": Log.__DATABASE__,
-                        "storage": backup['options']['storage'],
-                    })
-                    Database().export(
-                        sql_path,
-                        db_user=backup.get('database').get('user'),
-                        db_password=backup.get('database').get('password'),
-                        db_name=backup.get('database').get('name'),
-                    )
-                    last_log_db_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__DATABASE__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
-                    
-                if last_log_db_backup:
-                    
-                    previous_size = format_size(last_log_db_backup.file_size)
-                    current_size = format_size(os.stat(sql_path).st_size)
-                    time_consume = format_timespan(last_log_db_backup.time_consume)
-                    print("=========================================")
-                    print("Database Compressed")
-                    print(f"Previous Size\t: {previous_size}")
-                    print(f"Current Size\t: {current_size}")
-                    print(f"Time Consumed\t: {time_consume}")
-                    print("=========================================")
-
-                if last_log_db_backup and os.stat(sql_path).st_size == last_log_db_backup.file_size:
-                    print(f"[red]Based on file size, there is no changes detected for {sql_path}[/red]\n")
-                
-                Log().update(file_size=os.stat(sql_path).st_size).where(Log.id == log_database.id).execute()
-            
             if backup.get('options').get('provider') == 'local':
                 destination = backup.get('options').get('destination')
                 backup_path = os.path.join(destination, backup_folder)
@@ -404,10 +393,6 @@ class Bqckup:
                 if os.path.exists(compressed_file):
                     shutil.move(compressed_file, os.path.join(backup_path, os.path.basename(compressed_file)))
                     Log().update_status(log_compressed_files.id, Log.__SUCCESS__, "File Backup Success", time_consume)
-                
-                if os.path.exists(sql_path):
-                    shutil.move(sql_path, os.path.join(backup_path, os.path.basename(sql_path)))
-                    Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success", time_consume)
                     
             if backup.get('options').get('provider') == 's3':
                 _s3 = s3(storage_name=backup.get('options').get('storage'))
@@ -444,23 +429,14 @@ class Bqckup:
                     )
                     time_consume = time.time() - time_start
                     Log().update_status(log_compressed_files.id, Log.__SUCCESS__, "File Backup Success", time_consume)
-                    
-                
-                if os.path.exists(sql_path):
-                    print(f"\nUploading {sql_path}")
-                    _s3.upload(
-                        sql_path,
-                        f"{backup_folder}/{os.path.basename(sql_path)}"
-                    )
-                    
+
                     should_save_locally = backup.get('options').get('save_locally')
                     save_locally_path = backup.get('options').get('save_locally_path') # If not set it will be at /etc/bqckup/tmp
                     
                     if not should_save_locally:
                         os.unlink(compressed_file)
-                        os.unlink(sql_path)
                     elif should_save_locally and save_locally_path:
-                        print("Saving locally ...")
+                        print("Saving file backup locally ...")
                         if not os.path.isdir(save_locally_path):
                             raise Exception(f"Save locally path {save_locally_path} is not a directory")
                         else:
@@ -469,30 +445,23 @@ class Bqckup:
                                 if not os.path.isdir(save_locally_path):
                                     os.makedirs(save_locally_path)
                                 shutil.move(compressed_file, save_locally_path)
-                                shutil.move(sql_path, save_locally_path)
                             except Exception as e:
-                                print(f"Failed to save locally: {e}")
-
-                    time_consume = time.time() - time_start
-                    Log().update_status(log_database.id, Log.__SUCCESS__, "Database Backup Success", time_consume)
+                                print(f"Failed to save file backup locally: {e}")
             
             print(f"\n[green]Backup for {backup.get('name')} is done![/green]")
-            backup_status = "completed"
+            summary_payload["status"] = "completed"
         except Exception as e:
-            backup_status = "failed"
+            summary_payload["status"] = "failed"
+
             import traceback
             traceback.print_exc()
 
             # If backup failed remove the tmp folder
             remove_folder(tmp_path)
 
-            # Separate this two error by it's own exceptions
             time_consume = time.time() - time_start
-            if 'log_compressed_files' in locals():
+            if log_compressed_files:
                 Log().update_status(log_compressed_files.id, Log.__FAILED__, f"File Backup Failed: {e}", time_consume)
-                
-            if 'log_database' in locals():
-                Log().update_status(log_database.id, Log.__FAILED__, f"Database Backup Failed: {e}", time_consume)
 
             self._send_notification(
                 backup.get("name"),
@@ -505,15 +474,8 @@ class Bqckup:
         finally:
             try:
                 with ProgressSpinner("sending data..."):
-                    send_backup_summary(
-                        domain=backup.get("name"),
-                        total_size=compressed_file_size,
-                        new_data=compressed_file_size,
-                        start_at=int(time_start),
-                        finish_at=int(time.time()),
-                        status=backup_status,
-                        backup_method="tar",
-                    )
+                    summary_payload["finish_at"] = int(time.time())
+                    send_backup_summary(**summary_payload)
             except Exception as e:
                 print(f"Error: {e}")
 
@@ -523,6 +485,15 @@ class Bqckup:
         keep_credential: bool = False,
     ) -> None:
         time_start = time.time()
+        summary_payload = {
+            "domain": site_config.get("name"),
+            "total_size": 0,
+            "new_data": 0,
+            "start_at": int(time_start),
+            "finish_at": None,
+            "status": "failed",
+            "backup_method": "incremental",
+        }
 
         if site_config.get("options", {}).get("provider") != "s3":
             raise RuntimeError("Currently, incremental backup only support S3 provider")
@@ -531,18 +502,7 @@ class Bqckup:
 
         bucket_name = site_config.get("options", {}).get("storage")
         storage_config = Storage().get_storage_detail(bucket_name)
-        _s3 = s3(storage_name=bucket_name)
 
-        if Config().read("bqckup", "config_backup"):
-            _s3.upload(STORAGE_CONFIG_PATH, "storages.yml", False)
-            _s3.upload(
-                Path(SITE_CONFIG_PATH) / site_config["file_name"],
-                f"config/{site_config.get('name')}.yml",
-                False,
-            )
-
-        # Database backup
-        self.backup_databases(site_config, _s3)
 
         result = {}
         rustic = Rustic(site_config, storage_config)
@@ -564,10 +524,13 @@ class Bqckup:
             with ProgressSpinner("doing incremental backup..."):
                 result = rustic.backup()
 
+            summary_payload["total_size"] = result.get("total_size", -1)
+            summary_payload["new_data"] = result.get("uploaded", 0)
+
             Log.update(
                 status=Log.__SUCCESS__,
                 time_consume=time.time() - time_start,
-                file_size=result["total_size"],
+                file_size=summary_payload["total_size"],
                 file_path=result["id"],  # rustic snapshots id
                 description="File Backup Success",
             ).where(Log.id == logs.id).execute()
@@ -582,7 +545,7 @@ class Bqckup:
             print("Time Consumed\t:", format_timespan(result["total_duration"]))
             print("=========================================")
 
-            backup_status = "completed"
+            summary_payload["status"] = "completed"
 
             with ProgressSpinner("checking repository..."):
                 rustic.check_repository()
@@ -615,7 +578,7 @@ class Bqckup:
             )
 
         except Exception as e:
-            backup_status = "failed"
+            summary_payload["status"] = "failed"
 
             if is_debug():
                 traceback.print_exc()
@@ -663,19 +626,15 @@ class Bqckup:
             rustic.dump_config(with_credentials=keep_credential)
             try:
                 with ProgressSpinner("sending data..."):
-                    send_backup_summary(
-                        domain=site_config["name"],
-                        total_size=result.get("total_size", -1), # pyright: ignore[reportArgumentType]
-                        new_data=result.get("uploaded", 0), # pyright: ignore[reportArgumentType]
-                        start_at=int(time_start),
-                        finish_at=int(time.time()),
-                        status=backup_status,
-                        backup_method="incremental",
-                    )
+                    summary_payload["finish_at"] = int(time.time())
+                    send_backup_summary(**summary_payload)
             except Exception as e:
                 print(f"Error while sending backup summary: {e}")
 
-    def backup_databases(self, site_config: dict[str, Any], s3: s3):
+    def backup_databases(self, site_config: dict[str, Any], s3: s3 | None):
+        if not s3:
+            return
+
         databases = site_config.get("databases", [])
 
         # For backward compatibility
