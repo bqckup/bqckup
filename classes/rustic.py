@@ -79,7 +79,7 @@ class Rustic:
                 self.site_config["name"],
                 "--json",
             ],
-            **self.__subprocess_args,
+            **self.__subprocess_args,  # type: ignore
         )
 
         parsed_output = json.loads(output.stdout)
@@ -91,6 +91,11 @@ class Rustic:
         except Exception as e:
             raise RusticError("Error while getting snapshots:", e)
 
+    @staticmethod
+    def is_enabled(config: dict) -> bool:
+        incremental = config.get("incremental", {})
+        return incremental and (incremental.get("enabled") or incremental.get("enable"))
+
     def check_repository(self):
         try:
             subprocess.run(
@@ -100,7 +105,7 @@ class Rustic:
                     "--use-profile",
                     self.site_config["name"],
                 ],
-                **self.__subprocess_args,
+                **self.__subprocess_args,  # type: ignore
             )
         except subprocess.CalledProcessError as e:
             raise RusticCheckError(e.returncode, e.cmd, e.output, e.stderr)
@@ -123,7 +128,7 @@ class Rustic:
                 "--use-profile",
                 self.site_config["name"],
             ],
-            **self.__subprocess_args,
+            **self.__subprocess_args,  # type: ignore
         )
 
         if output.returncode != 0:
@@ -144,7 +149,7 @@ class Rustic:
             "total_size": summary["total_bytes_processed"],
         }
 
-    def restore(self, snapshot: str, target: str = None):
+    def restore(self, snapshot: str, target: str | None = None):
         """Restore backup
 
         Args:
@@ -168,14 +173,13 @@ class Rustic:
                 destination,
             ]  # command: rustic -P domain.com restore latest:/var/www/html /var/www/html
 
-            subprocess.run(command, **self.__subprocess_args)
+            subprocess.run(command, **self.__subprocess_args)  # type: ignore
             print(f"[OK] {path}")
 
     def check_config(self):
         """Check rustic configuration from sites
 
         Raises:
-            RusticConfigError: rustic not configured
             RusticConfigError: password empty
         """
 
