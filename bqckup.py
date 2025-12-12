@@ -1,4 +1,5 @@
 import getpass
+import traceback
 from typing_extensions import Annotated
 import typer
 import os
@@ -23,6 +24,7 @@ from helpers.utility import (
     get_disk_size,
     display_disk_table,
     confirm_with_timeout,
+    is_debug,
     validate_path,
 )
 from helpers.network import download_files, generate_short_link
@@ -652,44 +654,52 @@ def download_latest(name: str, target: str = None, silent: bool = False):
 def restore(
     site: str,
     snapshot: str = "latest",
-    target: str = None,
+    target: str | None = None,
 ):
     """Restore for incremental backup"""
 
     bqckup = Bqckup()
+    site_config = bqckup.detail(site)
 
-    for _, v in bqckup.list().items():
-        if site_name := v.get("name"):
-            if site_name != site:
-                continue
+    if not site_config:
+        print(f"[red]Site [bold]{site}[/bold] not found![/red]")
+        return
 
-            # Create directory if not exists
-            if (paths := v.get("path")) and isinstance(paths, list):
-                for p in paths:
-                    Path(p).mkdir(parents=True, exist_ok=True)
+    # Create directory if not exists
+    if (paths := site_config.get("path")) and isinstance(paths, list):
+        for p in paths:
+            Path(p).mkdir(parents=True, exist_ok=True)
 
-            if not bqckup.validate_config(site_name):
-                print(f"Invalid configuration for {site_name}")
+    if not bqckup.validate_config(site):
+        print(f"Invalid configuration for {site}")
+        return
 
-            try:
-                with ProgressSpinner("getting credentials..."):
-                    storage_config = Storage().get_storage_detail(v.get('options').get('storage'))
-            except Exception:
-                print("Error while getting credential.")
+    try:
+        with ProgressSpinner("getting credentials..."):
+            storage_config = Storage().get_storage_detail(
+                site_config.get("options").get("storage")
+            )
+    except Exception as e:
+        if is_debug():
+            traceback.print_exc()
 
-            try:
-                rustic = Rustic(v, storage_config)
-                rustic.check_and_dump()
-            except Exception as e:
-                print(e)
-                return
+        print(f"Error while getting credential: {e}")
+        return
 
-            with ProgressSpinner("Restoring backups..."):
-                rustic.restore(snapshot=snapshot, target=target)
+    try:
+        rustic = Rustic(site_config, storage_config)
+        rustic.check_and_dump()
+    except Exception as e:
+        if is_debug():
+            traceback.print_exc()
 
-            return
+        print(f"Failed to setup rustic: {e}")
+        return
 
-    print(f"[red]Site [bold]{site}[/bold] not found![/red]")
+    with ProgressSpinner("Restoring backups..."):
+        rustic.restore(snapshot=snapshot, target=target)
+
+    print("[bold green]Restore complete![/bold green]")
 
 def get_version(version: bool):
     if version:

@@ -162,17 +162,19 @@ class Rustic:
         """
 
         for path in self.site_config["path"]:
-            try:
-                destination = str(Path(target) / Path(path).name) if target else path
-                command = [
-                    "rustic",
-                    "--use-profile",
-                    self.site_config["name"],
-                    "restore",
-                    f"{snapshot}:{path}",
-                    destination,
-                ]  # command: rustic -P domain.com restore latest:/var/www/html /var/www/html
+            destination = str(Path(target) / Path(path).name) if target else path
+            command = [
+                "rustic",
+                "--use-profile",
+                self.site_config["name"],
+                "--filter-paths", # filter-paths ensures the correct snapshot are selected during restore
+                path,
+                "restore",
+                f"{snapshot}:{path}",
+                destination,
+            ]  # command: rustic -P domain.com --filter-paths /var/www/html restore latest:/var/www/html /var/www/html
 
+            try:
                 subprocess.run(command, **self.__subprocess_args)  # type: ignore
                 print(f"[OK] {path}")
             except Exception as e:
@@ -185,6 +187,8 @@ class Rustic:
                     print(e.stderr)
                 else:
                     print(e)
+
+                raise e
 
     def check_config(self):
         """Check rustic configuration from sites
