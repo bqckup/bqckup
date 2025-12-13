@@ -2,20 +2,28 @@ bqckup:
   name: domain
   enabled: no
   incremental:
-    enable: yes
+    enabled: yes
     password: dummy # required if incremental
   path:
     - /var/www/html
   exclude_path:
     - cache
   database:
-    enable: yes
+    enabled: yes
     type: mysql
     host: localhost
     port: 3306
     user: root
     password: root
     name: database
+  databases:
+    - enabled: yes
+      type: mysql
+      host: localhost
+      port: 3306
+      user: root
+      password: root
+      name: database
   options:
     storage: dummy
     interval: daily #can be daily, weekly, monthly 

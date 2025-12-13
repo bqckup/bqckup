@@ -1,18 +1,20 @@
 from pathlib import Path
 from typing import Any, Dict, List, Union
-from subprocess import CompletedProcess
+from subprocess import CalledProcessError, CompletedProcess
 import json
 import toml
+import traceback
 import subprocess
 
 from constant import RUSTIC_CONFIG_PATH
 from classes.config import Config as bqckup_config
+from helpers.utility import is_debug
 
 
 class RusticConfigError(Exception): ...
 
 
-class RusticCheckError(Exception): ...
+class RusticCheckError(CalledProcessError): ...
 
 
 class RusticError(Exception): ...
@@ -69,6 +71,8 @@ class Rustic:
 
     @property
     def snapshots(self) -> List[Dict[str, Any]]:
+        # only support for rustic with version < 0.10.0
+
         output: CompletedProcess = subprocess.run(
             [
                 "rustic",
@@ -77,7 +81,7 @@ class Rustic:
                 self.site_config["name"],
                 "--json",
             ],
-            **self.__subprocess_args,
+            **self.__subprocess_args,  # type: ignore
         )
 
         parsed_output = json.loads(output.stdout)
@@ -89,6 +93,11 @@ class Rustic:
         except Exception as e:
             raise RusticError("Error while getting snapshots:", e)
 
+    @staticmethod
+    def is_enabled(config: dict) -> bool:
+        incremental = config.get("incremental", {})
+        return incremental and (incremental.get("enabled") or incremental.get("enable"))
+
     def check_repository(self):
         try:
             subprocess.run(
@@ -98,10 +107,10 @@ class Rustic:
                     "--use-profile",
                     self.site_config["name"],
                 ],
-                **self.__subprocess_args,
+                **self.__subprocess_args,  # type: ignore
             )
         except subprocess.CalledProcessError as e:
-            raise RusticCheckError(e)
+            raise RusticCheckError(e.returncode, e.cmd, e.output, e.stderr)
 
     def backup(self) -> Dict[str, Union[int, str]]:
         """Running Backup
@@ -121,7 +130,7 @@ class Rustic:
                 "--use-profile",
                 self.site_config["name"],
             ],
-            **self.__subprocess_args,
+            **self.__subprocess_args,  # type: ignore
         )
 
         if output.returncode != 0:
@@ -142,7 +151,7 @@ class Rustic:
             "total_size": summary["total_bytes_processed"],
         }
 
-    def restore(self, snapshot: str, target: str = None):
+    def restore(self, snapshot: str, target: str | None = None):
         """Restore backup
 
         Args:
@@ -152,37 +161,43 @@ class Rustic:
             RusticError: No snapshots available
         """
 
-        if len(self.snapshots) < 1:
-            raise RusticError("No snapshots found.")
-
         for path in self.site_config["path"]:
             destination = str(Path(target) / Path(path).name) if target else path
             command = [
                 "rustic",
                 "--use-profile",
                 self.site_config["name"],
+                "--filter-paths", # filter-paths ensures the correct snapshot are selected during restore
+                path,
                 "restore",
                 f"{snapshot}:{path}",
                 destination,
-            ]  # command: rustic -P domain.com restore latest:/var/www/html /var/www/html
+            ]  # command: rustic -P domain.com --filter-paths /var/www/html restore latest:/var/www/html /var/www/html
 
-            subprocess.run(command, **self.__subprocess_args)
-            print(f"[OK] {path}")
+            try:
+                subprocess.run(command, **self.__subprocess_args)  # type: ignore
+                print(f"[OK] {path}")
+            except Exception as e:
+                if is_debug():
+                    traceback.print_exc()
+
+                print(f"Failed restore {path}")
+
+                if isinstance(e, CalledProcessError):
+                    print(e.stderr)
+                else:
+                    print(e)
+
+                raise e
 
     def check_config(self):
         """Check rustic configuration from sites
 
         Raises:
-            RusticConfigError: rustic not configured
             RusticConfigError: password empty
         """
 
-        rustic_config: dict | None = self.site_config.get("incremental")
-
-        if rustic_config is None:
-            raise RusticConfigError("Rustic not configured")
-
-        if rustic_config.get("password") is None:
+        if self.site_config.get("incremental", {}).get("password") is None:
             raise RusticConfigError("Password can't be empty")
 
     def dump_config(self, with_credentials: bool = True) -> Path:
@@ -200,7 +215,7 @@ class Rustic:
             },
             "repository": {
                 "repository": "opendal:s3",
-                "password": str(self.site_config["incremental"]["password"]),
+                "password": self.site_config.get("incremental", {}).get("password"),
                 "options": {
                     "access_key_id": self.storage_config["access_key_id"],
                     "secret_access_key": self.storage_config["secret_access_key"],

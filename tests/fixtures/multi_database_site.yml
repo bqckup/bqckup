@@ -1,0 +1,36 @@
+bqckup:
+  name: multi_db_test
+  enabled: yes
+  path:
+    - /var/www/html/multi_site
+  databases:
+    - enabled: yes
+      type: mysql
+      host: localhost
+      port: 3306
+      user: app_user
+      password: app_pass
+      name: app_database
+    - enabled: yes
+      type: mysql
+      host: localhost
+      port: 3306
+      user: analytics_user
+      password: analytics_pass
+      name: analytics_database
+    - enabled: no
+      type: mysql
+      host: localhost
+      port: 3306
+      user: test_user
+      password: test_pass
+      name: test_database
+  options:
+    storage: test_storage
+    interval: daily
+    retention: '14'
+    follow_symlink: no
+    save_locally: yes
+    save_locally_path: /tmp/backups
+    notification_email: admin@example.com
+    provider: s3
