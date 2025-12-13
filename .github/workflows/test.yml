@@ -1,10 +1,8 @@
 name: Tests
 
 on:
-  push:
-    branches: [ 1x, "unit-test" ]
   pull_request:
-    branches: [ 1x, "unit-test" ]
+    branches: [ 1x, "development" ]
 
 jobs:
   test:
