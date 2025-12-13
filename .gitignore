@@ -8,3 +8,5 @@ build/
 .vscode/
 static/*.md
 bqckup.cnf
+config/*.yml
+sites/*.yml
