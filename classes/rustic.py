@@ -3,10 +3,12 @@ from typing import Any, Dict, List, Union
 from subprocess import CalledProcessError, CompletedProcess
 import json
 import toml
+import traceback
 import subprocess
 
 from constant import RUSTIC_CONFIG_PATH
 from classes.config import Config as bqckup_config
+from helpers.utility import is_debug
 
 
 class RusticConfigError(Exception): ...
@@ -159,22 +161,34 @@ class Rustic:
             RusticError: No snapshots available
         """
 
-        if len(self.snapshots) < 1:
-            raise RusticError("No snapshots found.")
-
         for path in self.site_config["path"]:
             destination = str(Path(target) / Path(path).name) if target else path
             command = [
                 "rustic",
                 "--use-profile",
                 self.site_config["name"],
+                "--filter-paths", # filter-paths ensures the correct snapshot are selected during restore
+                path,
                 "restore",
                 f"{snapshot}:{path}",
                 destination,
-            ]  # command: rustic -P domain.com restore latest:/var/www/html /var/www/html
+            ]  # command: rustic -P domain.com --filter-paths /var/www/html restore latest:/var/www/html /var/www/html
 
-            subprocess.run(command, **self.__subprocess_args)  # type: ignore
-            print(f"[OK] {path}")
+            try:
+                subprocess.run(command, **self.__subprocess_args)  # type: ignore
+                print(f"[OK] {path}")
+            except Exception as e:
+                if is_debug():
+                    traceback.print_exc()
+
+                print(f"Failed restore {path}")
+
+                if isinstance(e, CalledProcessError):
+                    print(e.stderr)
+                else:
+                    print(e)
+
+                raise e
 
     def check_config(self):
         """Check rustic configuration from sites
