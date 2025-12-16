@@ -1,5 +1,6 @@
 import logging, os
 import subprocess
+from typing import Any, List, Dict
 
 # Database Exceptions
 class DatabaseException(Exception):
@@ -46,4 +47,26 @@ class Database:
             raise DatabaseException("Failed to connect database, see log for details")
         else:
             c.close()
-        return 
+        return
+
+    @staticmethod
+    def get_all(site_config: dict) -> List[Dict[str, Any]]:
+        """Return a list of databases that are enabled for backup"""
+
+        result = []
+        databases: list = site_config.get("databases", []).copy()
+
+        if database := site_config.get("database", {}):
+            databases.append(database)
+
+        for database in databases:
+            if not ("enabled" in database or "enable" in database):
+                result.append(database)
+                continue
+
+            elif not (database.get("enabled") or database.get("enable")):
+                continue
+
+            result.append(database)
+
+        return result

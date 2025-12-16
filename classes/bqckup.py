@@ -1,7 +1,7 @@
 import os, time, shutil, signal, sys
 import traceback
 from subprocess import CalledProcessError
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from classes.database import Database
 from classes.rustic import Rustic, RusticCheckError, RusticConfigError
 from classes.storage import Storage
@@ -108,19 +108,12 @@ class Bqckup:
                     if not os.path.exists(path):
                         raise ConfigExceptions(f"Can't find {path}")
 
-                if Rustic.is_enabled(config) and config.get("incremental", {}).get("password") is None:
-                    raise RusticConfigError("Password can't be empty")
+                if Rustic.is_enabled(config):
+                    Rustic(config, {}).check_config()
 
-                databases = config.get("databases", [])
-
-                # For backward compatibility
-                database = config.get("database", {})
-                if database and (database.get("enabled") or database.get("enable")):
-                    databases.append(database)
+                databases = Database.get_all(config)
 
                 for database in databases:
-                    if not (database.get("enabled") or database.get("enable")):
-                        continue
                     if database.get("type") not in Database().SUPPORTED_DATABASE:
                         raise ConfigExceptions(
                             f"Database type {database.get('type')} not supported"
@@ -633,14 +626,8 @@ class Bqckup:
             except Exception as e:
                 print(f"Error while sending backup summary: {e}")
 
-    def backup_databases(self, site_config: dict[str, Any], s3: s3 | None):
-        databases = site_config.get("databases", [])
-
-        # For backward compatibility
-        if site_config.get("database"):
-            database = site_config.get("database", {})
-            if database.get("enabled") or database.get("enable"):
-                databases.append(database)
+    def backup_databases(self, site_config: Dict[str, Any], s3: Optional[s3]):
+        databases = Database.get_all(site_config)
 
         if not databases:
             return
@@ -653,10 +640,6 @@ class Bqckup:
             should_save_locally = True
 
         for database in databases:
-            if not (database.get("enabled") or database.get("enable")):
-                print(f"[yellow]Skipping disabled database: {database.get('name')}[/yellow]")
-                continue
-
             self.backup_database(
                 site_config=site_config,
                 database=database,
@@ -667,11 +650,11 @@ class Bqckup:
 
     def backup_database(
         self,
-        site_config: dict[str, Any],
-        database: dict[str, Any],
-        s3: s3 | None = None,
+        site_config: Dict[str, Any],
+        database: Dict[str, Any],
+        s3: Optional[s3] = None,
         should_save_locally: bool = False,
-        save_locally_path: Path | None = None,
+        save_locally_path: Optional[Path] = None,
     ):
         db_label = f"{database['user']}@{database['host']}:{database['port']}/{database['name']}"
 
