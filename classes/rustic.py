@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Union
 from subprocess import CalledProcessError, CompletedProcess
@@ -69,9 +70,24 @@ class Rustic:
     def root_folder_name(self):
         return bqckup_config().read("bqckup", "root_folder_name")
 
-    @property
-    def snapshots(self) -> List[Dict[str, Any]]:
-        # only support for rustic with version < 0.10.0
+    def get_snapshots(self, full_id: bool = False) -> List[Dict[str, Any]]:        
+        """Get snapshots from repository
+
+        Example Outputs:
+        `[
+            {
+                'id': '33e25d78ce3a86eda0d127c3689a8fb558338edec824141d8ef84e9d8856da4b',
+                'paths': ['/var/www/html'],
+                'changed': 1,
+                'data_added': 789,
+                'backup_duration': 1.44906424,
+                'time': '2025-12-11T06:55:47.218649934Z'
+            },
+        ]`
+
+        changed: new file or file change
+        data_added: in byte
+        """
 
         output: CompletedProcess = subprocess.run(
             [
@@ -86,12 +102,36 @@ class Rustic:
 
         parsed_output = json.loads(output.stdout)
 
-        try:
-            return parsed_output[0][1]
-        except IndexError:
-            return []
-        except Exception as e:
-            raise RusticError("Error while getting snapshots:", e)
+        results: List[Dict[str, Any]] = []
+
+        for group in parsed_output:
+            for snapshot in group.get("snapshots", []):
+                results.append(self.parse_snapshot(snapshot, full_id))
+
+        return results
+
+    def parse_snapshot(self, snapshot: Dict[str, Any], full_id: bool = False) -> Dict[str, Any]:
+        # only support rustic with version >= v0.10.0
+
+        summary = snapshot.get("summary", {})
+
+        raw_id = snapshot.get("id", "")
+        id = raw_id if full_id else raw_id[:8]
+        files_new = summary.get("files_new", 0)
+        files_changed = summary.get("files_changed", 0)
+        time = datetime.fromisoformat(
+            snapshot.get("time", "")[:26]
+            .replace("Z", "+00:00")
+        ).strftime("%Y-%m-%d %H:%M:%S")
+
+        return {
+            "id": id,
+            "paths": snapshot.get("paths", []),
+            "changed": files_new + files_changed,
+            "data_added": summary.get("data_added_packed"),
+            "backup_duration": summary.get("backup_duration"),
+            "time": time,
+        }
 
     @staticmethod
     def is_enabled(config: dict) -> bool:
@@ -231,12 +271,14 @@ class Rustic:
                 "no-scan": True,
                 "git-ignore": True,
                 "one-file-system": True,
+                "skip-if-unchanged": True, # skip saving of the snapshot if it is identical to the parent (unchanged)
+                "tags": [self.site_config["name"]],
                 "snapshots": [{"sources": self.site_config["path"]}],
                 "globs": [
                     f"!{i}" for i in self.site_config.get("exclude_path", [])
                 ],  # !/tmp/dir1 # see https://github.com/rustic-rs/rustic/discussions/1194#discussioncomment-10298116
             },
-            "forget": {"keep-daily": int(self.site_config["options"]["retention"])},
+            "forget": {"keep-last": int(self.site_config.get("options", {}).get("retention", 7))},
         }
 
         config_dir: Path = Path(RUSTIC_CONFIG_PATH)

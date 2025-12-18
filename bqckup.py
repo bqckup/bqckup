@@ -437,7 +437,23 @@ def generate_link(storage: str, key: str, expire: int = 86400):
 
 
 @bq_cli.command()
-def get_list(name: str, json: bool = False):
+def get_list(
+    name: str,
+    show_snapshots: bool = typer.Option(
+        True,
+        "--show-snapshots/--no-snapshots",
+        help="Show snapshot list fetched from Rustic.",
+    ),
+    full_id: bool = typer.Option(
+        False,
+        "--full-id",
+        help=(
+            "Display the full snapshot ID instead of the shortened version "
+            "(default is the first 8 characters)."
+        ),
+    ),
+    json: bool = False,
+):
     node = Bqckup().detail(name)
 
     if not node:
@@ -452,11 +468,28 @@ def get_list(name: str, json: bool = False):
         return None
 
     table = Table("#", "Key", "Created at")
+    snapshots_table = Table("No", "Snapshot IDs", "Paths", "Created At", title="Incremental Backups")
+
+    if show_snapshots:
+        storage = Storage().get_storage_detail(node["options"]["storage"])
+        r = Rustic(node, storage)
+        with ProgressSpinner("getting snapshots..."):
+            rows = r.get_snapshots(full_id=full_id)
+
+        for i, row in enumerate(rows, start=1):
+            snapshots_table.add_row(
+                str(i),
+                row["id"],
+                "\n".join(row["paths"]),
+                row["time"],
+            )
 
     if json:
-        contents = backups.get("Contents")
         results = []
-        for content in contents:
+        for content in backups.get("Contents"):
+            if "incremental" in content.get("Key"):
+                continue
+
             result = {
                 "key": content.get("Key").replace("bqckup/", ""),
                 "date": content.get("LastModified").strftime("%d %b %Y %H:%M:%S"),
@@ -464,6 +497,9 @@ def get_list(name: str, json: bool = False):
             }
             results.append(result)
         print(results)
+
+        if show_snapshots:
+            print(rows)
     else:
         for i, backup in enumerate(backups.get("Contents")):
 
@@ -479,6 +515,9 @@ def get_list(name: str, json: bool = False):
             )
 
         Console().print(table)
+
+        if show_snapshots:
+            Console().print(snapshots_table)
 
         print("\n[yellow]Tips: [/yellow]")
         print("You can generate a download link by running this command:\n")
