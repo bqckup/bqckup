@@ -1,9 +1,9 @@
 import os, time, shutil, signal, sys
 import traceback
 from subprocess import CalledProcessError
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from classes.database import Database
-from classes.rustic import Rustic, RusticCheckError, RusticConfigError
+from classes.rustic import Rustic, RusticCheckError, RusticCleanError, RusticConfigError
 from classes.storage import Storage
 from classes.tar import Tar
 from classes.file import File
@@ -25,9 +25,6 @@ from lib.notifications.discord import send_notification
 from helpers.datetime import time_since, get_today, difference_in_days, interval_in_number
 from helpers.network import get_server_ip
 from rich import print
-from rich.table import Table
-from rich.panel import Panel
-from rich.text import Text
 from humanfriendly import format_size, format_timespan
 
 class ConfigExceptions(Exception):
@@ -47,7 +44,7 @@ class Bqckup:
 
         try:
             with ProgressSpinner("checking storage connection..."):
-                s3.check_all_storage_connection()
+                s3.check_connection() # check all storage
         except Exception as e:
             print(f"[red]{e}[/red]")
             sys.exit()
@@ -90,13 +87,15 @@ class Bqckup:
 
         hashed_payload = sha256(str(payload).encode()).hexdigest()
         if (
-            not NotificationLog()
+            NotificationLog()
             .select()
             .where(NotificationLog.hash == hashed_payload)
-            .exists()
+            .exists() and not is_debug()
         ):
-            send_notification(payload)
-            NotificationLog().create(hash=hashed_payload, sent_at=int(time.time()))
+            return
+
+        send_notification(payload)
+        NotificationLog().create(hash=hashed_payload, sent_at=int(time.time()))
             
     def validate_config(self, name: str) -> bool:
         try:
@@ -108,19 +107,12 @@ class Bqckup:
                     if not os.path.exists(path):
                         raise ConfigExceptions(f"Can't find {path}")
 
-                if Rustic.is_enabled(config) and config.get("incremental", {}).get("password") is None:
-                    raise RusticConfigError("Password can't be empty")
+                if Rustic.is_enabled(config):
+                    Rustic(config, {}).check_config()
 
-                databases = config.get("databases", [])
-
-                # For backward compatibility
-                database = config.get("database", {})
-                if database and (database.get("enabled") or database.get("enable")):
-                    databases.append(database)
+                databases = Database.get_all(config)
 
                 for database in databases:
-                    if not (database.get("enabled") or database.get("enable")):
-                        continue
                     if database.get("type") not in Database().SUPPORTED_DATABASE:
                         raise ConfigExceptions(
                             f"Database type {database.get('type')} not supported"
@@ -177,6 +169,43 @@ class Bqckup:
         
     def get_logs(self, name: str):
         return list(Log().select().where(Log.name == name))
+
+    def _clean_old_backups(self, backup_config: Dict[str, Any]) -> None:
+        print("Removing old backups...")
+        
+        try:
+            _s3 = s3(storage_name=backup_config.get("options", {}).get("storage"))
+            site_name: str = backup_config.get("name", "")
+            keep_last = int(backup_config.get("options", {}).get("retention", 3))
+
+            backup_dates = _s3.get_backup_dates(site_name=site_name, sort_by_date=True)
+            backup_to_delete = backup_dates[:-keep_last]
+
+            if not backup_to_delete:
+                print("No old backup to delete")
+                return
+
+            objects = [
+                obj.get("Key")
+                for prefix in backup_to_delete
+                for obj in _s3.list(prefix=prefix).get("Contents", [])
+                if obj.get("Key")
+            ]
+
+            _s3.delete_objects(objects=objects)
+
+        except Exception as e:
+            if is_debug():
+                traceback.print_exc()
+
+            err_msg = f"Failed to Clean Old Backups for {backup_config.get('name')}"
+            print(f"[red]Error: {err_msg}.[/red]")
+            self._send_notification(
+                backup_name=backup_config.get("name"),
+                title=err_msg,
+                description=f"An error occurred while trying to clean old backups.\n\n**Error:**\n```{e}```",
+                color=15158332,  # Red color
+            )
 
     def backup(
         self,
@@ -398,27 +427,11 @@ class Bqckup:
                     Log().update_status(log_compressed_files.id, Log.__SUCCESS__, "File Backup Success", time_consume)
                     
             if backup.get('options').get('provider') == 's3':
-                _s3 = s3(storage_name=backup.get('options').get('storage'))
-            
                 # Cleaning Old Folder
-                list_folder = _s3.list(
-                    f"{_s3.root_folder_name}/{backup.get('name')}/"
-                )
+                self._clean_old_backups(backup_config)
 
-                last_modified_object  = lambda obj: int(obj['LastModified'].strftime('%s'))
-                
-                sorted_version = []
-                if list_folder.get('Contents'):
-                    for obj in sorted(list_folder.get('Contents'), key=last_modified_object):
-                        folder_name = obj['Key'].replace(os.path.basename(obj['Key']), '')
-                        if folder_name not in sorted_version:
-                            sorted_version.append(folder_name)
+                _s3 = s3(storage_name=backup.get('options').get('storage'))
 
-                if sorted_version and len(sorted_version) > int(backup.get('options').get('retention')):
-                    for obj in list_folder.get('Contents'):
-                        if obj.get('Key').startswith(os.path.dirname(sorted_version[0])):
-                            _s3.delete(obj.get('Key'))
-            
                 # bqckup config
                 if Config().read('bqckup', 'config_backup'):
                     _s3.upload(bqckup_config_location, f"config/{backup.get('name')}.yml", False)
@@ -447,7 +460,8 @@ class Bqckup:
                                 save_locally_path = os.path.join(save_locally_path, backup.get('name'))
                                 if not os.path.isdir(save_locally_path):
                                     os.makedirs(save_locally_path)
-                                shutil.move(compressed_file, save_locally_path)
+                                if os.path.dirname(os.path.abspath(compressed_file)) != save_locally_path:
+                                    shutil.move(compressed_file, save_locally_path)
                             except Exception as e:
                                 print(f"Failed to save file backup locally: {e}")
             
@@ -508,10 +522,7 @@ class Bqckup:
 
         result = {}
         rustic = Rustic(site_config, storage_config)
-
-        # File backup
-        try:
-            logs: Log = Log().write(
+        logs: Log = Log().write(
                 {
                     "name": site_config["name"],
                     "file_path": "/dev/null",  # replaced by snapshots id
@@ -521,6 +532,7 @@ class Bqckup:
                 }
             )
 
+        try:
             rustic.check_and_dump()
 
             with ProgressSpinner("doing incremental backup..."):
@@ -552,13 +564,41 @@ class Bqckup:
             with ProgressSpinner("checking repository..."):
                 rustic.check_repository()
 
+            self._clean_old_backups(site_config)
+            rustic.clean()
+
+        except RusticCleanError as e:
+            if is_debug():
+                traceback.print_exc()
+
+            err_detail = str(e)
+
+            if e.__cause__ and isinstance(e.__cause__, CalledProcessError):
+                cause = e.__cause__
+                err_detail = (
+                    f"Command: '{cause.cmd}'\n"
+                    f"Output: '{cause.stdout}'\n"
+                    f"Error: '{cause.stderr}'\n"
+                )
+
+            Log.update(
+                description=f"File Backup Success, but repository cleanup failed: {e}",
+            ).where(Log.id == logs.id).execute()
+
+            print(f"({site_config['name']}) Error while cleaning rustic repository.")
+
+            self._send_notification(
+                site_config["name"],
+                title=f"Rustic Repository Cleanup Failed for {site_config['name']}",
+                messages=err_detail,
+                description="Backup completed successfully, but repository cleanup failed.",
+            )
+
         except RusticCheckError as e:
             if is_debug():
                 traceback.print_exc()
 
             Log.update(
-                status=Log.__SUCCESS__,
-                time_consume=time.time() - time_start,
                 description=f"File Backup Success, but repository check failed: {e}",
             ).where(Log.id == logs.id).execute()
 
@@ -595,12 +635,13 @@ class Bqckup:
             err_msg = "unexpected error"
             err_detail = str(e)
 
-            if isinstance(e, CalledProcessError):
-                err_msg= "command error"
+            if e.__cause__ and isinstance(e.__cause__, CalledProcessError):
+                err_msg = "command error"
+                cause = e.__cause__
                 err_detail = (
-                    f"Command: '{e.cmd}'\n"
-                    f"Output: '{e.stdout}'\n"
-                    f"Error: '{e.stderr}'\n"
+                    f"Command: '{cause.cmd}'\n"
+                    f"Output: '{cause.stdout}'\n"
+                    f"Error: '{cause.stderr}'\n"
                 )
             elif isinstance(e, FileNotFoundError):
                 err_msg = "rustic is not installed"
@@ -633,14 +674,8 @@ class Bqckup:
             except Exception as e:
                 print(f"Error while sending backup summary: {e}")
 
-    def backup_databases(self, site_config: dict[str, Any], s3: s3 | None):
-        databases = site_config.get("databases", [])
-
-        # For backward compatibility
-        if site_config.get("database"):
-            database = site_config.get("database", {})
-            if database.get("enabled") or database.get("enable"):
-                databases.append(database)
+    def backup_databases(self, site_config: Dict[str, Any], s3: Optional[s3]):
+        databases = Database.get_all(site_config)
 
         if not databases:
             return
@@ -653,10 +688,6 @@ class Bqckup:
             should_save_locally = True
 
         for database in databases:
-            if not (database.get("enabled") or database.get("enable")):
-                print(f"[yellow]Skipping disabled database: {database.get('name')}[/yellow]")
-                continue
-
             self.backup_database(
                 site_config=site_config,
                 database=database,
@@ -667,11 +698,11 @@ class Bqckup:
 
     def backup_database(
         self,
-        site_config: dict[str, Any],
-        database: dict[str, Any],
-        s3: s3 | None = None,
+        site_config: Dict[str, Any],
+        database: Dict[str, Any],
+        s3: Optional[s3] = None,
         should_save_locally: bool = False,
-        save_locally_path: Path | None = None,
+        save_locally_path: Optional[Path] = None,
     ):
         db_label = f"{database['user']}@{database['host']}:{database['port']}/{database['name']}"
 
@@ -701,6 +732,7 @@ class Bqckup:
                     db_user=database["user"],
                     db_password=database["password"],
                     db_name=database["name"],
+                    db_host=database["host"],
                 )
 
             if s3:

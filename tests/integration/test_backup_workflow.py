@@ -42,9 +42,9 @@ class TestBackupWorkflow:
         
         # Test database export
         db = Database('mysql')
-        db.export(backup_file, 'testuser', 'testpass', 'testdb')
+        db.export(backup_file, 'testuser', 'testpass', 'testdb', 'localhost')
         
-        mock_export.assert_called_once_with(backup_file, 'testuser', 'testpass', 'testdb')
+        mock_export.assert_called_once_with(backup_file, 'testuser', 'testpass', 'testdb', 'localhost')
         
         # Verify file was created
         assert os.path.exists(backup_file)
