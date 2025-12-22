@@ -2,23 +2,39 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Union
 from subprocess import CalledProcessError, CompletedProcess
+from functools import cached_property
 import json
 import toml
 import traceback
 import subprocess
+import re
 
 from constant import RUSTIC_CONFIG_PATH
 from classes.config import Config as bqckup_config
 from helpers.utility import is_debug
 
-
-class RusticConfigError(Exception): ...
-
-
-class RusticCheckError(CalledProcessError): ...
+from rich import print  # pyright: ignore[reportMissingImports]
 
 
 class RusticError(Exception): ...
+
+
+class RusticConfigError(RusticError): ...
+
+
+class RusticCleanError(RusticError): ...
+
+
+class RusticCommandError(CalledProcessError, RusticError): ...
+
+
+class RusticCheckError(RusticCommandError): ...
+
+
+class RusticBackupError(RusticCommandError): ...
+
+
+class RusticRestoreError(RusticCommandError): ...
 
 
 class Rustic:
@@ -66,11 +82,46 @@ class Rustic:
             "check": True,
         }
 
+    @cached_property
+    def version(self) -> str:
+        """Get rustic version"""
+        try:
+            output: CompletedProcess = subprocess.run(
+                ["rustic", "--version"],
+                **self.__subprocess_args,  # type: ignore
+            )
+
+            # Example outputs:
+            # NixOS package: `rustic 0.10.2`
+            # Manual install (release/build): `rustic v0.10.2-1-g189b17c`
+
+            full_version_string = output.stdout.strip().split(" ")[1]
+            match = re.search(r'v?(\d+\.\d+\.\d+)', full_version_string)
+            if not match:
+                raise RusticError(f"Could not parse rustic version from: {full_version_string}")
+
+            return match.group(1)
+
+        except (CalledProcessError, FileNotFoundError, IndexError) as e:
+            if is_debug:
+                traceback.print_exc()
+            raise RusticError(f"Could not determine rustic version. Error: {e}") from e
+
+    @cached_property
+    def version_tuple(self) -> tuple[int, ...]:
+        """Get rustic version as a tuple of ints"""
+        return tuple(map(int, self.version.split(".")))
+
     @property
     def root_folder_name(self):
         return bqckup_config().read("bqckup", "root_folder_name")
 
-    def get_snapshots(self, full_id: bool = False) -> List[Dict[str, Any]]:        
+    @staticmethod
+    def is_enabled(config: dict) -> bool:
+        incremental = config.get("incremental", {})
+        return incremental and (incremental.get("enabled") or incremental.get("enable"))
+
+    def get_snapshots(self, full_id: bool = False) -> List[Dict[str, Any]]:
         """Get snapshots from repository
 
         Example Outputs:
@@ -89,30 +140,43 @@ class Rustic:
         data_added: in byte
         """
 
-        output: CompletedProcess = subprocess.run(
-            [
-                "rustic",
-                "snapshots",
-                "--use-profile",
-                self.site_config["name"],
-                "--json",
-            ],
-            **self.__subprocess_args,  # type: ignore
-        )
+        try:
+            output: CompletedProcess = subprocess.run(
+                [
+                    "rustic",
+                    "snapshots",
+                    "--use-profile",
+                    self.site_config["name"],
+                    "--json",
+                ],
+                **self.__subprocess_args,  # type: ignore
+            )
+        except CalledProcessError as e:
+            raise RusticCommandError(e.returncode, e.cmd, e.stdout, e.stderr) from e
 
         parsed_output = json.loads(output.stdout)
 
         results: List[Dict[str, Any]] = []
 
-        for group in parsed_output:
-            for snapshot in group.get("snapshots", []):
-                results.append(self.parse_snapshot(snapshot, full_id))
+        is_new_format = self.version_tuple >= (0, 10, 0)
+
+        if is_new_format:
+            for group in parsed_output:
+                for snapshot in group.get("snapshots", []):
+                    results.append(self.parse_snapshot(snapshot, full_id))
+
+        else:  # old format <= 0.9.5
+            for group in parsed_output:
+                # old format is a list inside a list `[[{}, [{}, {}]]]`
+                if isinstance(group, list) and len(group) > 1 and isinstance(group[1], list):
+                    for snapshot in group[1]:
+                        results.append(self.parse_snapshot(snapshot, full_id))
 
         return results
 
-    def parse_snapshot(self, snapshot: Dict[str, Any], full_id: bool = False) -> Dict[str, Any]:
-        # only support rustic with version >= v0.10.0
-
+    def parse_snapshot(
+        self, snapshot: Dict[str, Any], full_id: bool = False
+    ) -> Dict[str, Any]:
         summary = snapshot.get("summary", {})
 
         raw_id = snapshot.get("id", "")
@@ -133,11 +197,6 @@ class Rustic:
             "time": time,
         }
 
-    @staticmethod
-    def is_enabled(config: dict) -> bool:
-        incremental = config.get("incremental", {})
-        return incremental and (incremental.get("enabled") or incremental.get("enable"))
-
     def check_repository(self):
         try:
             subprocess.run(
@@ -150,7 +209,7 @@ class Rustic:
                 **self.__subprocess_args,  # type: ignore
             )
         except subprocess.CalledProcessError as e:
-            raise RusticCheckError(e.returncode, e.cmd, e.output, e.stderr)
+            raise RusticCheckError(e.returncode, e.cmd, e.output, e.stderr) from e
 
     def backup(self) -> Dict[str, Union[int, str]]:
         """Running Backup
@@ -162,25 +221,28 @@ class Rustic:
             dict: detail information about backup action
         """
 
-        output: CompletedProcess = subprocess.run(
-            [
-                "rustic",
-                "backup",
-                "--init",
-                "--use-profile",
-                self.site_config["name"],
-            ],
-            **self.__subprocess_args,  # type: ignore
-        )
-
-        if output.returncode != 0:
-            raise RusticError(output.stderr)
+        try:
+            output: CompletedProcess = subprocess.run(
+                [
+                    "rustic",
+                    "backup",
+                    "--init",
+                    "--use-profile",
+                    self.site_config["name"],
+                ],
+                **self.__subprocess_args,  # type: ignore
+            )
+        except subprocess.CalledProcessError as e:
+            raise RusticBackupError(e.returncode, e.cmd, e.output, e.stderr) from e
 
         parsed_output: dict = json.loads(output.stdout)
         summary = parsed_output["summary"]
 
+        # if skip-if-unchanged is true and no snapshot changes, the key id does not exist; use the last snapshot id instead
+        id = parsed_output.get("id", parsed_output.get("parent", ""))
+
         return {
-            "id": parsed_output["id"][:8],  # get only 8 characters from start
+            "id": id,
             "new": summary["files_new"],
             "changed": summary["files_changed"],
             "unchanged": summary["files_unmodified"],
@@ -207,7 +269,7 @@ class Rustic:
                 "rustic",
                 "--use-profile",
                 self.site_config["name"],
-                "--filter-paths", # filter-paths ensures the correct snapshot are selected during restore
+                "--filter-paths",  # filter-paths ensures the correct snapshot are selected during restore
                 path,
                 "restore",
                 f"{snapshot}:{path}",
@@ -217,18 +279,12 @@ class Rustic:
             try:
                 subprocess.run(command, **self.__subprocess_args)  # type: ignore
                 print(f"[OK] {path}")
+            except subprocess.CalledProcessError as e:
+                raise RusticRestoreError(e.returncode, e.cmd, e.output, e.stderr) from e
             except Exception as e:
                 if is_debug():
                     traceback.print_exc()
-
-                print(f"Failed restore {path}")
-
-                if isinstance(e, CalledProcessError):
-                    print(e.stderr)
-                else:
-                    print(e)
-
-                raise e
+                raise RusticError(f"Unexpected error while restoring backups for {path}: {e}") from e
 
     def check_config(self):
         """Check rustic configuration from sites
@@ -263,7 +319,7 @@ class Rustic:
                     "bucket": self.storage_config["bucket"],
                     "endpoint": self.storage_config["endpoint"],
                     "root": f"/{self.root_folder_name}/{self.site_config['name']}/incremental",
-                } if with_credentials else None,
+                } if with_credentials or is_debug() else None,
             },
             "backup": {
                 # "init": True,  # Create repository if not exists ### not work
@@ -271,15 +327,24 @@ class Rustic:
                 "no-scan": True,
                 "git-ignore": True,
                 "one-file-system": True,
-                "skip-if-unchanged": True, # skip saving of the snapshot if it is identical to the parent (unchanged)
                 "tags": [self.site_config["name"]],
                 "snapshots": [{"sources": self.site_config["path"]}],
                 "globs": [
                     f"!{i}" for i in self.site_config.get("exclude_path", [])
                 ],  # !/tmp/dir1 # see https://github.com/rustic-rs/rustic/discussions/1194#discussioncomment-10298116
             },
-            "forget": {"keep-last": int(self.site_config.get("options", {}).get("retention", 7))},
+            "forget": {
+                "keep-last": int(
+                    self.site_config.get("options", {}).get("retention", 7)
+                )
+            },
         }
+
+        # skip saving of the snapshot if it is identical to the parent (unchanged)
+        if self.version_tuple <= (0, 9, 5):
+            config["backup"]["skip-identical-parent"] = True
+        elif self.version_tuple >= (0, 10, 0):
+            config["backup"]["skip-if-unchanged"] = True
 
         config_dir: Path = Path(RUSTIC_CONFIG_PATH)
         config_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -296,3 +361,71 @@ class Rustic:
     def check_and_dump(self):
         self.check_config()
         self.dump_config()
+
+    def clean(self):
+        """Forget old snapshots according to the policy and prune the repository"""
+
+        command = [
+            "rustic",
+            "forget",
+            "--json",
+            "--prune",
+            "--use-profile",
+            self.site_config["name"],
+        ]
+
+        """Example command output
+            [
+                {
+                    "group": {"hostname": "aira", "label": "", "paths": ["Downloads"]},
+                    "snapshots": [
+                        {
+                            "snapshot": {
+                                "time": "2025-12-17T15:45:33.834905424+08:00",
+                                "program_version": "rustic 0.9.0",
+                                "parent": "c8c72cad57d59dee5d525446459e0f7b46bd6fa60d7e7274a094bab949a117de",
+                                "tree": "ba0f6d2d228c46da98ea9c17c09e0e1c3419316cdb0b3e99343d07c504feb6c4",
+                                "paths": ["Downloads"],
+                                "hostname": "aira",
+                                "username": "",
+                                "uid": 0,
+                                "gid": 0,
+                                "tags": [],
+                                "original": "fcebc56c2e5f9f52524976642491a97c48dda736e3ba737556b7e108fcefde6b",
+                                "summary": {...},
+                                "id": "fcebc56c2e5f9f52524976642491a97c48dda736e3ba737556b7e108fcefde6b",
+                            },
+                            "keep": true,
+                            "reasons": ["last", "hourly", "daily", "weekly", "monthly", "yearly"],
+                        }
+                    ],
+                }
+            ]
+        """
+
+        removed_count = 0
+        try:
+            print(f"Cleaning repository for '{self.site_config['name']}'...")
+
+            output: CompletedProcess = subprocess.run(
+                command,
+                **self.__subprocess_args,  # type: ignore
+            )
+
+            if output.stdout.strip():
+                parsed_output = json.loads(output.stdout)
+
+                for group in parsed_output:
+                    if isinstance(group, dict):
+                        for snapshot_details in group.get("snapshots", []):
+                            if isinstance(snapshot_details, dict) and not snapshot_details.get("keep", True):
+                                removed_count += 1
+
+            if removed_count > 0:
+                print(f"Successfully removed {removed_count} snapshots.")
+            else:
+                print("No old incremental snapshots to remove")
+        except json.JSONDecodeError as e:
+            raise RusticCleanError(f"Failed to parse JSON output:\n{output.stdout}") from e
+        except Exception as e:
+            raise RusticCleanError from e
