@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Generator
 from subprocess import CalledProcessError, CompletedProcess
 from functools import cached_property
 import json
@@ -121,6 +121,67 @@ class Rustic:
         incremental = config.get("incremental", {})
         return incremental and (incremental.get("enabled") or incremental.get("enable"))
 
+    def _parse_json_stream(self, stream: str) -> List[Any]:
+        """Parses a string that may contain multiple concatenated JSON objects."""
+        decoder = json.JSONDecoder()
+        results = []
+        pos = 0
+        stream = stream.strip()
+        if not stream:
+            return []
+        while pos < len(stream):
+            try:
+                obj, end = decoder.raw_decode(stream, pos)
+                results.append(obj)
+                pos = end
+                # skip whitespace until the next object
+                next_char_match = re.search(r'\S', stream[pos:])
+                if next_char_match:
+                    pos += next_char_match.start()
+                else:
+                    break
+            except json.JSONDecodeError:
+                break # stop if there's non-JSON trailing data
+        return results
+
+    def _iter_snapshots(
+        self, parsed_output: List[Any]
+    ) -> Generator[Dict[str, Any], None, None]:
+        """Iterates over snapshots from a parsed rustic output, handling different versions.
+
+        Example yielded output (a single raw snapshot dictionary):
+        ```json
+        {
+            "snapshot": {
+                "time": "2025-12-17T15:45:33.834905424+08:00",
+                "program_version": "rustic 0.9.0",
+                "parent": "c8c72cad57d59dee5d525446459e0f7b46bd6fa60d7e7274a094bab949a117de",
+                "tree": "ba0f6d2d228c46da98ea9c17c09e0e1c3419316cdb0b3e99343d07c504feb6c4",
+                "paths": ["Downloads"],
+                "hostname": "aira",
+                "username": "",
+                "uid": 0,
+                "gid": 0,
+                "tags": [],
+                "original": "fcebc56c2e5f9f52524976642491a97c48dda736e3ba737556b7e108fcefde6b",
+                "summary": {},
+                "id": "fcebc56c2e5f9f52524976642491a97c48dda736e3ba737556b7e108fcefde6b"
+            },
+            "keep": true,
+            "reasons": ["last", "hourly", "daily", "weekly", "monthly", "yearly"]
+        }
+        ```
+        """
+
+        for group in parsed_output:
+            if self.version_tuple >= (0, 10, 0):
+                if isinstance(group, dict):
+                    yield from group.get("snapshots", [])
+            elif self.version_tuple >= (0, 9, 5):
+                # old format is a list inside a list `[[{}, [{}, {}]]]`
+                if isinstance(group, list) and len(group) > 1 and isinstance(group[1], list):
+                    yield from group[1]
+
     def get_snapshots(self, full_id: bool = False) -> List[Dict[str, Any]]:
         """Get snapshots from repository
 
@@ -155,22 +216,9 @@ class Rustic:
             raise RusticCommandError(e.returncode, e.cmd, e.stdout, e.stderr) from e
 
         parsed_output = json.loads(output.stdout)
-
         results: List[Dict[str, Any]] = []
-
-        is_new_format = self.version_tuple >= (0, 10, 0)
-
-        if is_new_format:
-            for group in parsed_output:
-                for snapshot in group.get("snapshots", []):
-                    results.append(self.parse_snapshot(snapshot, full_id))
-
-        else:  # old format <= 0.9.5
-            for group in parsed_output:
-                # old format is a list inside a list `[[{}, [{}, {}]]]`
-                if isinstance(group, list) and len(group) > 1 and isinstance(group[1], list):
-                    for snapshot in group[1]:
-                        results.append(self.parse_snapshot(snapshot, full_id))
+        for snapshot in self._iter_snapshots(parsed_output):
+            results.append(self.parse_snapshot(snapshot, full_id))
 
         return results
 
@@ -374,35 +422,6 @@ class Rustic:
             self.site_config["name"],
         ]
 
-        """Example command output
-            [
-                {
-                    "group": {"hostname": "aira", "label": "", "paths": ["Downloads"]},
-                    "snapshots": [
-                        {
-                            "snapshot": {
-                                "time": "2025-12-17T15:45:33.834905424+08:00",
-                                "program_version": "rustic 0.9.0",
-                                "parent": "c8c72cad57d59dee5d525446459e0f7b46bd6fa60d7e7274a094bab949a117de",
-                                "tree": "ba0f6d2d228c46da98ea9c17c09e0e1c3419316cdb0b3e99343d07c504feb6c4",
-                                "paths": ["Downloads"],
-                                "hostname": "aira",
-                                "username": "",
-                                "uid": 0,
-                                "gid": 0,
-                                "tags": [],
-                                "original": "fcebc56c2e5f9f52524976642491a97c48dda736e3ba737556b7e108fcefde6b",
-                                "summary": {...},
-                                "id": "fcebc56c2e5f9f52524976642491a97c48dda736e3ba737556b7e108fcefde6b",
-                            },
-                            "keep": true,
-                            "reasons": ["last", "hourly", "daily", "weekly", "monthly", "yearly"],
-                        }
-                    ],
-                }
-            ]
-        """
-
         removed_count = 0
         try:
             print(f"Cleaning repository for '{self.site_config['name']}'...")
@@ -413,13 +432,15 @@ class Rustic:
             )
 
             if output.stdout.strip():
-                parsed_output = json.loads(output.stdout)
+                all_outputs = self._parse_json_stream(output.stdout)
 
-                for group in parsed_output:
-                    if isinstance(group, dict):
-                        for snapshot_details in group.get("snapshots", []):
-                            if isinstance(snapshot_details, dict) and not snapshot_details.get("keep", True):
-                                removed_count += 1
+                for data in all_outputs:
+                    if not isinstance(data, list):
+                        continue  # skip non-list objects from stream (e.g. prune summary)
+
+                    for snapshot_details in self._iter_snapshots(data):
+                        if isinstance(snapshot_details, dict) and not snapshot_details.get("keep", True):
+                            removed_count += 1
 
             if removed_count > 0:
                 print(f"Successfully removed {removed_count} snapshots.")
