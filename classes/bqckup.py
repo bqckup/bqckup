@@ -732,6 +732,7 @@ class Bqckup:
                     db_user=database["user"],
                     db_password=database["password"],
                     db_name=database["name"],
+                    db_host=database["host"],
                 )
 
             if s3:

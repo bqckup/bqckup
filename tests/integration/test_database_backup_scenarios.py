@@ -128,10 +128,10 @@ class TestDatabaseBackupScenarios:
             
             # Perform export
             backup_file = f"/tmp/{db_config['name']}_backup.sql.gz"
-            db.export(backup_file, db_config['user'], db_config['password'], db_config['name'])
+            db.export(backup_file, db_config['user'], db_config['password'], db_config['name'], db_config['host'])
             
             mock_test_conn.assert_called_once_with(credentials)
-            mock_export.assert_called_once_with(backup_file, 'testuser', 'testpass', 'single_database')
+            mock_export.assert_called_once_with(backup_file, 'testuser', 'testpass', 'single_database', 'localhost')
     
     @patch('classes.database.Database.export')
     @patch('classes.database.Database.test_connection')
@@ -176,7 +176,7 @@ class TestDatabaseBackupScenarios:
             
             # Perform export
             backup_file = f"/tmp/{db_config['name']}_backup.sql.gz"
-            db.export(backup_file, db_config['user'], db_config['password'], db_config['name'])
+            db.export(backup_file, db_config['user'], db_config['password'], db_config['name'], db_config['host'])
         
         # Verify correct number of calls
         assert mock_test_conn.call_count == 2
@@ -184,8 +184,8 @@ class TestDatabaseBackupScenarios:
         
         # Verify specific database calls
         expected_calls = [
-            ('/tmp/database1_backup.sql.gz', 'user1', 'pass1', 'database1'),
-            ('/tmp/database2_backup.sql.gz', 'user2', 'pass2', 'database2')
+            ('/tmp/database1_backup.sql.gz', 'user1', 'pass1', 'database1', 'localhost'),
+            ('/tmp/database2_backup.sql.gz', 'user2', 'pass2', 'database2', 'localhost')
         ]
         
         actual_calls = [call.args for call in mock_export.call_args_list]
