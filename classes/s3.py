@@ -12,9 +12,11 @@ from helpers.utility import is_debug, is_verbose
 from typing import Dict, List, Optional
 
 # Rustic repository pattern: root_folder_name/site_name/incremental/
-RUSTIC_REPO_PATTERN = re.compile(
-    f"^{re.escape(bqckup_config().read('bqckup', 'root_folder_name'))}/[^/]+/incremental/"  # pyright: ignore[reportArgumentType]
-)
+def get_rustic_repo_pattern():
+    root_folder = bqckup_config().read('bqckup', 'root_folder_name')
+    if root_folder is None:
+        root_folder = 'bqckup'  # default fallback
+    return re.compile(f"^{re.escape(root_folder)}/[^/]+/incremental/")
 
 BACKUP_DATE_REGEX = re.compile(r"^\d{2}-[A-Za-z]+-\d{4}$")
 
@@ -194,7 +196,7 @@ class s3(object):
         """
         try:
             # skip rustic repository
-            if RUSTIC_REPO_PATTERN.match(key):
+            if get_rustic_repo_pattern().match(key):
                 if is_debug:
                     print(f"Skipping deletion of rustic repository object: {key}")
                 return
