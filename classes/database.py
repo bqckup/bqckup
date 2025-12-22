@@ -17,11 +17,19 @@ class Database:
     def __init__(self, type = "mysql"):
         self.type = type.lower()
         
-    def export(self, output: str, db_user: str, db_password: str, db_name: str) -> None:
+    def export(
+        self,
+        output: str,
+        db_user: str,
+        db_password: str,
+        db_name: str,
+        db_host: str = "localhost",
+    ) -> None:
         command = [
                 "mysqldump",
                 f"--user={db_user}",
                 f"--password={db_password}",
+                f"--host={db_host}",
                 db_name,
                 "--no-tablespaces ",
                 "--skip-dump-date",

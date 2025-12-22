@@ -28,9 +28,9 @@ class TestDatabase:
         mock_devnull = MagicMock()
         mock_open.return_value.__enter__.return_value = mock_devnull
         
-        db.export("/tmp/backup.sql.gz", "testuser", "testpass", "testdb")
+        db.export("/tmp/backup.sql.gz", "testuser", "testpass", "testdb", "localhost")
         
-        expected_command = "mysqldump --user=testuser --password=testpass testdb --no-tablespaces  --skip-dump-date | gzip > /tmp/backup.sql.gz"
+        expected_command = "mysqldump --user=testuser --password=testpass --host=localhost testdb --no-tablespaces  --skip-dump-date | gzip > /tmp/backup.sql.gz"
         mock_subprocess.assert_called_once_with(
             expected_command,
             shell=True,

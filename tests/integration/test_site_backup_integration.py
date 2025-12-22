@@ -58,11 +58,11 @@ class TestSiteBackupIntegration:
             
             # Create backup
             backup_file = f"/tmp/{site_config['name']}_{db_config['name']}.sql.gz"
-            db.export(backup_file, db_config['user'], db_config['password'], db_config['name'])
+            db.export(backup_file, db_config['user'], db_config['password'], db_config['name'], db_config['host'])
             
             # Verify calls
             mock_test_conn.assert_called_once_with(credentials)
-            mock_export.assert_called_once_with(backup_file, 'single_user', 'single_pass', 'single_database')
+            mock_export.assert_called_once_with(backup_file, 'single_user', 'single_pass', 'single_database', 'localhost')
     
     @patch('classes.database.Database.export')
     @patch('classes.database.Database.test_connection')
@@ -111,7 +111,7 @@ class TestSiteBackupIntegration:
             # Create backup
             backup_file = f"/tmp/{site_config['name']}_{db_config['name']}.sql.gz"
             backup_files.append(backup_file)
-            db.export(backup_file, db_config['user'], db_config['password'], db_config['name'])
+            db.export(backup_file, db_config['user'], db_config['password'], db_config['name'], db_config['host'])
         
         # Verify correct number of operations
         assert mock_test_conn.call_count == 2
@@ -124,6 +124,7 @@ class TestSiteBackupIntegration:
             args = call[0]
             assert expected_databases[i] in args[0]  # backup file path
             assert args[3] == expected_databases[i]  # database name
+            assert args[4] == 'localhost'  # database host
     
     def test_site_configuration_validation(self, single_db_site_config, multi_db_site_config):
         """Test validation of site configuration structures"""
