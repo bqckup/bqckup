@@ -473,6 +473,7 @@ def get_list(
     if show_snapshots:
         storage = Storage().get_storage_detail(node["options"]["storage"])
         r = Rustic(node, storage)
+        r.check_and_dump()
         with ProgressSpinner("getting snapshots..."):
             rows = r.get_snapshots(full_id=full_id)
 
@@ -760,9 +761,12 @@ def common(
     version: bool = typer.Option(
         None, "--version", "-v", callback=get_version, help="Show version information"
     ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-V", help="Enable verbose output."
+    ),
 ):
-    pass
-
+    if verbose:
+        os.environ["BQCKUP_VERBOSE"] = "1"
 
 if __name__ == "__main__":
     if getpass.getuser() != "root":

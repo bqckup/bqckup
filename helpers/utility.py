@@ -131,3 +131,6 @@ def isset(key, array = None):
 
 def is_debug():
     return os.environ.get('BQCKUP_DEBUG', "0") == "1"
+
+def is_verbose():
+    return os.environ.get('BQCKUP_VERBOSE', "0") == "1"

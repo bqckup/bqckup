@@ -60,6 +60,7 @@ class Database:
             databases.append(database)
 
         for database in databases:
+            # if the key is missing, default to backing up the database
             if not ("enabled" in database or "enable" in database):
                 result.append(database)
                 continue
