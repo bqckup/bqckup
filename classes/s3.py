@@ -1,3 +1,4 @@
+from pathlib import Path
 import boto3
 import re
 import os
@@ -23,6 +24,12 @@ BACKUP_DATE_REGEX = re.compile(r"^\d{2}-[A-Za-z]+-\d{4}$")
 
 class s3(object):
     _instances = {}
+    config = Config(
+        retries={
+            "max_attempts": 5,
+            "mode": "adaptive",
+        }
+    )
 
     def __new__(cls, storage_name: str):
         if storage_name not in cls._instances:
@@ -35,7 +42,7 @@ class s3(object):
             return
 
         self.storage = Storage().get_storage_detail(storage_name)
-        self.root_folder_name = bqckup_config().read("bqckup", "root_folder_name")
+        self.root_folder_name: str = bqckup_config().read("bqckup", "root_folder_name") or "bqckup"
         self.clientInit()
         self.bucket_name = self.storage["bucket"]
         self._initialized = True
@@ -49,7 +56,7 @@ class s3(object):
                 endpoint_url=self.storage["endpoint"],
                 aws_access_key_id=self.storage["access_key_id"],
                 aws_secret_access_key=self.storage["secret_access_key"],
-                config=Config(retries=dict(max_attempts=5)),
+                config=self.config,
             )
         except Exception as e:
             print(f"Failed to connect because : {e}")
@@ -160,28 +167,43 @@ class s3(object):
         except Exception as e:
             raise Exception(f"failed to delete objects in bucket: {e}") from e
 
-    def upload(self, pathFile, newFileName, showProgress=True):
-        newFileName = os.path.join(self.root_folder_name, newFileName)
+    def upload(self, file_path, new_file_name, show_progress=True):
+        new_file_name = os.path.join(self.root_folder_name, new_file_name)
+        file_size = os.path.getsize(file_path)
+
+        MB = 1024 * 1024
+        GB = 1024 * MB
+
+        chunk = 8 * MB
+
+        if file_size >= 20 * GB:
+            chunk = 64 * MB
+        elif file_size >= 1 * GB:
+            chunk = 32 * MB
+        elif file_size >= 100 * MB:
+            chunk = 16 * MB
+
         config = TransferConfig(
-            multipart_threshold=1024 * 25,
-            max_concurrency=10,
-            multipart_chunksize=1024 * 25,
+            multipart_threshold=chunk,
+            max_concurrency=5,
+            multipart_chunksize=chunk,
             use_threads=True,
         )
+
         try:
             self.client.upload_file(
-                pathFile,
+                file_path,
                 self.bucket_name,
-                newFileName,
+                new_file_name,
                 Config=config,
                 Callback=(
-                    ProgressPercentage(pathFile, label="Uploading")
-                    if showProgress
+                    ProgressPercentage(file_path, label="Uploading")
+                    if show_progress
                     else None
                 ),
             )
         except Exception as errorMsg:
-            print("File: {} , Upload error, reason: {}\n".format(pathFile, errorMsg))
+            print("File: {} , Upload error, reason: {}\n".format(file_path, errorMsg))
             raise Exception("Msg : {}\n".format(errorMsg))
 
     def delete(self, key: str):

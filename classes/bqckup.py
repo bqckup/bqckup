@@ -235,9 +235,7 @@ class Bqckup:
             except Exception as e:
                 print(f"[red]Error during validation for {v['name']}: {e}[/red]\n")
 
-        backups = valid_backups      
-
-        for backup in backups.values():
+        for backup in valid_backups.values():
             try:
                 if not (backup.get("enabled") or backup.get("enable")):
                     print(f"[red]Backup for {backup.get('name')} is not enabled[/red]")
@@ -290,16 +288,11 @@ class Bqckup:
                     print(f"Backup for {backup.get('name')} is already running...")
                     continue
 
-                _s3 = None
                 storage_name = backup.get("options", {}).get("storage")
-                if backup.get("options", {}).get("provider") == "s3" and storage_name:
-                    _s3 = s3(storage_name=storage_name)
-                    if Config().read('bqckup', 'config_backup'):
-                        print("Backing up config files...")
-                        config_path = Path(SITE_CONFIG_PATH) / backup["file_name"]
-                        _s3.upload(config_path, f"config/{backup.get('name')}.yml", False)
-                        _s3.upload(STORAGE_CONFIG_PATH, "storages.yml", False)
+                is_s3 = backup.get("options", {}).get("provider") == "s3"
+                _s3 = s3(storage_name=storage_name) if is_s3 and storage_name else None
 
+                self.backup_config(backup, _s3)
                 self.backup_databases(backup, _s3)
 
                 if incremental is None:
@@ -316,6 +309,20 @@ class Bqckup:
 
                 print(f"[red]Error during backup for {backup['name']}: {e}[/red]")
                 continue
+
+    def backup_config(self, site_config: Dict[str, Any], _s3: Optional[s3]) -> None:
+        """Backs up configuration files."""
+        if not (_s3 and Config().read("bqckup", "config_backup")):
+            return
+
+        print("Backing up config files...")
+        backup_config = Path(SITE_CONFIG_PATH) / site_config["file_name"]
+
+        try:
+            _s3.upload(backup_config, f"config/{site_config.get('name')}.yml", False)
+            _s3.upload(STORAGE_CONFIG_PATH, "storages.yml", False)
+        except Exception as e:
+            print(f"[red]Failed to backup config: {e}[/red]")
 
     # Upload
     def do_backup(self, backup_config):
@@ -427,11 +434,6 @@ class Bqckup:
                 self._clean_old_backups(backup_config)
 
                 _s3 = s3(storage_name=backup.get('options').get('storage'))
-
-                # bqckup config
-                if Config().read('bqckup', 'config_backup'):
-                    _s3.upload(bqckup_config_location, f"config/{backup.get('name')}.yml", False)
-                    _s3.upload(STORAGE_CONFIG_PATH, 'storages.yml', False)
 
                 if os.path.exists(compressed_file):
                     print(f"\nUploading {compressed_file}")
