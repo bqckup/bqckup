@@ -210,21 +210,20 @@ class Bqckup:
     def backup(
         self,
         force: bool = False,
-        site: str = None,
-        backup_method: str = None,
-        keep_credential: bool = False,
+        site: Optional[str] = None,
+        incremental: Optional[bool] = None,
     ):
         """
             Need to optimize this code
         """
         if site:
-            backups = {0 : self.detail(site)}
+            backups = {0: self.detail(site)}
         else:
             backups = self.list()
-            
+
         if not backups:
             print("No backups found")
-            return          
+            return
 
         valid_backups = {}
         for k, v in backups.items():
@@ -303,24 +302,21 @@ class Bqckup:
 
                 self.backup_databases(backup, _s3)
 
-                if backup_method == "incremental":
-                    self.incremental_backup(backup, keep_credential=keep_credential)
-                    continue
-                elif backup_method == "full":
-                    self.do_backup(backup)
-                    continue
+                if incremental is None:
+                    incremental = Rustic.is_enabled(backup)
 
-                if Rustic.is_enabled(backup):
-                    self.incremental_backup(backup, keep_credential=keep_credential)
+                if incremental:
+                    self.incremental_backup(backup)
                 else:
                     self.do_backup(backup)
+
             except Exception as e:
                 if is_debug():
                     traceback.print_exc()
 
                 print(f"[red]Error during backup for {backup['name']}: {e}[/red]")
                 continue
-    
+
     # Upload
     def do_backup(self, backup_config):
         time_start = time.time()
@@ -499,7 +495,6 @@ class Bqckup:
     def incremental_backup(
         self,
         site_config: Dict[str, Any],
-        keep_credential: bool = False,
     ) -> None:
         time_start = time.time()
         summary_payload = {
@@ -666,7 +661,6 @@ class Bqckup:
             )
 
         finally:
-            rustic.dump_config(with_credentials=keep_credential)
             try:
                 with ProgressSpinner("sending data..."):
                     summary_payload["finish_at"] = int(time.time())
