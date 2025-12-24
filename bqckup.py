@@ -203,11 +203,19 @@ def history(site=None, filter_latest_days: int = 7):
             )
 
             print(f"\nBackup Name: {backup['name']} ([green]{schedule}[/green])")
-            print("\nFile Backup")
-            print_table(log_files, table_files)
-            print("\n Database Backup")
-            print_table(log_database, table_database)
-            print(f"\nVisit: https://bqckup.com\n")
+            if log_files:
+                print("\nFile Backup")
+                print_table(log_files, table_files)
+            else:
+                print("\nNo file backup history found")
+
+            if log_database:
+                print("\n Database Backup")
+                print_table(log_database, table_database)
+            else:
+                print("\nNo database backup history found")
+
+            print("\nVisit: https://bqckup.com\n")
         else:
             print(f"\nNo history found for site '{site}'\n")
     else:
@@ -475,22 +483,15 @@ def get_list(
         return None
 
     table = Table("#", "Key", "Created at")
-    snapshots_table = Table("No", "Snapshot IDs", "Paths", "Created At", title="Incremental Backups")
+    snapshots_table = Table("No", "Snapshot IDs", "Paths", "Size", "Created At", title="Incremental Backups")
 
     if show_snapshots:
         storage = Storage().get_storage_detail(node["options"]["storage"])
         r = Rustic(node, storage)
         r.check_and_dump()
-        with ProgressSpinner("getting snapshots..."):
-            rows = sorted(r.get_snapshots(full_id=full_id), key=lambda x: x["time"])
 
-        for i, row in enumerate(rows, start=1):
-            snapshots_table.add_row(
-                str(i),
-                row["id"],
-                "\n".join(row["paths"]),
-                row["time"],
-            )
+        with ProgressSpinner("getting snapshots..."):
+            incremental_snapshots = sorted(r.get_snapshots(full_id=full_id), key=lambda x: x["time"])
 
     if json:
         results = []
@@ -503,28 +504,42 @@ def get_list(
             results.append(result)
         print(results)
 
-        if show_snapshots:
-            print(rows)
+        if show_snapshots and incremental_snapshots:
+            print(incremental_snapshots)
     else:
-        for i, backup in enumerate(objects):
-            table.add_row(
-                str(i + 1),
-                backup["Key"],
-                backup["LastModified"].strftime("%d %b %Y %H:%M:%S"),
-            )
+        if objects:
+            for i, backup in enumerate(objects):
+                table.add_row(
+                    str(i + 1),
+                    backup["Key"],
+                    backup["LastModified"].strftime("%d %b %Y %H:%M:%S"),
+                )
 
-        Console().print(table)
+            Console().print(table)
+        else:
+            print(f"[red] No backup found for {name} [/red]")
 
         if show_snapshots:
-            Console().print(snapshots_table)
+            if incremental_snapshots:
+                for i, row in enumerate(incremental_snapshots, start=1):
+                    snapshots_table.add_row(
+                        str(i),
+                        row["id"],
+                        "\n".join(row["paths"]),
+                        format_size(row["size"]),
+                        row["time"],
+                    )
+                Console().print(snapshots_table)
+            else:
+                print(f"[red] No incremental backups found for {name} [/red]")
 
         print("\n[yellow]Tips: [/yellow]")
         print("You can generate a download link by running this command:\n")
         print(f"bqckup generate-link {node['options']['storage']} <Key>\n")
-        print("Example:")
-        print(
-            f"bqckup generate-link {node['options']['storage']} '{objects[0].get('Key')}'\n"
-        )
+
+        if objects:
+            print("Example:")
+            print(f"bqckup generate-link {node['options']['storage']} '{objects[0].get('Key')}'\n")
 
 
 @bq_cli.command()
