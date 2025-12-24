@@ -192,6 +192,7 @@ class Rustic:
                 'paths': ['/var/www/html'],
                 'changed': 1,
                 'data_added': 789,
+                'size': 2048
                 'backup_duration': 1.44906424,
                 'time': '2025-12-11T06:55:47.218649934Z'
             },
@@ -234,13 +235,14 @@ class Rustic:
         time = datetime.fromisoformat(
             snapshot.get("time", "")[:26]
             .replace("Z", "+00:00")
-        ).strftime("%Y-%m-%d %H:%M:%S")
+        ).strftime("%d %b %Y %H:%M:%S")
 
         return {
             "id": id,
             "paths": snapshot.get("paths", []),
             "changed": files_new + files_changed,
             "data_added": summary.get("data_added_packed"),
+            "size": summary.get("total_bytes_processed"),
             "backup_duration": summary.get("backup_duration"),
             "time": time,
         }
