@@ -234,7 +234,7 @@ class Rustic:
         time = datetime.fromisoformat(
             snapshot.get("time", "")[:26]
             .replace("Z", "+00:00")
-        ).strftime("%Y-%m-%d %H:%M:%S")
+        ).strftime("%d %b %Y %H:%M:%S")
 
         return {
             "id": id,

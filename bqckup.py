@@ -461,9 +461,16 @@ def get_list(
         return None
 
     _s3 = s3(node["options"]["storage"])
-    backups = _s3.list(f"{_s3.root_folder_name}/{node['name']}")
 
-    if not backups or not backups.get("Contents"):
+    backup_dates = _s3.get_backup_dates(site_name=name, sort_by_date=True)
+    objects = []
+
+    with ProgressSpinner("getting backup list..."):
+        for prefix in backup_dates:
+            objects_in_prefix = _s3.list(prefix=prefix).get("Contents", [])
+            objects.extend(objects_in_prefix)
+
+    if not objects:
         print(f"[red] No backup found for {name} [/red]")
         return None
 
@@ -475,7 +482,7 @@ def get_list(
         r = Rustic(node, storage)
         r.check_and_dump()
         with ProgressSpinner("getting snapshots..."):
-            rows = r.get_snapshots(full_id=full_id)
+            rows = sorted(r.get_snapshots(full_id=full_id), key=lambda x: x["time"])
 
         for i, row in enumerate(rows, start=1):
             snapshots_table.add_row(
@@ -487,10 +494,7 @@ def get_list(
 
     if json:
         results = []
-        for content in backups.get("Contents"):
-            if "incremental" in content.get("Key"):
-                continue
-
+        for content in objects:
             result = {
                 "key": content.get("Key").replace("bqckup/", ""),
                 "date": content.get("LastModified").strftime("%d %b %Y %H:%M:%S"),
@@ -502,13 +506,7 @@ def get_list(
         if show_snapshots:
             print(rows)
     else:
-        for i, backup in enumerate(backups.get("Contents")):
-
-            # Skip rustic repository
-            if "incremental" in backup["Key"]:
-                continue
-
-            backup["Key"] = backup["Key"].replace("bqckup/", "")
+        for i, backup in enumerate(objects):
             table.add_row(
                 str(i + 1),
                 backup["Key"],
@@ -525,7 +523,7 @@ def get_list(
         print(f"bqckup generate-link {node['options']['storage']} <Key>\n")
         print("Example:")
         print(
-            f"bqckup generate-link {node['options']['storage']} '{backups.get('Contents')[0].get('Key')}'\n"
+            f"bqckup generate-link {node['options']['storage']} '{objects[0].get('Key')}'\n"
         )
 
 
