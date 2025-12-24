@@ -611,26 +611,30 @@ def download_latest(name: str, target: str = None, silent: bool = False):
             return
 
         _s3 = s3(node["options"]["storage"])
-        backups = _s3.list(f"{_s3.root_folder_name}/{node['name']}")
-        config = _s3.list(f"{_s3.root_folder_name}/config/")
+        
+        backup_dates = _s3.get_backup_dates(site_name=name, sort_by_date=True)
+        if not backup_dates:
+            print(f"[red] No backup found for {name} [/red]")
+            return
 
+        latest_backup_prefix = backup_dates[-1]
+        
+        backup_contents = _s3.list(prefix=latest_backup_prefix).get("Contents", [])
+
+        config_list = _s3.list(f"{_s3.root_folder_name}/config/")
         config_file = [
             item
-            for item in config.get("Contents", [])
+            for item in config_list.get("Contents", [])
             if item["Key"].endswith(".yml") and name in item["Key"]
-        ][0]
+        ]
 
-        backup_contents = backups.get("Contents")
-        sorted_backups = sorted(
-            backup_contents, key=lambda x: x["LastModified"], reverse=True
-        )[:2]
-        sorted_backups.append(config_file)
+        files_to_download = backup_contents + config_file
 
         table = Table("#", "Data", "Created at", "Size")
         total_size = 0
         disk_size = get_disk_size()
 
-        for i, backup in enumerate(sorted_backups):
+        for i, backup in enumerate(files_to_download):
             table.add_row(
                 str(i + 1),
                 backup["Key"],
@@ -681,7 +685,7 @@ def download_latest(name: str, target: str = None, silent: bool = False):
                 f"[green]Created directory:[/green] [green bold]{target}\n[/green bold]"
             )
 
-        download_files(sorted_backups, target, _s3)
+        download_files(files_to_download, target, _s3)
 
         print("[green]\nDownloaded successfully[/green]")
         print(f"Visit: https://bqckup.com\n")
