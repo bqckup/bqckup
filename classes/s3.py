@@ -26,7 +26,7 @@ class s3(object):
     _instances = {}
     config = Config(
         retries={
-            "max_attempts": 10,
+            "max_attempts": 5,
             "mode": "adaptive",
         }
     )
