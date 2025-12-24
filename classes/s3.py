@@ -119,14 +119,15 @@ class s3(object):
         repository if the 'prefix' leads to it. Directly interacting with rustic
         repository contents via this method can lead to data corruption.
         """
-
-        objects = self.client.list_objects_v2(
-            Bucket=self.bucket_name,
-            Prefix=prefix,
-            Delimiter=delimiter,
-        )
-
-        return objects
+        try:
+            objects = self.client.list_objects_v2(
+                Bucket=self.bucket_name,
+                Prefix=prefix,
+                Delimiter=delimiter,
+            )
+            return objects
+        except Exception:
+            return {}
 
     def delete_objects(self, objects: List[str]):
         """
