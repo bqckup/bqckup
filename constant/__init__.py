@@ -21,3 +21,9 @@ VERSION = "1.8.1"
 YOURLS_HOST = ""
 
 YOURLS_SECRET_KEY = ""
+
+# max retries for backup operations
+MAX_RETRIES = 3
+
+# retry backoff; in seconds
+BACKOFF = 30
