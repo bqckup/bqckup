@@ -6,6 +6,9 @@ from botocore.exceptions import ClientError
 from classes.s3 import s3
 
 class TestS3:
+    def setup_method(self):
+        s3._instances = {}
+
     
     @pytest.fixture
     def mock_storage_detail(self):
@@ -92,7 +95,7 @@ class TestS3:
             with patch.object(s3_instance.client, 'list_objects_v2', side_effect=KeyError):
                 result = s3_instance.list('test-prefix')
                 
-                assert result == []
+                assert result == {}
     
     def test_get_total_used(self, mock_storage, mock_config):
         with mock_aws():
@@ -114,7 +117,7 @@ class TestS3:
         with mock_aws():
             s3_instance = s3('test_storage')
             
-            with patch.object(s3_instance, 'list', return_value=[]):
+            with patch.object(s3_instance, 'list', return_value={}):
                 total_size = s3_instance.get_total_used('test-prefix')
                 
                 assert total_size == 0

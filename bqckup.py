@@ -14,7 +14,7 @@ from classes.rustic import Rustic
 from classes.storage import Storage
 from classes.s3 import s3
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from constant import STORAGE_CONFIG_PATH, VERSION, SITE_CONFIG_PATH, BQ_PATH
 from rich import print
 from rich.console import Group, Console
@@ -203,11 +203,19 @@ def history(site=None, filter_latest_days: int = 7):
             )
 
             print(f"\nBackup Name: {backup['name']} ([green]{schedule}[/green])")
-            print("\nFile Backup")
-            print_table(log_files, table_files)
-            print("\n Database Backup")
-            print_table(log_database, table_database)
-            print(f"\nVisit: https://bqckup.com\n")
+            if log_files:
+                print("\nFile Backup")
+                print_table(log_files, table_files)
+            else:
+                print("\nNo file backup history found")
+
+            if log_database:
+                print("\n Database Backup")
+                print_table(log_database, table_database)
+            else:
+                print("\nNo database backup history found")
+
+            print("\nVisit: https://bqckup.com\n")
         else:
             print(f"\nNo history found for site '{site}'\n")
     else:
@@ -339,28 +347,23 @@ def test_config():
 @bq_cli.command()
 def run(
     force: bool = False,
-    site: str = None,
-    incremental: Annotated[bool, typer.Option("--incremental", "-i")] = None,
-    full: Annotated[bool, typer.Option("--full", "-f")] = None,
-    keep: Annotated[bool, typer.Option("--keep", "-k")] = False,
+    site: Optional[str] = None,
+    incremental: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--incremental/--full",
+            help="use incremental backup or create a full tar.gz archive",
+        ),
+    ] = None,
 ):
     from classes.report import Report
-
-    backup_method = None
-    if incremental and full:
-        print("Can't running incremental and full backup at same time.")
-        return
-    elif incremental:
-        backup_method = "incremental"
-    elif full:
-        backup_method = "full"
 
     Bqckup().backup(
         force=force,
         site=site,
-        backup_method=backup_method,
-        keep_credential=keep
+        incremental=incremental
     )
+
     Report().send()
 
 
@@ -461,36 +464,33 @@ def get_list(
         return None
 
     _s3 = s3(node["options"]["storage"])
-    backups = _s3.list(f"{_s3.root_folder_name}/{node['name']}")
 
-    if not backups or not backups.get("Contents"):
+    backup_dates = _s3.get_backup_dates(site_name=name, sort_by_date=True)
+    objects = []
+
+    with ProgressSpinner("getting backup list..."):
+        for prefix in backup_dates:
+            objects_in_prefix = _s3.list(prefix=prefix).get("Contents", [])
+            objects.extend(objects_in_prefix)
+
+    if not objects:
         print(f"[red] No backup found for {name} [/red]")
         return None
 
     table = Table("#", "Key", "Created at")
-    snapshots_table = Table("No", "Snapshot IDs", "Paths", "Created At", title="Incremental Backups")
+    snapshots_table = Table("No", "Snapshot IDs", "Paths", "Size", "Created At", title="Incremental Backups")
 
     if show_snapshots:
         storage = Storage().get_storage_detail(node["options"]["storage"])
         r = Rustic(node, storage)
         r.check_and_dump()
-        with ProgressSpinner("getting snapshots..."):
-            rows = r.get_snapshots(full_id=full_id)
 
-        for i, row in enumerate(rows, start=1):
-            snapshots_table.add_row(
-                str(i),
-                row["id"],
-                "\n".join(row["paths"]),
-                row["time"],
-            )
+        with ProgressSpinner("getting snapshots..."):
+            incremental_snapshots = sorted(r.get_snapshots(full_id=full_id), key=lambda x: x["time"])
 
     if json:
         results = []
-        for content in backups.get("Contents"):
-            if "incremental" in content.get("Key"):
-                continue
-
+        for content in objects:
             result = {
                 "key": content.get("Key").replace("bqckup/", ""),
                 "date": content.get("LastModified").strftime("%d %b %Y %H:%M:%S"),
@@ -499,34 +499,42 @@ def get_list(
             results.append(result)
         print(results)
 
-        if show_snapshots:
-            print(rows)
+        if show_snapshots and incremental_snapshots:
+            print(incremental_snapshots)
     else:
-        for i, backup in enumerate(backups.get("Contents")):
+        if objects:
+            for i, backup in enumerate(objects):
+                table.add_row(
+                    str(i + 1),
+                    backup["Key"],
+                    backup["LastModified"].strftime("%d %b %Y %H:%M:%S"),
+                )
 
-            # Skip rustic repository
-            if "incremental" in backup["Key"]:
-                continue
-
-            backup["Key"] = backup["Key"].replace("bqckup/", "")
-            table.add_row(
-                str(i + 1),
-                backup["Key"],
-                backup["LastModified"].strftime("%d %b %Y %H:%M:%S"),
-            )
-
-        Console().print(table)
+            Console().print(table)
+        else:
+            print(f"[red] No backup found for {name} [/red]")
 
         if show_snapshots:
-            Console().print(snapshots_table)
+            if incremental_snapshots:
+                for i, row in enumerate(incremental_snapshots, start=1):
+                    snapshots_table.add_row(
+                        str(i),
+                        row["id"],
+                        "\n".join(row["paths"]),
+                        format_size(row["size"]),
+                        row["time"],
+                    )
+                Console().print(snapshots_table)
+            else:
+                print(f"[red] No incremental backups found for {name} [/red]")
 
         print("\n[yellow]Tips: [/yellow]")
         print("You can generate a download link by running this command:\n")
         print(f"bqckup generate-link {node['options']['storage']} <Key>\n")
-        print("Example:")
-        print(
-            f"bqckup generate-link {node['options']['storage']} '{backups.get('Contents')[0].get('Key')}'\n"
-        )
+
+        if objects:
+            print("Example:")
+            print(f"bqckup generate-link {node['options']['storage']} '{objects[0].get('Key')}'\n")
 
 
 @bq_cli.command()
@@ -613,26 +621,30 @@ def download_latest(name: str, target: str = None, silent: bool = False):
             return
 
         _s3 = s3(node["options"]["storage"])
-        backups = _s3.list(f"{_s3.root_folder_name}/{node['name']}")
-        config = _s3.list(f"{_s3.root_folder_name}/config/")
+        
+        backup_dates = _s3.get_backup_dates(site_name=name, sort_by_date=True)
+        if not backup_dates:
+            print(f"[red] No backup found for {name} [/red]")
+            return
 
+        latest_backup_prefix = backup_dates[-1]
+        
+        backup_contents = _s3.list(prefix=latest_backup_prefix).get("Contents", [])
+
+        config_list = _s3.list(f"{_s3.root_folder_name}/config/")
         config_file = [
             item
-            for item in config.get("Contents", [])
+            for item in config_list.get("Contents", [])
             if item["Key"].endswith(".yml") and name in item["Key"]
-        ][0]
+        ]
 
-        backup_contents = backups.get("Contents")
-        sorted_backups = sorted(
-            backup_contents, key=lambda x: x["LastModified"], reverse=True
-        )[:2]
-        sorted_backups.append(config_file)
+        files_to_download = backup_contents + config_file
 
         table = Table("#", "Data", "Created at", "Size")
         total_size = 0
         disk_size = get_disk_size()
 
-        for i, backup in enumerate(sorted_backups):
+        for i, backup in enumerate(files_to_download):
             table.add_row(
                 str(i + 1),
                 backup["Key"],
@@ -683,7 +695,7 @@ def download_latest(name: str, target: str = None, silent: bool = False):
                 f"[green]Created directory:[/green] [green bold]{target}\n[/green bold]"
             )
 
-        download_files(sorted_backups, target, _s3)
+        download_files(files_to_download, target, _s3)
 
         print("[green]\nDownloaded successfully[/green]")
         print(f"Visit: https://bqckup.com\n")
