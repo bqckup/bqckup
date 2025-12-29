@@ -121,6 +121,7 @@ class Bqckup:
                         "user": database["user"],
                         "password": database["password"],
                         "host": database["host"],
+                        "port": database["port"],
                         "name": database["name"],
                     })
 
@@ -798,6 +799,7 @@ class Bqckup:
                     db_password=database["password"],
                     db_name=database["name"],
                     db_host=database["host"],
+                    db_port=database["port"],
                 )
 
             if s3:
