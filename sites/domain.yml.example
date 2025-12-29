@@ -30,8 +30,8 @@ bqckup:
     retention: '7'
     keep:
       daily: 7
-      weekly: 2
-      monthly: 1
+      weekly: 4
+      monthly: 4
     follow_symlink: no
     save_locally: no
     save_locally_path: /etc/bqckup/tmp
