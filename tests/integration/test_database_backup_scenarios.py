@@ -110,6 +110,7 @@ class TestDatabaseBackupScenarios:
         assert db_config['enabled'] == 'yes'
         assert db_config['name'] == 'single_database'
         assert db_config['user'] == 'testuser'
+        assert db_config['port'] == 3306
         
         # Simulate backup process
         from classes.database import Database
@@ -122,6 +123,7 @@ class TestDatabaseBackupScenarios:
                 'host': db_config['host'],
                 'user': db_config['user'],
                 'password': db_config['password'],
+                'port': db_config['port'],
                 'name': db_config['name']
             }
             db.test_connection(credentials)
@@ -170,6 +172,7 @@ class TestDatabaseBackupScenarios:
                 'host': db_config['host'],
                 'user': db_config['user'],
                 'password': db_config['password'],
+                'port': db_config['port'],
                 'name': db_config['name']
             }
             db.test_connection(credentials)
