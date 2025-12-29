@@ -24,12 +24,14 @@ class Database:
         db_password: str,
         db_name: str,
         db_host: str = "localhost",
+        db_port: int = 3306,
     ) -> None:
         command = [
                 "mysqldump",
                 f"--user={db_user}",
                 f"--password={db_password}",
                 f"--host={db_host}",
+                f"--port={db_port}",
                 db_name,
                 "--no-tablespaces ",
                 "--skip-dump-date",
@@ -47,6 +49,7 @@ class Database:
             c = mysql.connector.connect(
                 user=credentials['user'],
                 host=credentials['host'],
+                port=credentials['port'],
                 password=credentials['password'],
                 database=credentials['name'])
         
