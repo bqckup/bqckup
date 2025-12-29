@@ -1,6 +1,8 @@
-import logging, os
+import gzip
+import logging
 import subprocess
 from typing import Any, List, Dict
+
 
 # Database Exceptions
 class DatabaseException(Exception):
@@ -10,13 +12,15 @@ class DatabaseException(Exception):
 """
 should be compatible with to other database type
 """
+
+
 class Database:
     # mysqli is temporary
     SUPPORTED_DATABASE = ("mysql", "postgresql", "sqlite")
-    
-    def __init__(self, type = "mysql"):
+
+    def __init__(self, type="mysql"):
         self.type = type.lower()
-        
+
     def export(
         self,
         output: str,
@@ -27,32 +31,44 @@ class Database:
         db_port: int = 3306,
     ) -> None:
         command = [
-                "mysqldump",
-                f"--user={db_user}",
-                f"--password={db_password}",
-                f"--host={db_host}",
-                f"--port={db_port}",
-                db_name,
-                "--no-tablespaces ",
-                "--skip-dump-date",
-                "|",
-                "gzip",
-                ">",
-                output
-            ]        
-        with open(os.devnull, 'w') as devnull:
-                subprocess.run(" ".join(command), shell=True, stdout=devnull, stderr=devnull)
-    
-    def test_connection(self, credentials: dict) -> bool:
+            "mysqldump",
+            f"--user={db_user}",
+            f"--password={db_password}",
+            f"--host={db_host}",
+            f"--port={db_port}",
+            "--no-tablespaces",
+            "--skip-dump-date",
+            db_name,
+        ]
+
+        with gzip.open(output, "wb") as f:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+
+            for chunk in iter(lambda: process.stdout.read(4096), b""):
+                f.write(chunk)
+
+            process.wait()
+
+            if process.returncode != 0:
+                error = process.stderr.read().decode()
+                raise Exception(error)
+
+    def test_connection(self, credentials: dict) -> None:
         import mysql.connector
+
         try:
             c = mysql.connector.connect(
-                user=credentials['user'],
-                host=credentials['host'],
-                port=credentials['port'],
-                password=credentials['password'],
-                database=credentials['name'])
-        
+                user=credentials["user"],
+                host=credentials["host"],
+                port=credentials["port"],
+                password=credentials["password"],
+                database=credentials["name"],
+            )
+
         except mysql.connector.Error as e:
             logging.error(e)
             raise DatabaseException("Failed to connect database, see log for details")
@@ -71,7 +87,7 @@ class Database:
             databases.append(database)
 
         for database in databases:
-            # if the key is missing, default to backing up the database
+            # if enabled key is missing, default to true
             if not ("enabled" in database or "enable" in database):
                 result.append(database)
                 continue
