@@ -761,7 +761,7 @@ class Bqckup:
                     site_name=site_config["name"],
                     db_label=db_label,
                     backup_path=backup_path,
-                    current_log=current_log,
+                    time_consumed=result.get("time_consumed", 0),
                     should_save_locally=should_save_locally,
                     save_locally_path=save_locally_path,
                 )
@@ -825,7 +825,7 @@ class Bqckup:
         site_name: str,
         db_label: str,
         backup_path: Path,
-        current_log: Log,
+        time_consumed: float,
         should_save_locally: bool = False,
         save_locally_path: Optional[Path] = None,
     ) -> None:
@@ -839,7 +839,7 @@ class Bqckup:
         try:
             if last_log:
                 previous_size = format_size(last_log.file_size)
-                time_consume = format_timespan(current_log.time_consume)
+                formatted_time_consume = format_timespan(time_consumed)
                 current_size = format_size(backup_path.stat().st_size)
 
                 print("=========================================")
@@ -847,7 +847,7 @@ class Bqckup:
                 print(f"Database\t: {db_label}")
                 print(f"Previous Size\t: {previous_size}")
                 print(f"Current Size\t: {current_size}")
-                print(f"Time Consumed\t: {time_consume}")
+                print(f"Time Consumed\t: {formatted_time_consume}")
                 print("=========================================")
 
                 if previous_size == current_size:

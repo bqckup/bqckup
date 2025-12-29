@@ -1,4 +1,5 @@
 import pytest
+import subprocess
 from unittest.mock import Mock, patch, MagicMock
 from classes.database import Database, DatabaseException
 
@@ -21,22 +22,40 @@ class TestDatabase:
         assert "postgresql" in Database.SUPPORTED_DATABASE
         assert "sqlite" in Database.SUPPORTED_DATABASE
     
-    @patch('subprocess.run')
-    @patch('builtins.open')
-    def test_export_success(self, mock_open, mock_subprocess):
+    @patch('gzip.open')
+    @patch('subprocess.Popen')
+    def test_export_success(self, mock_popen, mock_gzip_open):
         db = Database("mysql")
-        mock_devnull = MagicMock()
-        mock_open.return_value.__enter__.return_value = mock_devnull
+        mock_file = MagicMock()
+        mock_gzip_open.return_value.__enter__.return_value = mock_file
+
+        mock_process = MagicMock()
+        mock_process.returncode = 0
+        mock_process.stdout.read.side_effect = [b'test data', b'']
+        mock_process.stderr.read.return_value = b''
+        mock_popen.return_value = mock_process
         
         db.export("/tmp/backup.sql.gz", "testuser", "testpass", "testdb", "localhost")
         
-        expected_command = "mysqldump --user=testuser --password=testpass --host=localhost --port=3306 testdb --no-tablespaces  --skip-dump-date | gzip > /tmp/backup.sql.gz"
-        mock_subprocess.assert_called_once_with(
+        expected_command = [
+            "mysqldump",
+            "--user=testuser",
+            "--password=testpass",
+            "--host=localhost",
+            "--port=3306",
+            "--no-tablespaces",
+            "--skip-dump-date",
+            "testdb",
+        ]
+
+        mock_popen.assert_called_once_with(
             expected_command,
-            shell=True,
-            stdout=mock_devnull,
-            stderr=mock_devnull
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
+        mock_process.stdout.read.assert_called()
+        mock_file.write.assert_called_once_with(b'test data')
+        mock_process.wait.assert_called_once()
     
     @patch('mysql.connector.connect')
     def test_connection_success(self, mock_connect):
@@ -52,7 +71,7 @@ class TestDatabase:
             'name': 'testdb'
         }
         
-        result = db.test_connection(credentials)
+        db.test_connection(credentials)
         
         mock_connect.assert_called_once_with(
             user='testuser',
