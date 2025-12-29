@@ -827,7 +827,7 @@ class Bqckup:
         backup_path: Path,
         current_log: Log,
         should_save_locally: bool = False,
-        save_locally_path: Path | None = None,
+        save_locally_path: Optional[Path] = None,
     ) -> None:
         last_log = Log.select().where(
             (Log.name == site_name)

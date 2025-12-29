@@ -711,7 +711,7 @@ def download_latest(name: str, target: str = None, silent: bool = False):
 def restore(
     site: str,
     snapshot: str = "latest",
-    target: str | None = None,
+    target: Optional[str] = None,
 ):
     """Restore for incremental backup"""
 
