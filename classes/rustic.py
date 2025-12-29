@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Union, Generator
+from typing import Any, Dict, List, Tuple, Union, Generator
 from subprocess import CalledProcessError, CompletedProcess
 from functools import cached_property
 import json
@@ -108,7 +108,7 @@ class Rustic:
             raise RusticError(f"Could not determine rustic version. Error: {e}") from e
 
     @cached_property
-    def version_tuple(self) -> tuple[int, ...]:
+    def version_tuple(self) -> Tuple[int, ...]:
         """Get rustic version as a tuple of ints"""
         return tuple(map(int, self.version.split(".")))
 

@@ -30,7 +30,7 @@ class TestDatabase:
         
         db.export("/tmp/backup.sql.gz", "testuser", "testpass", "testdb", "localhost")
         
-        expected_command = "mysqldump --user=testuser --password=testpass --host=localhost testdb --no-tablespaces  --skip-dump-date | gzip > /tmp/backup.sql.gz"
+        expected_command = "mysqldump --user=testuser --password=testpass --host=localhost --port=3306 testdb --no-tablespaces  --skip-dump-date | gzip > /tmp/backup.sql.gz"
         mock_subprocess.assert_called_once_with(
             expected_command,
             shell=True,
@@ -48,6 +48,7 @@ class TestDatabase:
             'user': 'testuser',
             'host': 'localhost',
             'password': 'testpass',
+            'port': 3306,
             'name': 'testdb'
         }
         
@@ -56,6 +57,7 @@ class TestDatabase:
         mock_connect.assert_called_once_with(
             user='testuser',
             host='localhost',
+            port=3306,
             password='testpass',
             database='testdb'
         )
@@ -70,6 +72,7 @@ class TestDatabase:
         credentials = {
             'user': 'testuser',
             'host': 'localhost',
+            'port': 3306,
             'password': 'testpass',
             'name': 'testdb'
         }

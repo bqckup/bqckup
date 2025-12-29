@@ -52,6 +52,7 @@ class TestSiteBackupIntegration:
                 'host': db_config['host'],
                 'user': db_config['user'],
                 'password': db_config['password'],
+                'port': db_config['port'],
                 'name': db_config['name']
             }
             db.test_connection(credentials)
@@ -104,6 +105,7 @@ class TestSiteBackupIntegration:
                 'host': db_config['host'],
                 'user': db_config['user'],
                 'password': db_config['password'],
+                'port': db_config['port'],
                 'name': db_config['name']
             }
             db.test_connection(credentials)
