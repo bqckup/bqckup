@@ -458,6 +458,11 @@ def get_list(
     json: bool = False,
 ):
     node = Bqckup().detail(name)
+    if not node:
+        print(f"[red]Backup for {name} not found[/red]")
+        return
+
+    show_snapshots = show_snapshots and Rustic.is_enabled(node)
 
     if not node:
         print(f"[red] Backup for {name} not found [/red]")
