@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Union, Generator
+from typing import Any, Dict, List, Optional, Tuple, Union, Generator
 from subprocess import CalledProcessError, CompletedProcess
 from functools import cached_property
 import json
@@ -303,7 +303,7 @@ class Rustic:
             "total_size": summary["total_bytes_processed"],
         }
 
-    def restore(self, snapshot: str, target: str | None = None):
+    def restore(self, snapshot: str, target: Optional[str] = None):
         """Restore backup
 
         Args:
