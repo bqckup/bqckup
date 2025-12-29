@@ -28,6 +28,10 @@ bqckup:
     storage: dummy
     interval: daily #can be daily, weekly, monthly 
     retention: '7'
+    keep:
+      daily: 7
+      weekly: 2
+      monthly: 1
     follow_symlink: no
     save_locally: no
     save_locally_path: /etc/bqckup/tmp
