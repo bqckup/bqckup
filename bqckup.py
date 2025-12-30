@@ -67,6 +67,7 @@ def summary(site: Optional[str] = None):
     from rich.progress import Progress, SpinnerColumn, TextColumn
     from helpers.datetime import interval_in_number
     from datetime import datetime
+    from models.log import Log
 
     bqckup = Bqckup()
 
@@ -81,6 +82,41 @@ def summary(site: Optional[str] = None):
     for site_config in all_backups:
         storage_name = site_config["options"]["storage"]
         backup_name = site_config["name"]
+        is_incremental = Rustic.is_enabled(site_config)
+        rustic_stats = None
+
+        last_log = (
+            Log.select()
+            .where(Log.name == backup_name)
+            .order_by(Log.id.desc())
+            .get_or_none()
+        )
+
+        last_successful_log = (
+            Log.select()
+            .where((Log.name == backup_name) & (Log.status == Log.__SUCCESS__))
+            .order_by(Log.id.desc())
+            .get_or_none()
+        )
+
+        last_backup_status = "[yellow]N/A[/yellow]"
+        is_running = False
+
+        if last_log:
+            is_running = last_log.status == Log.__ON_PROGRESS__
+            last_backup_status = {
+                Log.__ON_PROGRESS__: "[yellow]On Progress[/yellow]",
+                Log.__SUCCESS__: "[green]Success[/green]",
+                Log.__FAILED__: "[red]Failed[/red]",
+            }.get(last_log.status, "[red]Unknown[/red]")
+
+        next_backup_date = "[yellow]N/A[/yellow]"
+        if last_successful_log:
+            interval = site_config["options"]["interval"]
+            interval_days = interval_in_number(interval)
+            next_backup_date = datetime.fromtimestamp(
+                last_successful_log.created_at + (interval_days * 86400)
+            ).strftime("%d/%m/%Y 00:00:00")
 
         with Progress(
             SpinnerColumn(),
@@ -88,7 +124,7 @@ def summary(site: Optional[str] = None):
             transient=True,
         ) as progress:
             task = progress.add_task(
-                description=f"Fetching details for {backup_name}...", total=None
+                description=f"fetching details for {backup_name}...", total=None
             )
 
             _s3 = s3(storage_name)
@@ -99,39 +135,53 @@ def summary(site: Optional[str] = None):
                 for obj in _s3.list(prefix=prefix).get("Contents", [])
             }
 
+            if is_incremental:
+                rustic_stats = Rustic(
+                    site_config=site_config,
+                    storage_config=Storage().get_storage_detail(storage_name),
+                ).check_and_dump().get_stats()
+
             progress.update(task, completed=True)
 
-        if not objects:
-            print(f"[red] No backup found for {backup_name} [/red]")
-            continue
-
-        total_size = sum([i.get("Size") for i in objects.values()])
-        last_content = dates[-1]
-
-        last_backup_size = objects[last_content].get("Size")
-        interval = site_config["options"]["interval"]
-        last_modified = objects[last_content]["LastModified"]
-        interval_days = interval_in_number(interval)
-        next_backup_date = datetime.fromtimestamp(
-            last_modified.timestamp() + (interval_days * 86400)
-        )
-
         rows = {
-            "Last Backup": last_modified.strftime("%d/%m/%Y %H:%M:%S"),
-            "Last Backup Size": format_size(last_backup_size),
-            "Total Backups Size": format_size(total_size),
-            "Total Files": len(objects),
+            "Status": "[yellow]Running[/yellow]" if is_running else "[green]Idle[/green]",
+            "Last Backup Status": last_backup_status,
             "Storage Name": storage_name,
-            "Schedule": interval,
-            "Next Backup": next_backup_date.strftime("%d/%m/%Y 00:00:00"),
+            "Schedule": site_config["options"]["interval"],
             "Local Backup": "yes" if site_config["options"]["save_locally"] else "no",
+            "Next Backup": next_backup_date,
         }
 
+        if objects:
+            total_size = sum([i.get("Size") for i in objects.values()])
+            last_content = dates[-1]
+            last_backup_size = objects[last_content].get("Size")
+            last_modified = objects[last_content]["LastModified"]
+
+            rows.update(
+                {
+                    "Last Backup": last_modified.strftime("%d/%m/%Y %H:%M:%S"),
+                    "Last Backup Size": format_size(last_backup_size),
+                    "Total Backups Size": format_size(total_size),
+                    "Total Files": len(objects),
+                }
+            )
+
+        if is_incremental and rustic_stats:
+            rows["Incremental Snapshots"] = rustic_stats.get("snapshots_count", "N/A")
+            rows["Repository Size"] = format_size(
+                rustic_stats.get("compressed_repo_size", 0)
+            )
+
         orders = [
+            "Status",
             "Last Backup",
+            "Last Backup Status",
             "Last Backup Size",
             "Total Backups Size",
             "Total Files",
+            "Repository Size",
+            "Incremental Snapshots",
             "Storage Name",
             "Schedule",
             "Next Backup",
@@ -175,12 +225,11 @@ def history(site=None, filter_latest_days: int = 7):
 
     def print_table(logs, table):
         for log in logs:
-            # format sytle for status
-            if log.status == Log.__SUCCESS__:
-                status = "[green]Success[/green]"
-            else:
-                status = "[red]Failed[/red]"
-
+            status = {
+                Log.__SUCCESS__: "[green]Success[/green]",
+                Log.__ON_PROGRESS__: "[yellow]On Progress[/yellow]",
+                Log.__FAILED__: "[red]Failed[/red]",
+            }.get(log.status, "[red]Unknown[/red]")
             last_backup = datetime.fromtimestamp(log.created_at).strftime(
                 "%d/%m/%Y %H:%M:%S"
             )

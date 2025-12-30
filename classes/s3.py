@@ -1,4 +1,3 @@
-from pathlib import Path
 import boto3
 import re
 import os
@@ -9,6 +8,7 @@ from classes.config import Config as bqckup_config
 from classes.progress import ProgressPercentage
 from classes.storage import Storage
 from datetime import datetime
+from functools import lru_cache
 from helpers.utility import is_debug, is_verbose
 from typing import Dict, List, Optional
 
@@ -118,6 +118,7 @@ class s3(object):
 
         return backup_prefixes
 
+    @lru_cache(maxsize=None)
     def list(self, prefix: str, delimiter: str = "") -> Dict:
         """
         Lists all objects under a given prefix.
@@ -126,6 +127,9 @@ class s3(object):
         repository if the 'prefix' leads to it. Directly interacting with rustic
         repository contents via this method can lead to data corruption.
         """
+        if is_debug():
+            print(f"getting list of objects with prefix: '{prefix}' and delimiter: '{delimiter}'")
+
         try:
             objects = self.client.list_objects_v2(
                 Bucket=self.bucket_name,

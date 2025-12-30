@@ -9,7 +9,7 @@ import traceback
 import subprocess
 import re
 
-from constant import RUSTIC_CONFIG_PATH
+from constant import BQ_PATH, RUSTIC_CONFIG_PATH
 from classes.config import Config as bqckup_config
 from helpers.utility import is_debug
 
@@ -223,6 +223,53 @@ class Rustic:
 
         return results
 
+    def get_stats(self) -> Dict[str, Any]:
+        """Get and parse repository stats."""
+        try:
+            output: CompletedProcess = subprocess.run(
+                [
+                    "rustic",
+                    "repoinfo",
+                    "--use-profile",
+                    self.site_config["name"],
+                    "--json"
+                ],
+                **self.__subprocess_args,  # type: ignore
+            )
+            raw_stats = json.loads(output.stdout)
+            return self.parse_stats(raw_stats)
+        except json.JSONDecodeError as e:
+            raise RusticError(f"Could not parse rustic stats from: {output.stdout}") from e
+
+    def parse_stats(self, stats: Dict[str, Any]) -> Dict[str, Any]:
+        """Parses the raw stats dictionary into a simplified format."""
+        
+        repo_files = stats.get("files", {}).get("repo", [])
+        packs_delete = stats.get("index", {}).get("packs_delete", [])
+
+        snapshots_count = 0
+        repo_size_compressed = 0
+        deletable_data = 0
+
+        for item in repo_files:
+            if item.get("tpe") == "snapshot":
+                snapshots_count = item.get("count", 0)
+            if item.get("tpe") == "pack":
+                repo_size_compressed = item.get("size", 0)
+
+        for item in packs_delete:
+            if item.get("blob_type") == "data":
+                deletable_data = item.get("size", 0)
+                break
+
+        return {
+            "snapshots_count": snapshots_count,
+            "deletable_data_size": deletable_data,
+            "compressed_repo_size": repo_size_compressed,
+            "total_size": stats.get("total_size", 0),
+            "total_file_count": stats.get("total_file_count", 0),
+        }
+
     def parse_snapshot(
         self, snapshot: Dict[str, Any], full_id: bool = False
     ) -> Dict[str, Any]:
@@ -411,6 +458,7 @@ class Rustic:
     def check_and_dump(self):
         self.check_config()
         self.dump_config()
+        return self
 
     def clean(self):
         """Forget old snapshots according to the policy and prune the repository"""
