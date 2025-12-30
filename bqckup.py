@@ -14,7 +14,7 @@ from classes.rustic import Rustic
 from classes.storage import Storage
 from classes.s3 import s3
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 from constant import STORAGE_CONFIG_PATH, VERSION, SITE_CONFIG_PATH, BQ_PATH
 from rich import print
 from rich.console import Group, Console
@@ -63,77 +63,102 @@ def migrate():
 
 
 @bq_cli.command()
-def summary(site=None):
+def summary(site: Optional[str] = None):
     from rich.progress import Progress, SpinnerColumn, TextColumn
     from helpers.datetime import interval_in_number
     from datetime import datetime
 
-    bqckups = Bqckup().list()
+    bqckup = Bqckup()
 
-    # search the site
-    if site is not None:
-        for i in list(bqckups):
-            if bqckups[i]["name"] != site:
-                del bqckups[i]
-        if not bqckups:
-            print(f"\nSite '{site}' not found\n")
-            return
+    all_backups: List[Dict] = (
+        [bqckup.detail(site)] if site else list(bqckup.list().values())
+    )  # pyright: ignore[reportAssignmentType]
 
-    for i in bqckups:
-        backup = bqckups[i]
-        # get backups from s3
-        backups = None
+    if not all_backups:
+        print("[yellow]No sites found.[/yellow]")
+        return
+
+    for site_config in all_backups:
+        storage_name = site_config["options"]["storage"]
+        backup_name = site_config["name"]
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             transient=True,
         ) as progress:
-            task = progress.add_task(description="Fetching details...", total=None)
-            _s3 = s3(backup["options"]["storage"])
-            backups = _s3.list(f"{_s3.root_folder_name}/{backup['name']}")
+            task = progress.add_task(
+                description=f"Fetching details for {backup_name}...", total=None
+            )
+
+            _s3 = s3(storage_name)
+            dates = _s3.get_backup_dates(backup_name, sort_by_date=True)
+            objects = {
+                prefix: obj
+                for prefix in dates
+                for obj in _s3.list(prefix=prefix).get("Contents", [])
+            }
+
             progress.update(task, completed=True)
 
-        # check if backup exists
-        if not backups or not backups.get("Contents"):
-            print(f"[red] No backup found for {site} [/red]")
-            return None
+        if not objects:
+            print(f"[red] No backup found for {backup_name} [/red]")
+            continue
 
-        contents = backups["Contents"]
-        last_content = max(contents, key=lambda x: x["LastModified"].timestamp())
-        last_folder = last_content["Key"].split("/")[2]
-        last_size = 0
-        total_size = 0
+        total_size = sum([i.get("Size") for i in objects.values()])
+        last_content = dates[-1]
 
-        # calculate the size
-        for content in contents:
-            total_size += content["Size"]
-            if content["Key"].split("/")[2] == last_folder:
-                last_size += content["Size"]
+        last_backup_size = objects[last_content].get("Size")
+        interval = site_config["options"]["interval"]
+        last_modified = objects[last_content]["LastModified"]
+        interval_days = interval_in_number(interval)
+        next_backup_date = datetime.fromtimestamp(
+            last_modified.timestamp() + (interval_days * 86400)
+        )
 
-        interval = backup["options"]["interval"]
-        last_modified = last_content["LastModified"]
-        to_compare = interval_in_number(interval)
+        rows = {
+            "Last Backup": last_modified.strftime("%d/%m/%Y %H:%M:%S"),
+            "Last Backup Size": format_size(last_backup_size),
+            "Total Backups Size": format_size(total_size),
+            "Total Files": len(objects),
+            "Storage Name": storage_name,
+            "Schedule": interval,
+            "Next Backup": next_backup_date.strftime("%d/%m/%Y 00:00:00"),
+            "Local Backup": "yes" if site_config["options"]["save_locally"] else "no",
+        }
 
-        print("\n================================================================\n")
-        print(f"Backup Name                     : {backup['name']}")
+        orders = [
+            "Last Backup",
+            "Last Backup Size",
+            "Total Backups Size",
+            "Total Files",
+            "Storage Name",
+            "Schedule",
+            "Next Backup",
+            "Local Backup",
+        ]
+
+        table = Table(show_header=False, box=None, padding=(0, 2, 0, 0))
+        table.add_column(style="cyan")
+        table.add_column(style="white")
+
+        for key in orders:
+            if not rows.get(key):
+                continue
+
+            table.add_row(key, f": {rows[key]}")
+
         print(
-            f"Last Backup                     : {last_modified.strftime('%d/%m/%Y %H:%M:%S')}"
+            Panel(
+                table,
+                title=f"Backup Summary for [bold]{backup_name}[/bold]",
+                border_style="green",
+                expand=False,
+                title_align="left",
+            )
         )
-        print(
-            f"Last backup file size and name  : {format_size( last_size)} ({last_folder}) "
-        )
-        print(f"Total size of a bqckup          : {format_size( total_size)}")
-        print(f"Total files                     : {backups['KeyCount']}")
-        print(f"Storage Name                    : {backup['options']['storage']}")
-        print(f"Schedule                        : {interval}")
-        print(
-            f"Next bqckup                     : {datetime.fromtimestamp(last_modified.timestamp() + (to_compare * 86400)).strftime('%d/%m/%Y 00:00:00')}"
-        )
-        print(
-            f"Local Backup                    : {'yes' if backup['options']['save_locally'] else 'no'} "
-        )
-    print("\n================================================================\n")
-    print(f"Visit: https://bqckup.com\n")
+
+    print("\nVisit: https://bqckup.com\n")
 
 
 @bq_cli.command()
@@ -482,7 +507,7 @@ def get_list(
         print(f"[red] No backup found for {name} [/red]")
         return None
 
-    table = Table("#", "Key", "Created at")
+    table = Table("#", "Key", "Size", "Created at")
     snapshots_table = Table("No", "Snapshot IDs", "Paths", "Size", "Created At", title="Incremental Backups")
 
     if show_snapshots:
@@ -512,6 +537,7 @@ def get_list(
                 table.add_row(
                     str(i + 1),
                     backup["Key"],
+                    format_size(backup["Size"]),
                     backup["LastModified"].strftime("%d %b %Y %H:%M:%S"),
                 )
 
