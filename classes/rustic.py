@@ -91,6 +91,8 @@ class Rustic:
                 **self.__subprocess_args,  # type: ignore
             )
 
+            self._write_stderr_to_log(output.stderr)
+
             # Example outputs:
             # NixOS package: `rustic 0.10.2`
             # Manual install (release/build): `rustic v0.10.2-1-g189b17c`
@@ -103,6 +105,9 @@ class Rustic:
             return match.group(1)
 
         except (CalledProcessError, FileNotFoundError, IndexError) as e:
+            if isinstance(e, CalledProcessError):
+                self._write_stderr_to_log(e.stderr)
+
             if is_debug:
                 traceback.print_exc()
             raise RusticError(f"Could not determine rustic version. Error: {e}") from e
@@ -113,13 +118,25 @@ class Rustic:
         return tuple(map(int, self.version.split(".")))
 
     @property
-    def root_folder_name(self):
-        return bqckup_config().read("bqckup", "root_folder_name")
+    def root_folder_name(self) -> str:
+        return bqckup_config().read("bqckup", "root_folder_name") or "bqckup"
+
+    @property
+    def log_file(self) -> Path:
+        return (
+            Path(BQ_PATH) / "log" / self.site_config["name"] / "rustic"
+        ).with_suffix(".log")
 
     @staticmethod
     def is_enabled(config: dict) -> bool:
         incremental = config.get("incremental", {})
         return incremental and (incremental.get("enabled") or incremental.get("enable"))
+
+    def _write_stderr_to_log(self, stderr: Optional[str]):
+        if stderr and stderr.strip():
+            self.log_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            with self.log_file.open("a") as log:
+                log.write(stderr)
 
     def _parse_json_stream(self, stream: str) -> List[Any]:
         """Parses a string that may contain multiple concatenated JSON objects."""
@@ -213,7 +230,9 @@ class Rustic:
                 ],
                 **self.__subprocess_args,  # type: ignore
             )
+            self._write_stderr_to_log(output.stderr)
         except CalledProcessError as e:
+            self._write_stderr_to_log(e.stderr)
             raise RusticCommandError(e.returncode, e.cmd, e.stdout, e.stderr) from e
 
         parsed_output = json.loads(output.stdout)
@@ -296,7 +315,7 @@ class Rustic:
 
     def check_repository(self):
         try:
-            subprocess.run(
+            output = subprocess.run(
                 [
                     "rustic",
                     "check",
@@ -305,7 +324,9 @@ class Rustic:
                 ],
                 **self.__subprocess_args,  # type: ignore
             )
+            self._write_stderr_to_log(output.stderr)
         except subprocess.CalledProcessError as e:
+            self._write_stderr_to_log(e.stderr)
             raise RusticCheckError(e.returncode, e.cmd, e.output, e.stderr) from e
 
     def backup(self) -> Dict[str, Union[int, str]]:
@@ -329,7 +350,9 @@ class Rustic:
                 ],
                 **self.__subprocess_args,  # type: ignore
             )
+            self._write_stderr_to_log(output.stderr)
         except subprocess.CalledProcessError as e:
+            self._write_stderr_to_log(e.stderr)
             raise RusticBackupError(e.returncode, e.cmd, e.output, e.stderr) from e
 
         parsed_output: dict = json.loads(output.stdout)
@@ -374,9 +397,11 @@ class Rustic:
             ]  # command: rustic -P domain.com --filter-paths /var/www/html restore latest:/var/www/html /var/www/html
 
             try:
-                subprocess.run(command, **self.__subprocess_args)  # type: ignore
+                output = subprocess.run(command, **self.__subprocess_args)  # type: ignore
+                self._write_stderr_to_log(output.stderr)
                 print(f"[OK] {path}")
             except subprocess.CalledProcessError as e:
+                self._write_stderr_to_log(e.stderr)
                 raise RusticRestoreError(e.returncode, e.cmd, e.output, e.stderr) from e
             except Exception as e:
                 if is_debug():
@@ -480,6 +505,7 @@ class Rustic:
                 command,
                 **self.__subprocess_args,  # type: ignore
             )
+            self._write_stderr_to_log(output.stderr)
 
             if output.stdout.strip():
                 all_outputs = self._parse_json_stream(output.stdout)
@@ -496,6 +522,9 @@ class Rustic:
                 print(f"Successfully removed {removed_count} snapshots.")
             else:
                 print("No old incremental snapshots to remove")
+        except subprocess.CalledProcessError as e:
+            self._write_stderr_to_log(e.stderr)
+            raise RusticCleanError from e
         except json.JSONDecodeError as e:
             raise RusticCleanError(f"Failed to parse JSON output:\n{output.stdout}") from e
         except Exception as e:
