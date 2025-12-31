@@ -14,7 +14,7 @@ from classes.rustic import Rustic
 from classes.storage import Storage
 from classes.s3 import s3
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 from constant import STORAGE_CONFIG_PATH, VERSION, SITE_CONFIG_PATH, BQ_PATH
 from rich import print
 from rich.console import Group, Console
@@ -63,77 +63,152 @@ def migrate():
 
 
 @bq_cli.command()
-def summary(site=None):
+def summary(site: Optional[str] = None):
     from rich.progress import Progress, SpinnerColumn, TextColumn
     from helpers.datetime import interval_in_number
     from datetime import datetime
+    from models.log import Log
 
-    bqckups = Bqckup().list()
+    bqckup = Bqckup()
 
-    # search the site
-    if site is not None:
-        for i in list(bqckups):
-            if bqckups[i]["name"] != site:
-                del bqckups[i]
-        if not bqckups:
-            print(f"\nSite '{site}' not found\n")
-            return
+    all_backups: List[Dict] = (
+        [bqckup.detail(site)] if site else list(bqckup.list().values())
+    )  # pyright: ignore[reportAssignmentType]
 
-    for i in bqckups:
-        backup = bqckups[i]
-        # get backups from s3
-        backups = None
+    if not all_backups:
+        print("[yellow]No sites found.[/yellow]")
+        return
+
+    for site_config in all_backups:
+        storage_name = site_config["options"]["storage"]
+        backup_name = site_config["name"]
+        is_incremental = Rustic.is_enabled(site_config)
+        rustic_stats = None
+
+        last_log = (
+            Log.select()
+            .where(Log.name == backup_name)
+            .order_by(Log.id.desc())
+            .get_or_none()
+        )
+
+        last_successful_log = (
+            Log.select()
+            .where((Log.name == backup_name) & (Log.status == Log.__SUCCESS__))
+            .order_by(Log.id.desc())
+            .get_or_none()
+        )
+
+        last_backup_status = "[yellow]N/A[/yellow]"
+        is_running = False
+
+        if last_log:
+            is_running = last_log.status == Log.__ON_PROGRESS__
+            last_backup_status = {
+                Log.__ON_PROGRESS__: "[yellow]On Progress[/yellow]",
+                Log.__SUCCESS__: "[green]Success[/green]",
+                Log.__FAILED__: "[red]Failed[/red]",
+            }.get(last_log.status, "[red]Unknown[/red]")
+
+        next_backup_date = "[yellow]N/A[/yellow]"
+        if last_successful_log:
+            interval = site_config["options"]["interval"]
+            interval_days = interval_in_number(interval)
+            next_backup_date = datetime.fromtimestamp(
+                last_successful_log.created_at + (interval_days * 86400)
+            ).strftime("%d/%m/%Y 00:00:00")
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             transient=True,
         ) as progress:
-            task = progress.add_task(description="Fetching details...", total=None)
-            _s3 = s3(backup["options"]["storage"])
-            backups = _s3.list(f"{_s3.root_folder_name}/{backup['name']}")
+            task = progress.add_task(
+                description=f"fetching details for {backup_name}...", total=None
+            )
+
+            _s3 = s3(storage_name)
+            dates = _s3.get_backup_dates(backup_name, sort_by_date=True)
+            objects = {
+                prefix: obj
+                for prefix in dates
+                for obj in _s3.list(prefix=prefix).get("Contents", [])
+            }
+
+            if is_incremental:
+                rustic_stats = Rustic(
+                    site_config=site_config,
+                    storage_config=Storage().get_storage_detail(storage_name),
+                ).check_and_dump().get_stats()
+
             progress.update(task, completed=True)
 
-        # check if backup exists
-        if not backups or not backups.get("Contents"):
-            print(f"[red] No backup found for {site} [/red]")
-            return None
+        rows = {
+            "Status": "[yellow]Running[/yellow]" if is_running else "[green]Idle[/green]",
+            "Last Backup Status": last_backup_status,
+            "Storage Name": storage_name,
+            "Schedule": site_config["options"]["interval"],
+            "Local Backup": "yes" if site_config["options"]["save_locally"] else "no",
+            "Next Backup": next_backup_date,
+        }
 
-        contents = backups["Contents"]
-        last_content = max(contents, key=lambda x: x["LastModified"].timestamp())
-        last_folder = last_content["Key"].split("/")[2]
-        last_size = 0
-        total_size = 0
+        if objects:
+            total_size = sum([i.get("Size") for i in objects.values()])
+            last_content = dates[-1]
+            last_backup_size = objects[last_content].get("Size")
+            last_modified = objects[last_content]["LastModified"]
 
-        # calculate the size
-        for content in contents:
-            total_size += content["Size"]
-            if content["Key"].split("/")[2] == last_folder:
-                last_size += content["Size"]
+            rows.update(
+                {
+                    "Last Backup": last_modified.strftime("%d/%m/%Y %H:%M:%S"),
+                    "Last Backup Size": format_size(last_backup_size),
+                    "Total Backups Size": format_size(total_size),
+                    "Total Files": len(objects),
+                }
+            )
 
-        interval = backup["options"]["interval"]
-        last_modified = last_content["LastModified"]
-        to_compare = interval_in_number(interval)
+        if is_incremental and rustic_stats:
+            rows["Incremental Snapshots"] = rustic_stats.get("snapshots_count", "N/A")
+            rows["Repository Size"] = format_size(
+                rustic_stats.get("compressed_repo_size", 0)
+            )
 
-        print("\n================================================================\n")
-        print(f"Backup Name                     : {backup['name']}")
+        orders = [
+            "Status",
+            "Last Backup",
+            "Last Backup Status",
+            "Last Backup Size",
+            "Total Backups Size",
+            "Total Files",
+            "Repository Size",
+            "Incremental Snapshots",
+            "Storage Name",
+            "Schedule",
+            "Next Backup",
+            "Local Backup",
+        ]
+
+        table = Table(show_header=False, box=None, padding=(0, 2, 0, 0))
+        table.add_column(style="cyan")
+        table.add_column(style="white")
+
+        for key in orders:
+            if not rows.get(key):
+                continue
+
+            table.add_row(key, f": {rows[key]}")
+
         print(
-            f"Last Backup                     : {last_modified.strftime('%d/%m/%Y %H:%M:%S')}"
+            Panel(
+                table,
+                title=f"Backup Summary for [bold]{backup_name}[/bold]",
+                border_style="green",
+                expand=False,
+                title_align="left",
+            )
         )
-        print(
-            f"Last backup file size and name  : {format_size( last_size)} ({last_folder}) "
-        )
-        print(f"Total size of a bqckup          : {format_size( total_size)}")
-        print(f"Total files                     : {backups['KeyCount']}")
-        print(f"Storage Name                    : {backup['options']['storage']}")
-        print(f"Schedule                        : {interval}")
-        print(
-            f"Next bqckup                     : {datetime.fromtimestamp(last_modified.timestamp() + (to_compare * 86400)).strftime('%d/%m/%Y 00:00:00')}"
-        )
-        print(
-            f"Local Backup                    : {'yes' if backup['options']['save_locally'] else 'no'} "
-        )
-    print("\n================================================================\n")
-    print(f"Visit: https://bqckup.com\n")
+
+    print("\nVisit: https://bqckup.com\n")
 
 
 @bq_cli.command()
@@ -150,12 +225,11 @@ def history(site=None, filter_latest_days: int = 7):
 
     def print_table(logs, table):
         for log in logs:
-            # format sytle for status
-            if log.status == Log.__SUCCESS__:
-                status = "[green]Success[/green]"
-            else:
-                status = "[red]Failed[/red]"
-
+            status = {
+                Log.__SUCCESS__: "[green]Success[/green]",
+                Log.__ON_PROGRESS__: "[yellow]On Progress[/yellow]",
+                Log.__FAILED__: "[red]Failed[/red]",
+            }.get(log.status, "[red]Unknown[/red]")
             last_backup = datetime.fromtimestamp(log.created_at).strftime(
                 "%d/%m/%Y %H:%M:%S"
             )
@@ -482,7 +556,7 @@ def get_list(
         print(f"[red] No backup found for {name} [/red]")
         return None
 
-    table = Table("#", "Key", "Created at")
+    table = Table("#", "Key", "Size", "Created at")
     snapshots_table = Table("No", "Snapshot IDs", "Paths", "Size", "Created At", title="Incremental Backups")
 
     if show_snapshots:
@@ -512,6 +586,7 @@ def get_list(
                 table.add_row(
                     str(i + 1),
                     backup["Key"],
+                    format_size(backup["Size"]),
                     backup["LastModified"].strftime("%d %b %Y %H:%M:%S"),
                 )
 
