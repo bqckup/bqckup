@@ -13,10 +13,11 @@ from classes.progress import ProgressSpinner
 from classes.yml_checker import Yml_Checker
 from classes.s3 import s3
 from helpers.hook import send_backup_summary
+from helpers.backup import get_backups_to_keep
 from helpers.utility import is_debug
 from models.log import Log
 from models.notification_log import NotificationLog
-from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH, MAX_RETRIES, BACKOFF
+from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH, MAX_RETRIES, BACKOFF, VERSION
 from datetime import datetime
 from helpers.file import remove_folder
 from hashlib import sha256
@@ -56,7 +57,6 @@ class Bqckup:
         description=None,
         messages=None,
         additional_data=None,
-        footer=None,
         color=15548997,
     ):
         fields = [
@@ -79,7 +79,7 @@ class Bqckup:
                     "color": color,
                     "fields": fields,
                     "footer": {
-                        "text": footer,
+                        "text": f"Bqckup v{VERSION}",
                     }
                 }
             ]
@@ -127,6 +127,10 @@ class Bqckup:
 
                 if config.get('options').get('provider') == 's3':
                     Storage().get_storage_detail(config.get('options').get('storage'))
+
+                if config.get("options").get("provider") == "local" and \
+                    not config.get("options").get("destination"):
+                    raise Exception("'destination' path must be configured for local provider")
             return True
         except Exception as e:
             print(f"[red]Error: {e}[/red]")
@@ -171,41 +175,80 @@ class Bqckup:
     def get_logs(self, name: str):
         return list(Log().select().where(Log.name == name))
 
-    def _clean_old_backups(self, backup_config: Dict[str, Any]) -> None:
+    def _clean_old_backups(self, site_config: Dict[str, Any]) -> None:
         print("Removing old backups...")
 
         try:
-            _s3 = s3(storage_name=backup_config.get("options", {}).get("storage"))
-            site_name: str = backup_config.get("name", "")
-            keep_last = int(backup_config.get("options", {}).get("retention", 3))
+            _s3 = s3(storage_name=site_config.get("options", {}).get("storage"))
+            base_prefix = Config().read("bqckup", "root_folder_name") or "bqckup"
+            site_name: str = site_config.get("name", "")
+            retentions = site_config.get("options", {}).get("keep", {})
 
-            backup_dates = _s3.get_backup_dates(site_name=site_name, sort_by_date=True)
-            backup_to_delete = backup_dates[:-keep_last]
+            backup_dates = _s3.get_backup_dates(
+                site_name=site_name, sort_by_date=False, with_prefix=False
+            )
+
+            if not backup_dates:
+                print("No backups found to remove.")
+                return
+
+            policy = {
+                "daily": int(retentions.get("daily")),
+                "weekly": int(retentions.get("weekly")),
+                "monthly": int(retentions.get("monthly")),
+            }
+
+            if not retentions:
+                policy["daily"] = site_config.get("options", {}).get("retention", 7)
+
+            dates = []
+            for date in backup_dates:
+                try:
+                    dates.append(datetime.strptime(date, "%d-%B-%Y"))
+                except (ValueError, IndexError) as e:
+                    print(f"[yellow]Warning: Could not parse date {e}. Skipping.[/yellow]")
+
+            if not dates:
+                print("No valid backup dates found to apply policy.")
+                return
+
+            dates_to_keep = get_backups_to_keep(dates, policy)
+            backup_to_delete = {
+                date.strftime("%d-%B-%Y")
+                for date in dates
+                if date not in dates_to_keep
+            }
 
             if not backup_to_delete:
                 print("No old backup to delete")
+                if dates_to_keep:
+                    print(f"{len(dates_to_keep)} backups are being kept.")
                 return
 
             objects = [
                 obj.get("Key")
                 for prefix in backup_to_delete
-                for obj in _s3.list(prefix=prefix).get("Contents", [])
+                for obj in _s3.list(prefix=f"{base_prefix}/{site_name}/{prefix}").get("Contents", [])
                 if obj.get("Key")
             ]
 
-            _s3.delete_objects(objects=objects)
+            if objects:
+                _s3.delete_objects(objects=objects)
+                print(f"Deleted {len(objects)} objects from {len(backup_to_delete)} old backups.")
+            else:
+                print("No objects found to delete for the specified backup dates.")
 
         except Exception as e:
             if is_debug():
                 traceback.print_exc()
 
-            err_msg = f"Failed to Clean Old Backups for {backup_config.get('name')}"
+            err_msg = f"Failed to Clean Old Backups for {site_config.get('name')}"
             print(f"[red]Error: {err_msg}.[/red]")
             self._send_notification(
-                backup_name=backup_config.get("name"),
+                backup_name=site_config.get("name"),
                 title=err_msg,
                 description=f"An error occurred while trying to clean old backups.\n\n**Error:**\n```{e}```",
-                color=15158332,  # Red color
+                color=15158332,  # red
             )
 
     def _should_skip_backup(self, backup: Dict[str, Any], force: bool) -> bool:
@@ -275,10 +318,7 @@ class Bqckup:
         site: Optional[str] = None,
         incremental: Optional[bool] = None,
     ):
-        if site:
-            backups = {0: self.detail(site)}
-        else:
-            backups = self.list()
+        backups = {0: self.detail(site)} if site else self.list()
 
         if not backups:
             print("No backups found")
@@ -287,12 +327,16 @@ class Bqckup:
         valid_backups = {}
         for k, v in backups.items():
             try:
-                if self.validate_config(v['name']):
+                if self.validate_config(v["name"]):
                     valid_backups[k] = v
                 else:
                     print(f"[red]Validation for {v['name']} failed[/red]\n")
             except Exception as e:
                 print(f"[red]Error during validation for {v['name']}: {e}[/red]\n")
+
+        if not valid_backups:
+            print("No valid backups found")
+            return
 
         for backup in valid_backups.values():
             log = None
@@ -463,9 +507,9 @@ class Bqckup:
                         "2. There might be an issue with the database backup process.\n\n"
                         "We recommend the following steps:\n"
                         "1. Check the storage (S3) bucket {bucket_name}. If the database size is less than 1 KB or seems unusual, it likely means the backup did not complete successfully.\n"
-                        "2. Attempt to force a backup by running `bqckup --site {domain_name} --force` to ensure the backup process is functioning correctly."
+                        "2. Attempt to force a backup by running `bqckup --site {domain_name} --force` to ensure the backup process is functioning correctly.\n"
+                        "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"
                     ),
-                    "footer": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup",
                     "additional_data": {
                         "name": "File name",
                         "value": os.path.basename(compressed_file),
@@ -475,9 +519,6 @@ class Bqckup:
             
             if backup.get('options').get('provider') == 'local':
                 destination = backup.get('options').get('destination')
-                if not destination:
-                    raise Exception("'destination' path must be configured for local provider")
-
                 backup_path = os.path.join(destination, backup_folder)
                 
                 if not os.path.exists(backup_path):
@@ -678,7 +719,7 @@ class Bqckup:
             result["notification"] = {
                  "title": f"Incremental Backup Failed for {site_config['name']}",
                  "messages": err_detail,
-                 "additional_data": { "name": "Error Message", "value": err_msg, "inline": True},
+                 "additional_data": { "name": "Error Message", "value": err_msg, "inline": False},
                  "description": (
                     "An error occurred while backup.\n"
                     "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"

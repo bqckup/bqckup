@@ -73,7 +73,7 @@ class s3(object):
 
         return sum([int(f["Size"]) for f in files["Contents"]])
 
-    def get_backup_dates(self, site_name: str, sort_by_date: bool = True) -> List[str]:
+    def get_backup_dates(self, site_name: str, sort_by_date: bool = True, with_prefix: bool = True) -> List[str]:
         """
         Lists valid backup directories for a given site.
 
@@ -89,8 +89,8 @@ class s3(object):
 
         Example Output:
         [
-            "bqckups/my-site/01-January-2025/",
-            "bqckups/my-site/02-January-2025/"
+            "bqckup/my-site/01-January-2025/",
+            "bqckup/my-site/02-January-2025/"
         ]
         """
 
@@ -106,8 +106,13 @@ class s3(object):
                 continue
 
             dir_name = os.path.basename(prefix.rstrip(delimiter))
-            if BACKUP_DATE_REGEX.match(dir_name):
-                backup_prefixes.append(prefix)
+            if not BACKUP_DATE_REGEX.match(dir_name):
+                continue
+
+            if not with_prefix:
+                prefix = prefix.strip("/").split("/")[-1]
+
+            backup_prefixes.append(prefix)
 
         if sort_by_date:
             backup_prefixes.sort(
@@ -166,8 +171,6 @@ class s3(object):
             if is_verbose():
                 for k in objects:
                     print(f"Removed {k}")
-
-            print(f"Deleted {len(objects)} objects")
 
         except Exception as e:
             raise Exception(f"failed to delete objects in bucket: {e}") from e

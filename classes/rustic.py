@@ -11,7 +11,7 @@ import re
 
 from constant import BQ_PATH, RUSTIC_CONFIG_PATH
 from classes.config import Config as bqckup_config
-from helpers.utility import is_debug
+from helpers.utility import is_debug, is_verbose
 
 from rich import print  # pyright: ignore[reportMissingImports]
 
@@ -431,11 +431,17 @@ class Rustic:
                 ],  # !/tmp/dir1 # see https://github.com/rustic-rs/rustic/discussions/1194#discussioncomment-10298116
             },
             "forget": {
-                "keep-last": int(
-                    self.site_config.get("options", {}).get("retention", 7)
-                )
+                "keep-last": 1,
+                "keep-daily": 7,
+                "keep-weekly": 4,
+                "keep-monthly": 4,
             },
         }
+
+        keep = self.site_config.get("options", {}).get("keep", {})
+        for period in ("daily", "weekly", "monthly"):
+            if value := keep.get(period):
+                config["forget"][f"keep-{period}"] = value
 
         # skip saving of the snapshot if it is identical to the parent (unchanged)
         if self.version_tuple <= (0, 9, 5):
@@ -472,15 +478,15 @@ class Rustic:
             self.site_config["name"],
         ]
 
-        removed_count = 0
         try:
             print(f"Cleaning repository for '{self.site_config['name']}'...")
 
+            removed_count = 0
             output: CompletedProcess = subprocess.run(
                 command,
                 **self.__subprocess_args,  # type: ignore
             )
-
+            
             if output.stdout.strip():
                 all_outputs = self._parse_json_stream(output.stdout)
 
@@ -489,8 +495,20 @@ class Rustic:
                         continue  # skip non-list objects from stream (e.g. prune summary)
 
                     for snapshot_details in self._iter_snapshots(data):
-                        if isinstance(snapshot_details, dict) and not snapshot_details.get("keep", True):
+                        id = snapshot_details.get("id", "")[:8]
+                        reason = {", ".join(snapshot_details.get("reasons", []))}
+
+                        if snapshot_details.get("keep", True):
+                            if is_verbose():
+                                print(f"Kept snapshot {id} - reason : {reason}")
+
+                            continue
+
+                        if isinstance(snapshot_details, dict):
                             removed_count += 1
+
+                            if is_verbose():
+                                print(f"Removed snapshot {id} - reason : {reason}")
 
             if removed_count > 0:
                 print(f"Successfully removed {removed_count} snapshots.")
