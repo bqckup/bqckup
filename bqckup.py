@@ -1,4 +1,5 @@
 import getpass
+from subprocess import CalledProcessError
 import traceback
 from typing_extensions import Annotated
 import typer
@@ -15,7 +16,7 @@ from classes.storage import Storage
 from classes.s3 import s3
 from pathlib import Path
 from typing import Dict, List, Optional
-from constant import STORAGE_CONFIG_PATH, VERSION, SITE_CONFIG_PATH, BQ_PATH
+from constant import VERSION, SITE_CONFIG_PATH, BQ_PATH
 from rich import print
 from rich.console import Group, Console
 from rich.table import Table
@@ -136,10 +137,15 @@ def summary(site: Optional[str] = None):
             }
 
             if is_incremental:
-                rustic_stats = Rustic(
-                    site_config=site_config,
-                    storage_config=Storage().get_storage_detail(storage_name),
-                ).check_and_dump().get_stats()
+                try:
+                    rustic_stats = Rustic(
+                        site_config=site_config,
+                        storage_config=Storage().get_storage_detail(storage_name),
+                    ).check_and_dump().get_stats()
+                except Exception as e:
+                    if is_debug() and isinstance(e, CalledProcessError):
+                        print(e.stderr)
+                    print(f"[red] Failed to get rustic stats, {e} [/red]")
 
             progress.update(task, completed=True)
 
