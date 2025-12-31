@@ -45,8 +45,32 @@ class Report:
                 with Progress(SpinnerColumn(),TextColumn("[progress.description]{task.description}"),transient=True,) as progress:
                     task = progress.add_task(description=f"Fetching and calculate data for storage '{storage}'...", total=None)
 
-                    # get data from s3
-                    backups = s3(storage).list()
+                    _s3 = s3(storage)
+                    sites_key = _s3.list(
+                        prefix=f"{_s3.root_folder_name}/", delimiter="/"
+                    )
+
+                    site_prefixes = [
+                        p.get("Prefix")
+                        for p in sites_key.get("CommonPrefixes", [])
+                        if p.get("Prefix")
+                    ]
+
+                    all_backups = []
+                    for site_prefix in site_prefixes:
+                        site_name = site_prefix.strip("/").split("/")[-1]
+
+                        backup_date_prefixes = _s3.get_backup_dates(
+                            site_name=site_name, sort_by_date=False
+                        )
+
+                        for backup_prefix in backup_date_prefixes:
+                            objects = _s3.list(prefix=backup_prefix).get("Contents")
+                            if objects:
+                                all_backups.extend(objects)
+
+                    backups = {"Contents": all_backups}
+
                     # get data from log
                     failed_logs = list(Log().select().where((Log.created_at >= first_day_of_month) & (Log.storage == storage) & (Log.status == Log.__FAILED__)).execute())
 
