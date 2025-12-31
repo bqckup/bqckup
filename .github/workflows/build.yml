@@ -1,48 +1,87 @@
-name: check-installation
+name: build-and-release
 on:
-  workflow_dispatch: 
-  push: 
+  workflow_dispatch:
+  push:
     branches:
       - 1x
+
 jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu:20, ubuntu-22.04]
-    runs-on: ${{ matrix.os }}
+        include:
+          - container: ubuntu:20.04
+            python: "3.8"
+            os: ubuntu-20.04
+          - container: ubuntu:22.04
+            python: "3.10"
+            os: ubuntu-22.04
+
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.container }}
+
     steps:
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y \
+            python3 \
+            python3-dev \
+            python3-pip \
+            python3-venv \
+            make git
+
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+      - name: Setup Python
+        run: |
+          update-alternatives --install /usr/bin/python python /usr/bin/python${{ matrix.python }} 1
+          update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${{ matrix.python }} 1
 
       - name: Build & Install
         run: |
           make && make install
-        
-      - name: get bqckup version
+
+      - name: Get bqckup version
         run: |
           version=$(python -c "exec(open('constant/__init__.py').read()); print(f'v{VERSION}')")
           echo "VERSION=$version" >> $GITHUB_ENV
 
-      - uses: a7ul/tar-action@v1.2.0
-        id: compress
+      - name: Create tarball
+        run: |
+          cd ./dist
+          tar -czf ../bqckup-${{ env.VERSION }}-${{ matrix.os }}.tar.gz bqckup
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          command: c
-          cwd: ./dist
-          files: |
-            bqckup
-          outPath: ./bqckup-${{ env.VERSION }}-${{ matrix.os }}.tar.gz
+          name: bqckup-${{ matrix.os }}
+          path: ./bqckup-${{ env.VERSION }}-${{ matrix.os }}.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get bqckup version
+        run: |
+          version=$(python3 -c "exec(open('constant/__init__.py').read()); print(f'v{VERSION}')")
+          echo "VERSION=$version" >> $GITHUB_ENV
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
       - name: Create GitHub Release
-        id: create_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
           name: ${{ env.VERSION }}
           generate_release_notes: true
-          files: |
-            ./bqckup-${{ env.VERSION }}-${{ matrix.os }}.tar.gz
+          files: artifacts/**/*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
