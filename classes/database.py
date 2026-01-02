@@ -3,7 +3,7 @@ import logging
 import subprocess
 import os
 from datetime import datetime
-from pathlib import Path
+from constant import LOG_DIR
 from rich import print
 from typing import Any, List, Dict
 
@@ -13,7 +13,7 @@ class DatabaseException(Exception):
     pass
 
 
-DATABASE_LOG = Path("/var/log/bqckup/database").with_suffix(".log")
+DATABASE_LOG = LOG_DIR / "database.log"
 
 """
 should be compatible with to other database type
@@ -27,9 +27,6 @@ class Database:
     def __init__(self, type="mysql"):
         self.type = type.lower()
 
-        if not DATABASE_LOG.parent.exists():
-            DATABASE_LOG.parent.mkdir(parents=True, exist_ok=True)
-
     def export(
         self,
         output: str,
@@ -39,6 +36,9 @@ class Database:
         db_host: str = "localhost",
         db_port: int = 3306,
     ) -> None:
+        if not DATABASE_LOG.parent.exists():
+            DATABASE_LOG.parent.mkdir(parents=True, exist_ok=True)
+
         label = f"{db_user}@{db_host}:{db_port}/{db_name}"
         command = [
             "mysqldump",
