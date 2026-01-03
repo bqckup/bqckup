@@ -4,8 +4,9 @@ import subprocess
 import os
 from datetime import datetime
 from constant import LOG_DIR
+from pathlib import Path
 from rich import print
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 
 
 # Database Exceptions
@@ -35,9 +36,12 @@ class Database:
         db_name: str,
         db_host: str = "localhost",
         db_port: int = 3306,
+        log_dir: Optional[str] = None,
     ) -> None:
-        if not DATABASE_LOG.parent.exists():
-            DATABASE_LOG.parent.mkdir(parents=True, exist_ok=True)
+        log_file = Path(log_dir) / "database.log" if log_dir else DATABASE_LOG
+
+        if not log_file.parent.exists():
+            log_file.parent.mkdir(parents=True, exist_ok=True)
 
         label = f"{db_user}@{db_host}:{db_port}/{db_name}"
         command = [
@@ -51,9 +55,9 @@ class Database:
             db_name,
         ]
 
-        with open(DATABASE_LOG, "ab") as log:
+        with open(log_file, "ab") as log:
             now = datetime.now()
-            log.write(f"Database export {label} > {output} at {now}".encode())
+            log.write(f"Database export {label} > {output} at {now}\n".encode())
             log.flush()
 
             process = subprocess.Popen(
@@ -71,7 +75,7 @@ class Database:
 
                 if process.returncode != 0:
                     raise DatabaseException(
-                        f"Database export failed, see log {DATABASE_LOG} for details: return code {process.returncode}"
+                        f"Database export failed, see log {log_file} for details: return code {process.returncode}"
                     )
 
             except KeyboardInterrupt:

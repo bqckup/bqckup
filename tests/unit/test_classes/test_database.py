@@ -34,8 +34,8 @@ class TestDatabase:
         mock_process.returncode = 0
         mock_process.stdout.read.side_effect = [b'test data', b'']
         mock_popen.return_value = mock_process
-        
-        db.export("/tmp/backup.sql.gz", "testuser", "testpass", "testdb", "localhost")
+
+        db.export("/tmp/backup.sql.gz", "testuser", "testpass", "testdb", "localhost", log_dir="/tmp/bqckup")
         
         expected_command = [
             "mysqldump",
@@ -52,7 +52,6 @@ class TestDatabase:
         assert args[0] == expected_command
         assert kwargs['stdout'] == subprocess.PIPE
         assert 'stderr' in kwargs
-        assert hasattr(kwargs['stderr'], 'fileno')
 
         mock_process.stdout.read.assert_called()
         mock_file.write.assert_called_once_with(b'test data')

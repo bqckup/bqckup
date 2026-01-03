@@ -17,9 +17,6 @@ source venv/bin/activate
 echo "Installing dependencies..."
 pip install -r requirements.txt
 
-# Configure environment variable
-export BQCKUP_LOG_DIR=$(pwd)/tmp
-
 # Run unit tests
 echo "Running unit tests..."
 python -m pytest tests/unit/ -v
