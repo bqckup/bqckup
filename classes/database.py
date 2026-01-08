@@ -1,13 +1,20 @@
 import gzip
 import logging
 import subprocess
-from typing import Any, List, Dict
+import os
+from datetime import datetime
+from constant import LOG_DIR
+from pathlib import Path
+from rich import print
+from typing import Any, List, Dict, Optional
 
 
 # Database Exceptions
 class DatabaseException(Exception):
     pass
 
+
+DATABASE_LOG = LOG_DIR / "database.log"
 
 """
 should be compatible with to other database type
@@ -29,7 +36,14 @@ class Database:
         db_name: str,
         db_host: str = "localhost",
         db_port: int = 3306,
+        log_dir: Optional[str] = None,
     ) -> None:
+        log_file = Path(log_dir) / "database.log" if log_dir else DATABASE_LOG
+
+        if not log_file.parent.exists():
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+
+        label = f"{db_user}@{db_host}:{db_port}/{db_name}"
         command = [
             "mysqldump",
             f"--user={db_user}",
@@ -41,21 +55,44 @@ class Database:
             db_name,
         ]
 
-        with gzip.open(output, "wb") as f:
+        with open(log_file, "ab") as log:
+            now = datetime.now()
+            log.write(f"Database export {label} > {output} at {now}\n".encode())
+            log.flush()
+
             process = subprocess.Popen(
                 command,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=log,
             )
 
-            for chunk in iter(lambda: process.stdout.read(4096), b""):
-                f.write(chunk)
+            try:
+                with gzip.open(output, "wb") as gz:
+                    for chunk in iter(lambda: process.stdout.read(4096), b""):
+                        gz.write(chunk)
 
-            process.wait()
+                process.wait()
 
-            if process.returncode != 0:
-                error = process.stderr.read().decode()
-                raise Exception(error)
+                if process.returncode != 0:
+                    raise DatabaseException(
+                        f"Database export failed, see log {log_file} for details: return code {process.returncode}"
+                    )
+
+            except KeyboardInterrupt:
+                print("\nDatabase export cancelled by user.")
+                process.terminate()
+
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+
+                if os.path.exists(output):
+                    os.remove(output)
+                    print(f"Incomplete file {output} removed.")
+
+                raise
 
     def test_connection(self, credentials: dict) -> None:
         import mysql.connector

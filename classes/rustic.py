@@ -9,7 +9,7 @@ import traceback
 import subprocess
 import re
 
-from constant import BQ_PATH, RUSTIC_CONFIG_PATH
+from constant import LOG_DIR, RUSTIC_CONFIG_PATH
 from classes.config import Config as bqckup_config
 from helpers.utility import is_debug
 
@@ -121,17 +121,19 @@ class Rustic:
     def root_folder_name(self) -> str:
         return bqckup_config().read("bqckup", "root_folder_name") or "bqckup"
 
+    @property
+    def log_file(self) -> Path:
+        return LOG_DIR / "rustic.log"
+
     @staticmethod
     def is_enabled(config: dict) -> bool:
         incremental = config.get("incremental", {})
         return incremental and (incremental.get("enabled") or incremental.get("enable"))
 
     def _write_stderr_to_log(self, stderr: Optional[str]):
-        log_file = Path("/var/log/bqckup/rustic.log")
-
         if stderr and stderr.strip():
-            log_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-            with log_file.open("a") as log:
+            self.log_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            with self.log_file.open("a") as log:
                 log.write(stderr)
 
     def _parse_json_stream(self, stream: str) -> List[Any]:

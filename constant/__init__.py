@@ -1,4 +1,5 @@
-from os import path
+from os import path, getenv
+from pathlib import Path
 
 # Bqckup Path
 BQ_PATH = "/etc/bqckup"
@@ -27,3 +28,5 @@ MAX_RETRIES = 3
 
 # retry backoff; in seconds
 BACKOFF = 30
+
+LOG_DIR = Path(getenv("BQCKUP_LOG_DIR", "/var/log/bqckup"))

@@ -26,16 +26,16 @@ class TestDatabase:
     @patch('subprocess.Popen')
     def test_export_success(self, mock_popen, mock_gzip_open):
         db = Database("mysql")
+
         mock_file = MagicMock()
         mock_gzip_open.return_value.__enter__.return_value = mock_file
 
         mock_process = MagicMock()
         mock_process.returncode = 0
         mock_process.stdout.read.side_effect = [b'test data', b'']
-        mock_process.stderr.read.return_value = b''
         mock_popen.return_value = mock_process
-        
-        db.export("/tmp/backup.sql.gz", "testuser", "testpass", "testdb", "localhost")
+
+        db.export("/tmp/backup.sql.gz", "testuser", "testpass", "testdb", "localhost", log_dir="/tmp/bqckup")
         
         expected_command = [
             "mysqldump",
@@ -48,11 +48,11 @@ class TestDatabase:
             "testdb",
         ]
 
-        mock_popen.assert_called_once_with(
-            expected_command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+        args, kwargs = mock_popen.call_args
+        assert args[0] == expected_command
+        assert kwargs['stdout'] == subprocess.PIPE
+        assert 'stderr' in kwargs
+
         mock_process.stdout.read.assert_called()
         mock_file.write.assert_called_once_with(b'test data')
         mock_process.wait.assert_called_once()
