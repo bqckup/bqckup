@@ -558,17 +558,12 @@ def get_list(
             objects_in_prefix = _s3.list(prefix=prefix).get("Contents", [])
             objects.extend(objects_in_prefix)
 
-    if not objects:
-        print(f"[red] No backup found for {name} [/red]")
-        return None
-
     table = Table("#", "Key", "Size", "Created at")
     snapshots_table = Table("No", "Snapshot IDs", "Paths", "Size", "Created At", title="Incremental Backups")
 
     if show_snapshots:
         storage = Storage().get_storage_detail(node["options"]["storage"])
-        r = Rustic(node, storage)
-        r.check_and_dump()
+        r = Rustic(node, storage).check_and_dump()
 
         with ProgressSpinner("getting snapshots..."):
             incremental_snapshots = sorted(r.get_snapshots(full_id=full_id), key=lambda x: x["time"])
@@ -598,7 +593,7 @@ def get_list(
 
             Console().print(table)
         else:
-            print(f"[red] No backup found for {name} [/red]")
+            print(f"[red] No archive backup found for {name} [/red]")
 
         if show_snapshots:
             if incremental_snapshots:
