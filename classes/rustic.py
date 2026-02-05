@@ -11,7 +11,7 @@ import re
 
 from constant import LOG_DIR, RUSTIC_CONFIG_PATH
 from classes.config import Config as bqckup_config
-from helpers.utility import is_debug
+from helpers.utility import should_keep_rustic_secrets
 
 from rich import print  # pyright: ignore[reportMissingImports]
 
@@ -82,20 +82,16 @@ class Rustic:
             "check": True,
         }
 
-    @cached_property
-    def version(self) -> str:
+    @staticmethod
+    def version() -> str:
         """Get rustic version"""
         try:
             output: CompletedProcess = subprocess.run(
                 ["rustic", "--version"],
-                **self.__subprocess_args,  # type: ignore
+                capture_output=True,
+                text=True,
+                check=True,
             )
-
-            self._write_stderr_to_log(output.stderr)
-
-            # Example outputs:
-            # NixOS package: `rustic 0.10.2`
-            # Manual install (release/build): `rustic v0.10.2-1-g189b17c`
 
             full_version_string = output.stdout.strip().split(" ")[1]
             match = re.search(r'v?(\d+\.\d+\.\d+)', full_version_string)
@@ -105,17 +101,14 @@ class Rustic:
             return match.group(1)
 
         except (CalledProcessError, FileNotFoundError, IndexError) as e:
-            if isinstance(e, CalledProcessError):
-                self._write_stderr_to_log(e.stderr)
-
-            if is_debug:
+            if is_debug():
                 traceback.print_exc()
             raise RusticError(f"Could not determine rustic version. Error: {e}") from e
 
     @cached_property
     def version_tuple(self) -> Tuple[int, ...]:
         """Get rustic version as a tuple of ints"""
-        return tuple(map(int, self.version.split(".")))
+        return tuple(map(int, self.version().split(".")))
 
     @property
     def root_folder_name(self) -> str:
@@ -439,7 +432,7 @@ class Rustic:
                     "bucket": self.storage_config["bucket"],
                     "endpoint": self.storage_config["endpoint"],
                     "root": f"/{self.root_folder_name}/{self.site_config['name']}/incremental",
-                } if with_credentials or is_debug() else None,
+                } if with_credentials or should_keep_rustic_secrets() else None,
             },
             "backup": {
                 # "init": True,  # Create repository if not exists ### not work

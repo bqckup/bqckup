@@ -6,13 +6,13 @@ import sys
 from typing import Dict
 
 from classes.config import Config
-from constant import CONFIG_PATH
+from constant import CONFIG_PATH, DEFAULT_HEADER
 
 
 @lru_cache(maxsize=None)
 def get_credential(base_url: str) -> Dict[str, str]:
     try:
-        r = requests.get(base_url)
+        r = requests.get(base_url, headers=DEFAULT_HEADER)
         json: dict = r.json()
     except JSONDecodeError:
         print("Error while decode json.")

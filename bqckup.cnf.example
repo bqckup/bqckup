@@ -31,3 +31,6 @@ discord_webhook_url=
 
 [webhooks]
 after_backup_completed=
+
+[master]
+url=
