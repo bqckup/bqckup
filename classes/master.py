@@ -47,7 +47,7 @@ class Master:
         try:
             response = self.session.post(endpoint, json=payload, timeout=30)
 
-            if response.status_code == 201 or response.status_code == 204:
+            if response.ok:
                 print("[green]Successfully sent report to master[/green]")
             else:
                 print(f"[red]Failed to send report to master. Status: {response.status_code}. Response: {response.text}[/red]")

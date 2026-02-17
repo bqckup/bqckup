@@ -7,11 +7,12 @@ import json
 import toml
 import traceback
 import subprocess
+import shutil
 import re
 
 from constant import LOG_DIR, RUSTIC_CONFIG_PATH
 from classes.config import Config as bqckup_config
-from helpers.utility import should_keep_rustic_secrets
+from helpers.utility import should_keep_rustic_secrets, is_debug
 
 from rich import print  # pyright: ignore[reportMissingImports]
 
@@ -83,7 +84,7 @@ class Rustic:
         }
 
     @staticmethod
-    def version() -> str:
+    def version() -> Optional[str]:
         """Get rustic version"""
         try:
             output: CompletedProcess = subprocess.run(
@@ -96,14 +97,11 @@ class Rustic:
             full_version_string = output.stdout.strip().split(" ")[1]
             match = re.search(r'v?(\d+\.\d+\.\d+)', full_version_string)
             if not match:
-                raise RusticError(f"Could not parse rustic version from: {full_version_string}")
+                None
 
             return match.group(1)
-
-        except (CalledProcessError, FileNotFoundError, IndexError) as e:
-            if is_debug():
-                traceback.print_exc()
-            raise RusticError(f"Could not determine rustic version. Error: {e}") from e
+        except Exception:
+            return None
 
     @cached_property
     def version_tuple(self) -> Tuple[int, ...]:
@@ -112,7 +110,7 @@ class Rustic:
 
     @property
     def root_folder_name(self) -> str:
-        return bqckup_config().read("bqckup", "root_folder_name") or "bqckup"
+        return bqckup_config().read("bqckup", "root_folder_name", "bqckup")
 
     @property
     def log_file(self) -> Path:
@@ -122,6 +120,10 @@ class Rustic:
     def is_enabled(config: dict) -> bool:
         incremental = config.get("incremental", {})
         return incremental and (incremental.get("enabled") or incremental.get("enable"))
+
+    @staticmethod
+    def is_installed() -> bool:
+        return shutil.which('rustic') is not None
 
     def _write_stderr_to_log(self, stderr: Optional[str]):
         if stderr and stderr.strip():

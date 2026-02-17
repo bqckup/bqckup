@@ -134,7 +134,7 @@ def is_debug() -> bool:
     return os.environ.get('BQCKUP_DEBUG', "0") == "1"
 
 def is_verbose() -> bool:
-    return os.environ.get('BQCKUP_VERBOSE', "0") == "1"
+    return is_debug() or os.environ.get('BQCKUP_VERBOSE', "0") == "1"
 
 def should_keep_rustic_secrets() -> bool:
     return os.environ.get('BQCKUP_KEEP_RUSTIC_SECRETS', "0") == "1"

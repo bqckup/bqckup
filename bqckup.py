@@ -83,7 +83,7 @@ def summary(site: Optional[str] = None):
     for site_config in all_backups:
         storage_name = site_config["options"]["storage"]
         backup_name = site_config["name"]
-        is_incremental = Rustic.is_enabled(site_config)
+        is_incremental = Rustic.is_enabled(site_config) and Rustic.is_installed()
         rustic_stats = None
 
         last_log = (
@@ -544,7 +544,7 @@ def get_list(
         print(f"[red]Backup for {name} not found[/red]")
         return
 
-    show_snapshots = show_snapshots and Rustic.is_enabled(node)
+    show_snapshots = show_snapshots and Rustic.is_enabled(node) and Rustic.is_installed()
 
     _s3 = s3(node["options"]["storage"])
 
@@ -819,8 +819,7 @@ def restore(
         raise
 
     try:
-        rustic = Rustic(site_config, storage_config)
-        rustic.check_and_dump()
+        rustic = Rustic(site_config, storage_config).check_and_dump()
     except Exception as e:
         if is_debug():
             traceback.print_exc()
