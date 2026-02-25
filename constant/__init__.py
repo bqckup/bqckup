@@ -30,3 +30,9 @@ MAX_RETRIES = 3
 BACKOFF = 30
 
 LOG_DIR = Path(getenv("BQCKUP_LOG_DIR", "/var/log/bqckup"))
+
+DEFAULT_HEADER = {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "User-Agent": f"bqckup/{VERSION}",
+}

@@ -83,7 +83,7 @@ def summary(site: Optional[str] = None):
     for site_config in all_backups:
         storage_name = site_config["options"]["storage"]
         backup_name = site_config["name"]
-        is_incremental = Rustic.is_enabled(site_config)
+        is_incremental = Rustic.is_enabled(site_config) and Rustic.is_installed()
         rustic_stats = None
 
         last_log = (
@@ -138,10 +138,12 @@ def summary(site: Optional[str] = None):
 
             if is_incremental:
                 try:
-                    rustic_stats = Rustic(
+                    rustic = Rustic(
                         site_config=site_config,
                         storage_config=Storage().get_storage_detail(storage_name),
-                    ).check_and_dump().get_stats()
+                    ).check_and_dump()
+                    rustic_stats = rustic.get_stats()                    
+                    rustic.dump_config(with_credentials=False)
                 except Exception as e:
                     if is_debug() and isinstance(e, CalledProcessError):
                         print(e.stderr)
@@ -542,11 +544,7 @@ def get_list(
         print(f"[red]Backup for {name} not found[/red]")
         return
 
-    show_snapshots = show_snapshots and Rustic.is_enabled(node)
-
-    if not node:
-        print(f"[red] Backup for {name} not found [/red]")
-        return None
+    show_snapshots = show_snapshots and Rustic.is_enabled(node) and Rustic.is_installed()
 
     _s3 = s3(node["options"]["storage"])
 
@@ -567,6 +565,7 @@ def get_list(
 
         with ProgressSpinner("getting snapshots..."):
             incremental_snapshots = sorted(r.get_snapshots(full_id=full_id), key=lambda x: x["time"])
+            r.dump_config(with_credentials=False)
 
     if json:
         results = []
@@ -817,20 +816,22 @@ def restore(
             traceback.print_exc()
 
         print(f"Error while getting credential: {e}")
-        return
+        raise
 
     try:
-        rustic = Rustic(site_config, storage_config)
-        rustic.check_and_dump()
+        rustic = Rustic(site_config, storage_config).check_and_dump()
     except Exception as e:
         if is_debug():
             traceback.print_exc()
 
         print(f"Failed to setup rustic: {e}")
-        return
+        raise
 
     with ProgressSpinner("Restoring backups..."):
-        rustic.restore(snapshot=snapshot, target=target)
+        try:
+            rustic.restore(snapshot=snapshot, target=target)
+        finally:
+            rustic.dump_config(with_credentials=False)
 
     print("[bold green]Restore complete![/bold green]")
 
@@ -857,9 +858,14 @@ def common(
     verbose: bool = typer.Option(
         False, "--verbose", "-V", help="Enable verbose output."
     ),
+    keep_rustic_secret: bool = typer.Option(
+        False, "--keep-rustic-secret",
+    ),
 ):
     if verbose:
         os.environ["BQCKUP_VERBOSE"] = "1"
+    if keep_rustic_secret:
+        os.environ["BQCKUP_KEEP_RUSTIC_SECRETS"] = "1"
 
 if __name__ == "__main__":
     if getpass.getuser() != "root":

@@ -163,9 +163,8 @@ class s3(object):
                 Bucket=self.bucket_name, Delete={"Objects": [{"Key": k} for k in objects]}
             )
 
-            if is_verbose():
-                for k in objects:
-                    print(f"Removed {k}")
+            for k in objects:
+                print(f"Removed {k}")
 
             print(f"Deleted {len(objects)} objects")
 
