@@ -302,30 +302,56 @@ class Bqckup:
             print(f"[red]Backup for {backup_name} is not enabled[/red]")
             return True
 
-        last_log = self.get_last_log(backup_name)
-        if last_log:
-            interval = backup['options']['interval']
-            last_backup_timestamp = last_log.created_at
-            days_passed = abs(difference_in_days(last_backup_timestamp, int(time.time())))
-            to_compare = interval_in_number(interval)
+        last_any_log = Log().select().where(Log.name == backup_name).order_by(Log.id.desc()).first()
+        last_success_log = Log().select().where(
+            (Log.name == backup_name) & (Log.status == Log.__SUCCESS__)
+        ).order_by(Log.id.desc()).first()
 
+        if last_any_log:
             last_log_status = {
                 Log.__SUCCESS__: "success",
                 Log.__ON_PROGRESS__: "on-progress",
                 Log.__FAILED__: "failed",
-            }.get(last_log.status, "unknown")
+            }.get(last_any_log.status, "unknown")
 
-            if last_log.status != Log().__SUCCESS__:
+            if last_any_log.status != Log().__SUCCESS__:
                 print(f"[yellow]The previous backup for {backup_name} was not successful.[/yellow]")
-                print(f"[yellow]Last Status: '{last_log_status}'. Attempted at: {datetime.fromtimestamp(last_backup_timestamp).strftime('%d/%m/%Y %H:%M:%S')}[/yellow]")
+                print(f"[yellow]Last Status: '{last_log_status}'. Attempted at: {datetime.fromtimestamp(last_any_log.created_at).strftime('%d/%m/%Y %H:%M:%S')}[/yellow]")
                 self._send_notification(
                     backup_name=backup_name,
                     title=f"Previous Backup Not Successful for {backup_name}",
                     description=(
-                        f"The last backup attempt on {datetime.fromtimestamp(last_backup_timestamp).strftime('%d/%m/%Y %H:%M:%S')} "
+                        f"The last backup attempt on {datetime.fromtimestamp(last_any_log.created_at).strftime('%d/%m/%Y %H:%M:%S')} "
                         f"did not complete successfully. The last known status was '{last_log_status}'.\n\n"
                     ),
                 )
+
+        failed_components = []
+        last_file_log = Log().select().where(
+            (Log.name == backup_name) & (Log.type == Log.__FILES__)
+        ).order_by(Log.id.desc()).first()
+        if last_file_log and last_file_log.status == Log.__FAILED__:
+            failed_components.append("files")
+
+        for database in Database.get_all(backup):
+            db_label = f"{database['user']}@{database['host']}:{database['port']}/{database['name']}"
+            last_db_log = Log().select().where(
+                (Log.name == backup_name)
+                & (Log.type == Log.__DATABASE__)
+                & (Log.description.contains(db_label))
+            ).order_by(Log.id.desc()).first()
+            if last_db_log and last_db_log.status == Log.__FAILED__:
+                failed_components.append(f"database {db_label}")
+
+        if failed_components:
+            print(f"[yellow]Previous backup has failed components ({', '.join(failed_components)}). Running backup again.[/yellow]")
+            return False
+
+        if last_success_log:
+            interval = backup['options']['interval']
+            last_backup_timestamp = last_success_log.created_at
+            days_passed = abs(difference_in_days(last_backup_timestamp, int(time.time())))
+            to_compare = interval_in_number(interval)
 
             if not force and days_passed < to_compare:
                 print("\n=========================================")
@@ -620,7 +646,9 @@ class Bqckup:
             if backup.get('options').get('provider') == 'local':
                 destination = backup.get('options').get('destination')
                 if not destination:
-                    raise Exception("'destination' path must be configured for local provider")
+                    destination = os.path.join(BQ_PATH, 'tmp')
+                    print("[yellow]Destination path is not configured for local provider[/yellow]")
+                    print(f"[yellow]Using '{destination}' as destination[/yellow]")
 
                 backup_path = os.path.join(destination, backup_folder)
                 
