@@ -277,6 +277,9 @@ class s3(object):
         else:
             storages = Storage().get_parsed_storage()["storages"]
 
+        if not storages:
+            return
+
         for storage_name in storages:
             try:
                 obj = cls(storage_name)
