@@ -68,10 +68,10 @@ class Database:
 
             try:
                 with gzip.open(output, "wb") as gz:
-                    for chunk in iter(lambda: process.stdout.read(4096), b""):
+                    for chunk in iter(lambda: process.stdout.read(1048576), b""):
                         gz.write(chunk)
 
-                process.wait()
+                    process.wait()
 
                 if process.returncode != 0:
                     raise DatabaseException(
