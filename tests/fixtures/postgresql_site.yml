@@ -1,0 +1,21 @@
+bqckup:
+  name: postgres_test
+  enabled: yes
+  path:
+    - /var/www/html/postgres_site
+  database:
+    enabled: yes
+    type: postgresql
+    host: localhost
+    port: 5432
+    user: pg_user
+    password: pg_pass
+    name: pg_database
+  options:
+    storage: test_storage
+    interval: daily
+    retention: '7'
+    follow_symlink: no
+    save_locally: no
+    notification_email: admin@example.com
+    provider: s3
