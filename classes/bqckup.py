@@ -1016,7 +1016,7 @@ class Bqckup:
 
         try:
             with ProgressSpinner(f"Exporting database {db_label}"):
-                Database().export(
+                Database(type=database.get("type", "mysql")).export(
                     str(backup_path),
                     db_user=database["user"],
                     db_password=database["password"],
