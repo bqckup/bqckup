@@ -1,0 +1,39 @@
+bqckup:
+  name: mixed_db_test
+  enabled: yes
+  path:
+    - /var/www/html/mixed_site
+  databases:
+    - enabled: yes
+      type: mysql
+      host: localhost
+      port: 3306
+      user: mysql_user
+      password: mysql_pass
+      name: mysql_database
+    - enabled: yes
+      type: postgresql
+      host: localhost
+      port: 5432
+      user: pg_user
+      password: pg_pass
+      name: pg_database
+    - enabled: yes
+      type: sqlite
+      name: /var/data/app.sqlite
+    - enabled: no
+      type: mysql
+      host: localhost
+      port: 3306
+      user: disabled_user
+      password: disabled_pass
+      name: disabled_database
+  options:
+    storage: test_storage
+    interval: daily
+    retention: '14'
+    follow_symlink: no
+    save_locally: yes
+    save_locally_path: /tmp/backups
+    notification_email: admin@example.com
+    provider: s3

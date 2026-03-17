@@ -9,6 +9,7 @@ Flask-WTF
 gunicorn
 hurry.filesize
 mysql-connector-python==8.0.20
+psycopg2-binary
 peewee
 pyinstaller
 python-decouple
