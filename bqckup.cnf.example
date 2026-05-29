@@ -23,11 +23,24 @@ enabled=0
 ; reports will be sent at the end of every month, make sure notification are enabled
 monthly_report_enabled=0
 
-; Currently Only Discord is supported
+; Notification channels, comma separated. Supported: discord, email
 channel=discord
 
 ; Webhook URL
 discord_webhook_url=
+
+; Recipient address for the email channel (comma separated for multiple)
+email_to=
+
+[email]
+; SMTP sender settings, used when the `email` notification channel is enabled
+name=Bqckup
+email=
+password=
+host=smtp.gmail.com
+port=587
+; Encryption: tls or ssl
+encryption=tls
 
 [webhooks]
 after_backup_completed=
