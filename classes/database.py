@@ -78,17 +78,8 @@ class Database:
         db_port: int = 3306,
         log_dir: Optional[str] = None,
     ) -> None:
-        log_file = Path(log_dir) / "database.log" if log_dir else DATABASE_LOG
-
-        if not log_file.parent.exists():
-            log_file.parent.mkdir(parents=True, exist_ok=True)
-
-        label = (
-            f"{db_user}@{db_host}:{db_port}/{db_name}"
-            if self.type != "sqlite"
-            else f"sqlite:{db_name}"
-        )
-
+        # Resolve the command first so an unsupported type fails fast,
+        # before creating any log directory or file.
         if self.type == "mysql":
             command = self._get_mysql_command(
                 db_user, db_password, db_name, db_host, db_port
@@ -104,7 +95,23 @@ class Database:
         else:
             raise DatabaseException(f"Unsupported database type: {self.type}")
 
-        with open(log_file, "ab") as log:
+        label = (
+            f"{db_user}@{db_host}:{db_port}/{db_name}"
+            if self.type != "sqlite"
+            else f"sqlite:{db_name}"
+        )
+
+        log_file = Path(log_dir) / "database.log" if log_dir else DATABASE_LOG
+
+        # Don't let an unwritable log location abort the backup itself.
+        try:
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+            log = open(log_file, "ab")
+        except OSError as e:
+            print(f"[yellow]Cannot write export log to {log_file} ({e}); continuing without file log[/yellow]")
+            log = open(os.devnull, "ab")
+
+        with log:
             now = datetime.now()
             log.write(f"Database export {label} > {output} at {now}\n".encode())
             log.flush()
