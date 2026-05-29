@@ -17,29 +17,39 @@ root_folder_name=bqckup
 anonymous_statistic=1
 
 [notification]
-; Enable or disable notification
+; Master switch for ALL notifications (1 = on, 0 = off)
 enabled=0
 
-; reports will be sent at the end of every month, make sure notification are enabled
+; Send a monthly report at the end of every month (requires enabled=1)
 monthly_report_enabled=0
 
-; Notification channels, comma separated. Supported: discord, email
+; Which channels to send to. Comma separated. Supported: discord, email
+;   channel=discord        -> only Discord
+;   channel=email          -> only Email
+;   channel=discord,email  -> both
 channel=discord
 
-; Webhook URL
+; --- Discord channel ---
+; Webhook URL (required when 'discord' is in channel)
 discord_webhook_url=
 
-; Recipient address for the email channel (comma separated for multiple)
+; --- Email channel ---
+; Recipient address(es), comma separated (required when 'email' is in channel)
+; The SMTP sender account is configured in the [email] section below
 email_to=
 
 [email]
-; SMTP sender settings, used when the `email` notification channel is enabled
+; SMTP sender settings, used when the 'email' channel is enabled above.
+; Display name shown as the sender
 name=Bqckup
+; Sender address / SMTP username
 email=
+; SMTP password. Leave empty for servers that need no authentication (e.g. local Mailpit/Mailhog)
 password=
+; SMTP host and port (Gmail: smtp.gmail.com / 587, local Mailpit: 127.0.0.1 / 1025)
 host=smtp.gmail.com
 port=587
-; Encryption: tls or ssl
+; Encryption: tls, ssl, or leave empty for none
 encryption=tls
 
 [webhooks]
