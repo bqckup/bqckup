@@ -20,8 +20,19 @@ def _hex_color(color):
         return ACCENT_COLOR
 
 
+def _muted(hex_color):
+    """Tone down a bright/neon color by blending it toward a soft slate."""
+    h = hex_color.lstrip('#')
+    try:
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    except (ValueError, IndexError):
+        return hex_color
+    mix = lambda c: int(c * 0.6 + 0x5A * 0.4)
+    return "#{:02X}{:02X}{:02X}".format(mix(r), mix(g), mix(b))
+
+
 def _render_embed(embed):
-    accent = _hex_color(embed.get('color'))
+    accent = _muted(_hex_color(embed.get('color')))
     title = escape(str(embed.get('title') or 'Bqckup Notification'))
 
     blocks = [
@@ -94,12 +105,10 @@ def _render_html(embeds):
               <img src="{LOGO_URL}" width="40" height="40" alt="Bqckup" style="display:block;border-radius:10px;background:#ffffff;">
             </td>
             <td style="vertical-align:middle;">
-              <span style="font-size:19px;font-weight:bold;color:#ffffff;font-family:Arial,Helvetica,sans-serif;letter-spacing:0.3px;">Bq<span style="color:{ACCENT_COLOR};">c</span>kup</span>
+              <span style="font-size:19px;font-weight:bold;color:#ffffff;font-family:Arial,Helvetica,sans-serif;letter-spacing:0.3px;">Bqckup</span>
             </td>
           </tr></table>
         </td></tr>
-        <!-- Gold accent line -->
-        <tr><td style="background:{ACCENT_COLOR};height:3px;line-height:3px;font-size:3px;">&nbsp;</td></tr>
         <!-- Content -->
         {body}
         <!-- Spacer -->
