@@ -25,6 +25,7 @@ from helpers.file import remove_folder
 from hashlib import sha256
 from pathlib import Path
 from lib.notifications.discord import send_notification
+from lib.notifications.email import send_notification as send_email_notification
 from helpers.datetime import time_since, get_today, difference_in_days, interval_in_number
 from helpers.network import get_server_ip
 from rich import print
@@ -98,6 +99,7 @@ class Bqckup:
             return
 
         send_notification(payload)
+        send_email_notification(payload)
         NotificationLog().create(hash=hashed_payload, sent_at=int(time.time()))
             
     def validate_config(self, name: str) -> bool:
