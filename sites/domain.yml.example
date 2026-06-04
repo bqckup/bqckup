@@ -1,9 +1,30 @@
 bqckup:
   name: domain
   enabled: no
+
+  # ----------------------------------------------------------------------------
+  # Incremental backup (powered by rustic)
+  # ----------------------------------------------------------------------------
+  # When enabled, file backups are stored as deduplicated, versioned snapshots
+  # instead of a full .tar.gz archive on every run. Only changed data is written.
+  #
+  # Requirements:
+  #   - The `rustic` binary must be installed on the host.
+  #   - `password` is REQUIRED and is used to encrypt the repository. Keep it
+  #     safe: losing it means the backup can no longer be restored.
+  #
+  # Where the repository lives is controlled by `options.provider` below:
+  #   - provider: s3    -> repository is stored in the S3 bucket (options.storage)
+  #   - provider: local -> repository is stored on this machine, under
+  #                        `<options.destination>/<name>/incremental`
+  #
+  # Restore any time with:  bqckup restore <name>            (latest snapshot)
+  #                         bqckup restore <name> --snapshot <id>
+  # List snapshots with:    bqckup get-list <name>
   incremental:
     enabled: yes
     password: dummy # required if incremental
+
   path:
     - /var/www/html
   exclude_path:
@@ -24,12 +45,35 @@ bqckup:
       user: root
       password: root
       name: database
+
   options:
+    # --------------------------------------------------------------------------
+    # provider: where backups are stored. Supported values: s3, local
+    # --------------------------------------------------------------------------
+    #
+    # provider: s3
+    #   Uploads backups to an S3-compatible bucket.
+    #   - `storage` must reference a storage name defined in storages.yml.
+    #   Works for both archive (.tar.gz) and incremental backups.
+    #
+    # provider: local
+    #   Keeps backups on this machine, no S3 needed.
+    #   - `destination` is the folder where backups are written
+    #     (defaults to /etc/bqckup/tmp if left empty).
+    #   - Archive backups go to:     <destination>/<name>/<date>/
+    #   - Incremental backups go to: <destination>/<name>/incremental/
+    #   - `storage` is ignored (set automatically to "local").
+    provider: s3
+
+    # S3 storage name from storages.yml (only used when provider: s3)
     storage: dummy
-    interval: daily #can be daily, weekly, monthly 
-    retention: '7'
+
+    # Local destination folder (only used when provider: local)
+    # destination: /mnt/backups
+
+    interval: daily #can be daily, weekly, monthly
+    retention: '7' # how many snapshots/backups to keep before pruning old ones
     follow_symlink: no
-    save_locally: no
+    save_locally: no               # (provider: s3 only) also keep a copy locally
     save_locally_path: /etc/bqckup/tmp
     notification_email: email@example.com
-    provider: s3

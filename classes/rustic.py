@@ -10,7 +10,9 @@ import subprocess
 import shutil
 import re
 
-from constant import LOG_DIR, RUSTIC_CONFIG_PATH
+import os
+
+from constant import LOG_DIR, RUSTIC_CONFIG_PATH, BQ_PATH
 from classes.config import Config as bqckup_config
 from helpers.utility import should_keep_rustic_secrets, is_debug
 
@@ -111,6 +113,16 @@ class Rustic:
     @property
     def root_folder_name(self) -> str:
         return bqckup_config().read("bqckup", "root_folder_name", "bqckup")
+
+    @property
+    def provider(self) -> str:
+        return self.site_config.get("options", {}).get("provider", "s3")
+
+    @property
+    def local_repository_path(self) -> str:
+        """Filesystem path of the rustic repository when using the local provider."""
+        destination = self.site_config.get("options", {}).get("destination") or os.path.join(BQ_PATH, "tmp")
+        return os.path.join(destination, self.site_config["name"], "incremental")
 
     @property
     def log_file(self) -> Path:
@@ -418,13 +430,16 @@ class Rustic:
             Path: path to config file
         """
 
-        config = {
-            "global": {
-                "no-progress": True,
-                "check-index": True,
-                "log-level": "warn",
-            },
-            "repository": {
+        if self.provider == "local":
+            # Local rustic repository: a plain filesystem path. No remote credentials needed.
+            repo_path = self.local_repository_path
+            os.makedirs(repo_path, mode=0o700, exist_ok=True)
+            repository_block = {
+                "repository": repo_path,
+                "password": self.site_config.get("incremental", {}).get("password"),
+            }
+        else:
+            repository_block = {
                 "repository": "opendal:s3",
                 "password": self.site_config.get("incremental", {}).get("password"),
                 "options": {
@@ -435,7 +450,15 @@ class Rustic:
                     "endpoint": self.storage_config["endpoint"],
                     "root": f"/{self.root_folder_name}/{self.site_config['name']}/incremental",
                 } if with_credentials or should_keep_rustic_secrets() else None,
+            }
+
+        config = {
+            "global": {
+                "no-progress": True,
+                "check-index": True,
+                "log-level": "warn",
             },
+            "repository": repository_block,
             "backup": {
                 # "init": True,  # Create repository if not exists ### not work
                 "json": True,  # Output in json
