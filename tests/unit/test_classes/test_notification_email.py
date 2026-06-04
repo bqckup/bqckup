@@ -8,6 +8,8 @@ used: ``Config`` and ``Mail`` are mocked, so nothing is actually sent.
 from contextlib import contextmanager
 from unittest.mock import Mock, patch
 
+import pytest
+
 from lib.notifications.email import (
     ACCENT_COLOR,
     _channels,
@@ -144,8 +146,13 @@ class TestBackupNotificationDispatch:
         mock_email.assert_not_called()
 
 
+@pytest.mark.cli
 class TestTestNotificationCommand:
-    """The `bqckup test-notification` CLI command sends to Discord AND Email."""
+    """The `bqckup test-notification` CLI command sends to Discord AND Email.
+
+    Marked `cli` and excluded from CI: it imports the root `bqckup` module, whose
+    importability depends on the full runtime environment.
+    """
 
     @contextmanager
     def _patched(self, enabled="1", channel="discord,email"):

@@ -1,7 +1,6 @@
 import getpass
 from subprocess import CalledProcessError
 import traceback
-from typing import Annotated
 import typer
 import os
 import requests
@@ -434,13 +433,11 @@ def test_config():
 def run(
     force: bool = False,
     site: Optional[str] = None,
-    incremental: Annotated[
-        Optional[bool],
-        typer.Option(
-            "--incremental/--full",
-            help="use incremental backup or create a full tar.gz archive",
-        ),
-    ] = None,
+    incremental: Optional[bool] = typer.Option(
+        None,
+        "--incremental/--full",
+        help="use incremental backup or create a full tar.gz archive",
+    ),
 ):
     from classes.report import Report
 

@@ -21,9 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   path was configured via `options.destination`).
 
 ### Fixed
-- CLI no longer imports `Annotated` from the unlisted `typing_extensions`
-  package; it now uses the standard library `typing`, so the CLI imports cleanly
-  in a fresh environment.
+- CLI no longer depends on `typing_extensions`. The `run` command now uses
+  typer's default-value option style instead of `Annotated`, so the CLI imports
+  cleanly on all supported Python versions (3.8+) without an extra dependency.
 
 ## [1.11.0] - 2026-06-04
 
