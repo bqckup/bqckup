@@ -797,6 +797,11 @@ def restore(
     site: str,
     snapshot: str = "latest",
     target: Optional[str] = None,
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Skip the confirmation prompt when restoring over the original paths.",
+    ),
 ):
     """Restore for incremental backup"""
 
@@ -807,8 +812,21 @@ def restore(
         print(f"[red]Site [bold]{site}[/bold] not found![/red]")
         return
 
-    # Create directory if not exists
-    if (paths := site_config.get("path")) and isinstance(paths, list):
+    # No target means restoring in place over the original paths: warn and confirm.
+    if not target:
+        paths = site_config.get("path") or []
+        print("[bold red]WARNING:[/bold red] Restoring without --target will [bold]REPLACE[/bold] the current files at:")
+        for p in paths:
+            print(f"   [yellow]{p}[/yellow]")
+        print("Existing data at these paths will be overwritten with the backup contents.")
+        print("[dim]Tip: use --target <dir> to restore to a separate folder instead.[/dim]")
+
+        if not force and not typer.confirm("Continue and overwrite the original paths?"):
+            print("[yellow]Restore cancelled.[/yellow]")
+            return
+
+    # Only pre-create the original paths when restoring in place; rustic creates a custom target itself.
+    if not target and (paths := site_config.get("path")) and isinstance(paths, list):
         for p in paths:
             Path(p).mkdir(parents=True, exist_ok=True)
 
@@ -846,7 +864,8 @@ def restore(
         finally:
             rustic.dump_config(with_credentials=False)
 
-    print("[bold green]Restore complete![/bold green]")
+    location = target if target else "their original paths"
+    print(f"[bold green]Restore complete![/bold green] Files restored to {location}.")
 
 def get_version(version: bool):
     if version:

@@ -18,9 +18,10 @@ bqckup:
   #   - provider: local -> repository is stored on this machine, under
   #                        `<options.save_locally_path>/<name>/incremental`
   #
-  # Restore any time with:  bqckup restore <name>            (latest snapshot)
-  #                         bqckup restore <name> --snapshot <id>
-  # List snapshots with:    bqckup get-list <name>
+  # Restore (safe):     bqckup restore <name> --target <dir>  (into a folder you choose)
+  # Restore (in place): bqckup restore <name>                 (WARNS + confirms; OVERWRITES the original paths)
+  #                     add --snapshot <id> to pick a specific snapshot
+  # List snapshots:     bqckup get-list <name>
   incremental:
     enabled: yes
     password: dummy # required if incremental
