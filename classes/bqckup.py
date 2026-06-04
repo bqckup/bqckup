@@ -752,11 +752,16 @@ class Bqckup:
             "notification": {}
         }
 
-        if site_config.get("options", {}).get("provider") != "s3":
-            raise Exception("Currently, incremental backup only support S3 provider")
+        provider = site_config.get("options", {}).get("provider")
 
-        bucket_name = site_config.get("options", {}).get("storage")
-        storage_config = Storage().get_storage_detail(bucket_name)
+        if provider not in ("s3", "local"):
+            raise Exception(f"Incremental backup does not support provider '{provider}'. Supported providers: s3, local.")
+
+        if provider == "s3":
+            bucket_name = site_config.get("options", {}).get("storage")
+            storage_config = Storage().get_storage_detail(bucket_name)
+        else:
+            storage_config = {}
 
         rustic = Rustic(site_config, storage_config)
 
@@ -789,7 +794,10 @@ class Bqckup:
             with ProgressSpinner("checking repository..."):
                 rustic.check_repository()
 
-            self._clean_old_backups(site_config)
+            # Dated archive folders only exist on S3; for local the rustic repo
+            # retention is handled entirely by rustic.clean() below.
+            if provider == "s3":
+                self._clean_old_backups(site_config)
             rustic.clean()
 
         except RusticCleanError as e:

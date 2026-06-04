@@ -10,3 +10,6 @@ static/*.md
 bqckup.cnf
 config/*.yml
 sites/*.yml
+.venv*
+test_email.py
+test_email*.cnf
