@@ -5,25 +5,39 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.11.0] - 2026-06-04
+## [1.11.1] - 2026-06-04
 
 ### Added
-- **Local provider for incremental backups.** Incremental (rustic) backups can
-  now be stored on the local filesystem instead of requiring S3. Set
-  `options.provider: local` and `options.save_locally_path`; the repository is
-  created at `<save_locally_path>/<name>/incremental`. Restore, snapshot listing,
-  repository check and retention all work for local repositories.
-- **Email notifications.** SMTP email can be used as a notification channel
-  alongside Discord (configurable per channel, with enable/disable and SMTP
-  test support).
 - **Safer restore.** Restoring in place (no `--target`) now warns and asks for
   confirmation before overwriting the original paths. Use `--target <dir>` to
   restore to a separate folder, or `--force` to skip the prompt.
+- **`test-notification` command.** `bqckup test-notification` sends a sample
+  notification to every configured channel (Discord and Email) so settings can be
+  verified without running a backup.
 
 ### Changed
 - The `local` provider now uses `options.save_locally_path` as the single backup
   location for archive, incremental and database backups (previously the archive
   path was configured via `options.destination`).
+
+### Fixed
+- CLI no longer imports `Annotated` from the unlisted `typing_extensions`
+  package; it now uses the standard library `typing`, so the CLI imports cleanly
+  in a fresh environment.
+
+## [1.11.0] - 2026-06-04
+
+### Added
+- **Local provider for incremental backups.** Incremental (rustic) backups can
+  now be stored on the local filesystem instead of requiring S3. Set
+  `options.provider: local` and `options.destination`; the repository is created
+  at `<destination>/<name>/incremental`. Restore, snapshot listing, repository
+  check and retention all work for local repositories.
+- **Email notifications.** SMTP email can be used as a notification channel
+  alongside Discord (configurable per channel, with enable/disable and SMTP
+  test support).
+
+### Changed
 - Improved database export logging and error handling.
 - Improved email embed rendering, HTML structure and color handling.
 - Updated `mysql-connector-python`.
@@ -40,5 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Check all recent backups instead of only the latest when deciding whether to
   skip a backup.
 
+[1.11.1]: https://github.com/bqckup/bqckup/compare/v1.11.0...v1.11.1
 [1.11.0]: https://github.com/bqckup/bqckup/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/bqckup/bqckup/compare/v1.9.0...v1.10.0
