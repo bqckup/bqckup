@@ -1,7 +1,6 @@
 import getpass
 from subprocess import CalledProcessError
 import traceback
-from typing_extensions import Annotated
 import typer
 import os
 import requests
@@ -434,13 +433,11 @@ def test_config():
 def run(
     force: bool = False,
     site: Optional[str] = None,
-    incremental: Annotated[
-        Optional[bool],
-        typer.Option(
-            "--incremental/--full",
-            help="use incremental backup or create a full tar.gz archive",
-        ),
-    ] = None,
+    incremental: Optional[bool] = typer.Option(
+        None,
+        "--incremental/--full",
+        help="use incremental backup or create a full tar.gz archive",
+    ),
 ):
     from classes.report import Report
 
@@ -866,6 +863,47 @@ def restore(
 
     location = target if target else "their original paths"
     print(f"[bold green]Restore complete![/bold green] Files restored to {location}.")
+
+
+@bq_cli.command()
+def test_notification():
+    """Send a test notification to every configured channel (Discord + Email)."""
+    from lib.notifications.discord import send_notification as send_discord
+    from lib.notifications.email import send_notification as send_email
+    from helpers.network import get_server_ip
+    from helpers.datetime import get_today
+
+    enabled = Config().read("notification", "enabled") == "1"
+    channel = Config().read("notification", "channel", default="", print_error=False) or ""
+    channels = [c.strip().lower() for c in channel.split(",") if c.strip()]
+
+    if not enabled:
+        print("[yellow]Notifications are disabled. Set `enabled=1` under [notification] in bqckup.cnf to test.[/yellow]")
+        return
+
+    if not channels:
+        print("[yellow]No notification channel configured. Set e.g. `channel=discord,email` in bqckup.cnf.[/yellow]")
+        return
+
+    payload = {
+        "embeds": [
+            {
+                "title": "Bqckup Test Notification",
+                "description": "This is a test notification. If you can read this, your notification settings are working.",
+                "color": 3066993,  # green
+                "fields": [
+                    {"name": "Server IP", "value": get_server_ip(), "inline": True},
+                    {"name": "Date", "value": get_today(format="%d-%B-%Y"), "inline": True},
+                ],
+                "footer": {"text": "Sent by `bqckup test-notification`"},
+            }
+        ]
+    }
+
+    print(f"Sending test notification to: [cyan]{', '.join(channels)}[/cyan] ...")
+    send_discord(payload)   # no-op unless 'discord' is in channels
+    send_email(payload)     # no-op unless 'email' is in channels
+    print("[green]Test notification dispatched. Check your channel(s).[/green]")
 
 def get_version(version: bool):
     if version:
