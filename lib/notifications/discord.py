@@ -10,7 +10,11 @@ sender = {
 def send_notification(data):
     if Config().read('notification', 'enabled') != '1':
         return
-    
+
+    channel = Config().read('notification', 'channel', default='discord', print_error=False) or 'discord'
+    if 'discord' not in [c.strip().lower() for c in channel.split(',')]:
+        return
+
     try:
         data = {**sender, **data}
         req.post(Config().read('notification', 'discord_webhook_url'), json=data)        

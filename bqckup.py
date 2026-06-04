@@ -84,6 +84,7 @@ def summary(site: Optional[str] = None):
         storage_name = site_config["options"]["storage"]
         backup_name = site_config["name"]
         is_incremental = Rustic.is_enabled(site_config) and Rustic.is_installed()
+        is_local = site_config.get("options", {}).get("provider") == "local"
         rustic_stats = None
 
         last_log = (
@@ -128,19 +129,22 @@ def summary(site: Optional[str] = None):
                 description=f"fetching details for {backup_name}...", total=None
             )
 
-            _s3 = s3(storage_name)
-            dates = _s3.get_backup_dates(backup_name, sort_by_date=True)
-            objects = {
-                prefix: obj
-                for prefix in dates
-                for obj in _s3.list(prefix=prefix).get("Contents", [])
-            }
+            dates = []
+            objects = {}
+            if not is_local:
+                _s3 = s3(storage_name)
+                dates = _s3.get_backup_dates(backup_name, sort_by_date=True)
+                objects = {
+                    prefix: obj
+                    for prefix in dates
+                    for obj in _s3.list(prefix=prefix).get("Contents", [])
+                }
 
             if is_incremental:
                 try:
                     rustic = Rustic(
                         site_config=site_config,
-                        storage_config=Storage().get_storage_detail(storage_name),
+                        storage_config={} if is_local else Storage().get_storage_detail(storage_name),
                     ).check_and_dump()
                     rustic_stats = rustic.get_stats()                    
                     rustic.dump_config(with_credentials=False)
@@ -545,22 +549,23 @@ def get_list(
         return
 
     show_snapshots = show_snapshots and Rustic.is_enabled(node) and Rustic.is_installed()
+    is_local = node.get("options", {}).get("provider") == "local"
 
-    _s3 = s3(node["options"]["storage"])
-
-    backup_dates = _s3.get_backup_dates(site_name=name, sort_by_date=True)
     objects = []
+    if not is_local:
+        _s3 = s3(node["options"]["storage"])
+        backup_dates = _s3.get_backup_dates(site_name=name, sort_by_date=True)
 
-    with ProgressSpinner("getting backup list..."):
-        for prefix in backup_dates:
-            objects_in_prefix = _s3.list(prefix=prefix).get("Contents", [])
-            objects.extend(objects_in_prefix)
+        with ProgressSpinner("getting backup list..."):
+            for prefix in backup_dates:
+                objects_in_prefix = _s3.list(prefix=prefix).get("Contents", [])
+                objects.extend(objects_in_prefix)
 
     table = Table("#", "Key", "Size", "Created at")
     snapshots_table = Table("No", "Snapshot IDs", "Paths", "Size", "Created At", title="Incremental Backups")
 
     if show_snapshots:
-        storage = Storage().get_storage_detail(node["options"]["storage"])
+        storage = {} if is_local else Storage().get_storage_detail(node["options"]["storage"])
         r = Rustic(node, storage).check_and_dump()
 
         with ProgressSpinner("getting snapshots..."):
@@ -700,6 +705,11 @@ def download_latest(name: str, target: str = None, silent: bool = False):
             print(f"[red]Backup for {name} not found[/red]")
             return
 
+        if node.get("options", {}).get("provider") == "local":
+            print("[yellow]This site uses the local provider; its archives already live on disk and there is nothing to download.[/yellow]")
+            print("[yellow]For incremental backups, restore with 'bqckup restore <site>'.[/yellow]")
+            return
+
         _s3 = s3(node["options"]["storage"])
         
         backup_dates = _s3.get_backup_dates(site_name=name, sort_by_date=True)
@@ -806,17 +816,20 @@ def restore(
         print(f"Invalid configuration for {site}")
         return
 
-    try:
-        with ProgressSpinner("getting credentials..."):
-            storage_config = Storage().get_storage_detail(
-                site_config.get("options").get("storage")
-            )
-    except Exception as e:
-        if is_debug():
-            traceback.print_exc()
+    if site_config.get("options", {}).get("provider") == "local":
+        storage_config = {}
+    else:
+        try:
+            with ProgressSpinner("getting credentials..."):
+                storage_config = Storage().get_storage_detail(
+                    site_config.get("options").get("storage")
+                )
+        except Exception as e:
+            if is_debug():
+                traceback.print_exc()
 
-        print(f"Error while getting credential: {e}")
-        raise
+            print(f"Error while getting credential: {e}")
+            raise
 
     try:
         rustic = Rustic(site_config, storage_config).check_and_dump()

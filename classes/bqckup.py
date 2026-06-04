@@ -25,6 +25,7 @@ from helpers.file import remove_folder
 from hashlib import sha256
 from pathlib import Path
 from lib.notifications.discord import send_notification
+from lib.notifications.email import send_notification as send_email_notification
 from helpers.datetime import time_since, get_today, difference_in_days, interval_in_number
 from helpers.network import get_server_ip
 from rich import print
@@ -98,6 +99,7 @@ class Bqckup:
             return
 
         send_notification(payload)
+        send_email_notification(payload)
         NotificationLog().create(hash=hashed_payload, sent_at=int(time.time()))
             
     def validate_config(self, name: str) -> bool:
@@ -750,11 +752,16 @@ class Bqckup:
             "notification": {}
         }
 
-        if site_config.get("options", {}).get("provider") != "s3":
-            raise Exception("Currently, incremental backup only support S3 provider")
+        provider = site_config.get("options", {}).get("provider")
 
-        bucket_name = site_config.get("options", {}).get("storage")
-        storage_config = Storage().get_storage_detail(bucket_name)
+        if provider not in ("s3", "local"):
+            raise Exception(f"Incremental backup does not support provider '{provider}'. Supported providers: s3, local.")
+
+        if provider == "s3":
+            bucket_name = site_config.get("options", {}).get("storage")
+            storage_config = Storage().get_storage_detail(bucket_name)
+        else:
+            storage_config = {}
 
         rustic = Rustic(site_config, storage_config)
 
@@ -787,7 +794,10 @@ class Bqckup:
             with ProgressSpinner("checking repository..."):
                 rustic.check_repository()
 
-            self._clean_old_backups(site_config)
+            # Dated archive folders only exist on S3; for local the rustic repo
+            # retention is handled entirely by rustic.clean() below.
+            if provider == "s3":
+                self._clean_old_backups(site_config)
             rustic.clean()
 
         except RusticCleanError as e:
