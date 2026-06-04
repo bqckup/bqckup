@@ -16,7 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Email notifications.** SMTP email can be used as a notification channel
   alongside Discord (configurable per channel, with enable/disable and SMTP
   test support).
-  
+- **Safer restore.** Restoring in place (no `--target`) now warns and asks for
+  confirmation before overwriting the original paths. Use `--target <dir>` to
+  restore to a separate folder, or `--force` to skip the prompt.
+
 ### Changed
 - The `local` provider now uses `options.save_locally_path` as the single backup
   location for archive, incremental and database backups (previously the archive
