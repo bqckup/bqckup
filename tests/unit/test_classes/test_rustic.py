@@ -16,7 +16,7 @@ from classes.rustic import Rustic
 from constant import BQ_PATH
 
 
-def make_site_config(provider="s3", destination=None, name="example.com"):
+def make_site_config(provider="s3", save_locally_path=None, name="example.com"):
     options = {
         "provider": provider,
         "storage": "dummy",
@@ -25,8 +25,8 @@ def make_site_config(provider="s3", destination=None, name="example.com"):
         "follow_symlink": False,
         "save_locally": False,
     }
-    if destination is not None:
-        options["destination"] = destination
+    if save_locally_path is not None:
+        options["save_locally_path"] = save_locally_path
 
     return {
         "name": name,
@@ -65,8 +65,8 @@ class TestRusticProvider:
     def test_provider_reads_local(self):
         assert Rustic(make_site_config(provider="local"), {}).provider == "local"
 
-    def test_local_repository_path_uses_destination(self, tmp_path):
-        cfg = make_site_config(provider="local", destination=str(tmp_path))
+    def test_local_repository_path_uses_save_locally_path(self, tmp_path):
+        cfg = make_site_config(provider="local", save_locally_path=str(tmp_path))
         rustic = Rustic(cfg, {})
 
         assert rustic.local_repository_path == os.path.join(
@@ -74,7 +74,7 @@ class TestRusticProvider:
         )
 
     def test_local_repository_path_falls_back_to_bq_tmp(self):
-        cfg = make_site_config(provider="local")  # no destination configured
+        cfg = make_site_config(provider="local")  # no save_locally_path configured
         rustic = Rustic(cfg, {})
 
         assert rustic.local_repository_path == os.path.join(
@@ -85,7 +85,7 @@ class TestRusticProvider:
 class TestDumpConfigLocal:
     def test_repository_is_written_as_filesystem_path(self, tmp_path):
         dest = tmp_path / "backups"
-        cfg = make_site_config(provider="local", destination=str(dest))
+        cfg = make_site_config(provider="local", save_locally_path=str(dest))
 
         with patch("classes.rustic.RUSTIC_CONFIG_PATH", str(tmp_path / "rustic")):
             config_path = Rustic(cfg, {}).dump_config()
@@ -100,7 +100,7 @@ class TestDumpConfigLocal:
 
     def test_creates_repository_directory(self, tmp_path):
         dest = tmp_path / "backups"
-        cfg = make_site_config(provider="local", destination=str(dest))
+        cfg = make_site_config(provider="local", save_locally_path=str(dest))
 
         with patch("classes.rustic.RUSTIC_CONFIG_PATH", str(tmp_path / "rustic")):
             Rustic(cfg, {}).dump_config()
@@ -110,7 +110,7 @@ class TestDumpConfigLocal:
     def test_works_with_empty_storage_config(self, tmp_path):
         # For the local provider the caller passes storage_config={}; dump_config
         # must never try to read S3 keys from it.
-        cfg = make_site_config(provider="local", destination=str(tmp_path / "b"))
+        cfg = make_site_config(provider="local", save_locally_path=str(tmp_path / "b"))
 
         with patch("classes.rustic.RUSTIC_CONFIG_PATH", str(tmp_path / "rustic")):
             config_path = Rustic(cfg, {}).dump_config()  # must not raise KeyError
@@ -118,7 +118,7 @@ class TestDumpConfigLocal:
         assert os.path.exists(config_path)
 
     def test_scrubbed_config_has_no_secrets_and_stays_valid(self, tmp_path):
-        cfg = make_site_config(provider="local", destination=str(tmp_path / "b"))
+        cfg = make_site_config(provider="local", save_locally_path=str(tmp_path / "b"))
 
         with patch("classes.rustic.RUSTIC_CONFIG_PATH", str(tmp_path / "rustic")):
             config_path = Rustic(cfg, {}).dump_config(with_credentials=False)
@@ -160,7 +160,7 @@ class TestIncrementalBackupProviderGating:
 
     def test_local_provider_does_not_query_storage(self, tmp_path):
         bq = self._bqckup()
-        cfg = make_site_config(provider="local", destination=str(tmp_path / "b"))
+        cfg = make_site_config(provider="local", save_locally_path=str(tmp_path / "b"))
 
         rustic_result = {
             "id": "abc123",

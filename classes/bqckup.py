@@ -646,11 +646,11 @@ class Bqckup:
                 }
             
             if backup.get('options').get('provider') == 'local':
-                destination = backup.get('options').get('destination')
+                destination = backup.get('options').get('save_locally_path')
                 if not destination:
                     destination = os.path.join(BQ_PATH, 'tmp')
-                    print("[yellow]Destination path is not configured for local provider[/yellow]")
-                    print(f"[yellow]Using '{destination}' as destination[/yellow]")
+                    print("[yellow]save_locally_path is not configured for local provider[/yellow]")
+                    print(f"[yellow]Using '{destination}' as backup location[/yellow]")
 
                 backup_path = os.path.join(destination, backup_folder)
                 

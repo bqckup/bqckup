@@ -121,8 +121,8 @@ class Rustic:
     @property
     def local_repository_path(self) -> str:
         """Filesystem path of the rustic repository when using the local provider."""
-        destination = self.site_config.get("options", {}).get("destination") or os.path.join(BQ_PATH, "tmp")
-        return os.path.join(destination, self.site_config["name"], "incremental")
+        save_locally_path = self.site_config.get("options", {}).get("save_locally_path") or os.path.join(BQ_PATH, "tmp")
+        return os.path.join(save_locally_path, self.site_config["name"], "incremental")
 
     @property
     def log_file(self) -> Path:

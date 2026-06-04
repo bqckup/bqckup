@@ -16,7 +16,7 @@ bqckup:
   # Where the repository lives is controlled by `options.provider` below:
   #   - provider: s3    -> repository is stored in the S3 bucket (options.storage)
   #   - provider: local -> repository is stored on this machine, under
-  #                        `<options.destination>/<name>/incremental`
+  #                        `<options.save_locally_path>/<name>/incremental`
   #
   # Restore any time with:  bqckup restore <name>            (latest snapshot)
   #                         bqckup restore <name> --snapshot <id>
@@ -58,22 +58,22 @@ bqckup:
     #
     # provider: local
     #   Keeps backups on this machine, no S3 needed.
-    #   - `destination` is the folder where backups are written
+    #   - `save_locally_path` is the folder where everything is written
     #     (defaults to /etc/bqckup/tmp if left empty).
-    #   - Archive backups go to:     <destination>/<name>/<date>/
-    #   - Incremental backups go to: <destination>/<name>/incremental/
+    #   - Archive backups go to:     <save_locally_path>/<name>/<date>/
+    #   - Incremental backups go to: <save_locally_path>/<name>/incremental/
+    #   - Database dumps go to:      <save_locally_path>/<name>/
     #   - `storage` is ignored (set automatically to "local").
     provider: s3
 
     # S3 storage name from storages.yml (only used when provider: s3)
     storage: dummy
 
-    # Local destination folder (only used when provider: local)
-    # destination: /mnt/backups
-
     interval: daily #can be daily, weekly, monthly
     retention: '7' # how many snapshots/backups to keep before pruning old ones
     follow_symlink: no
-    save_locally: no               # (provider: s3 only) also keep a copy locally
+    # For provider: s3  -> keep an extra local copy of the backup besides the S3 upload.
+    # For provider: local -> this is the backup location itself.
+    save_locally: no
     save_locally_path: /etc/bqckup/tmp
     notification_email: email@example.com

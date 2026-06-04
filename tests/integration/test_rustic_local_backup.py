@@ -21,7 +21,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _local_site_config(name, source_dir, destination):
+def _local_site_config(name, source_dir, save_locally_path):
     """Build a local-provider site config (S3 storage stays a dummy name)."""
     return {
         "name": name,
@@ -36,7 +36,7 @@ def _local_site_config(name, source_dir, destination):
             "retention": "7",
             "follow_symlink": False,
             "save_locally": False,
-            "destination": str(destination),
+            "save_locally_path": str(save_locally_path),
         },
     }
 
