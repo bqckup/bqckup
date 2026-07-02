@@ -4,7 +4,7 @@ import os, time, shutil, signal, sys, socket, copy
 import traceback
 from subprocess import CalledProcessError
 from typing import Any, Dict, Optional
-from classes.database import Database
+from classes.database import Database, DatabaseCorruptException
 from classes.rustic import Rustic, RusticCheckError, RusticCleanError, RusticConfigError
 from classes.storage import Storage
 from classes.tar import Tar
@@ -957,6 +957,12 @@ class Bqckup:
                 error_message = result.get("error", "Unknown error")
                 print(f"[yellow]Database backup for {db_label} failed: {error_message}[/yellow]")
 
+                if result.get("corrupt"):
+                    # Corrupt table + automatic repair already failed once; retrying the
+                    # same dump won't help and would just waste time before we report it.
+                    print(f"[red]Skipping further retries for {db_label}: corrupt table repair failed and requires manual intervention.[/red]")
+                    break
+
                 if attempt < MAX_RETRIES - 1:
                     print(f"[yellow]Retrying in {BACKOFF} seconds...[/yellow]")
                     time.sleep(BACKOFF)
@@ -989,11 +995,31 @@ class Bqckup:
                 )
             else:
                 log_update_data["status"] = Log.__FAILED__
-                self._send_notification(
-                    backup_name=site_config["name"],
-                    title=f"Database Backup Failed for {site_config['name']} {db_label}",
-                    messages=f"Error: {result.get('error')}",
-                )
+
+                if result.get("corrupt"):
+                    repair_status = (
+                        "succeeded but the table remained corrupt"
+                        if result.get("repair_succeeded")
+                        else "failed"
+                    )
+                    self._send_notification(
+                        backup_name=site_config["name"],
+                        title=f"Corrupt Table Detected - Repair Failed for {site_config['name']} {db_label}",
+                        description=(
+                            f"A corrupt table was detected while backing up '{db_label}'. "
+                            f"Automatic repair {repair_status}. Manual intervention is required.\n\n"
+                            f"The last successful backup for this database has been left "
+                            f"untouched and was **not** overwritten or deleted."
+                        ),
+                        messages=f"Error: {result.get('error')}",
+                        color=15158332,  # Red color
+                    )
+                else:
+                    self._send_notification(
+                        backup_name=site_config["name"],
+                        title=f"Database Backup Failed for {site_config['name']} {db_label}",
+                        messages=f"Error: {result.get('error')}",
+                    )
 
             Log.update(log_update_data).where(Log.id == current_log.id).execute()
 
@@ -1044,6 +1070,18 @@ class Bqckup:
             result["success"] = True
             result["message"] = f"Database Backup for '{db_label}' Success"
             result["file_size"] = backup_path.stat().st_size
+
+        except DatabaseCorruptException as e:
+            # Corrupt table detected and automatic repair could not resolve it.
+            # The last known-good backup on storage is left untouched since we
+            # never reach the upload step above.
+            result["success"] = False
+            result["corrupt"] = True
+            result["repair_attempted"] = e.repair_attempted
+            result["repair_succeeded"] = e.repair_succeeded
+            result["message"] = f"Database Backup Failed for '{db_label}': {e}"
+            result["error"] = e
+            result["traceback"] = traceback.format_exc()
 
         except Exception as e:
             result["success"] = False
