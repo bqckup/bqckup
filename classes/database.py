@@ -167,7 +167,6 @@ class Database:
         log_dir: Optional[str] = None,
     ) -> None:
         """Mengekspor database ke file zip, dilengkapi dengan auto-repair untuk MySQL."""
-        # 1. Resolve Command
         if self.type == "mysql":
             command = self._get_mysql_command(
                 db_user, db_password, db_name, db_host, db_port
@@ -201,7 +200,6 @@ class Database:
         repair_attempted = False
         repair_succeeded = False
 
-        # 2. Execution Loop (with Retry Logic)
         for attempt in range(max_retries + 1):
             try:
                 log_offset = log_file.stat().st_size if log_file.exists() else 0
@@ -232,7 +230,6 @@ class Database:
                 )
 
                 try:
-                    # 'wb' akan menimpa file yang mungkin corrupt di percobaan sebelumnya
                     with gzip.open(output, "wb") as gz:
                         for chunk in iter(lambda: process.stdout.read(4096), b""):
                             gz.write(chunk)
@@ -257,7 +254,6 @@ class Database:
                         print(f"Incomplete file {output} removed.")
                     raise
 
-            # 3. Handle Failure & Auto-Repair
             is_corrupt = False
             try:
                 with open(log_file, "rb") as f:
@@ -265,7 +261,7 @@ class Database:
                     log_content = f.read().lower()
                 is_corrupt = self._is_corruption_detected(log_content)
             except OSError:
-                pass  # Jika log tidak bisa dibaca, biarkan exception utama terlempar
+                pass  
 
             if is_corrupt and self.type == "mysql" and attempt < max_retries:
                 print(
@@ -284,8 +280,6 @@ class Database:
                     f"backup sukses terakhir tidak ditimpa/terhapus.[/red]"
                 )
 
-            # Jangan biarkan file backup yang gagal/tidak lengkap tertinggal di disk,
-            # supaya tidak pernah tertukar/menimpa backup valid sebelumnya.
             if os.path.exists(output):
                 os.remove(output)
 
@@ -303,9 +297,6 @@ class Database:
                 if not repair_attempted:
                     repair_note = "was not attempted"
                 elif repair_succeeded:
-                    # mysqlcheck reported success, but the export still fails with a
-                    # corruption-like error (e.g. an InnoDB tablespace that mysqlcheck
-                    # cannot actually rebuild). Treat this as an unresolved failure.
                     repair_note = "reported success, but the table is still failing to export"
                 else:
                     repair_note = "failed"
@@ -319,14 +310,10 @@ class Database:
                     repair_succeeded=repair_succeeded,
                 )
 
-            # Jika gagal bukan karena korup, atau retry sudah habis
             raise DatabaseException(
                 f"Database export failed, see log {log_file} for details: return code {process.returncode}"
             )
 
-    # ==========================================
-    # CONNECTION TESTING
-    # ==========================================
 
     def test_connection(self, credentials: dict) -> None:
         if self.type == "mysql":
@@ -390,10 +377,6 @@ class Database:
             raise DatabaseException(
                 "Failed to connect to SQLite database, see log for details"
             )
-
-    # ==========================================
-    # UTILITIES
-    # ==========================================
 
     @staticmethod
     def get_all(site_config: dict) -> List[Dict[str, Any]]:
