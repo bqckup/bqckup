@@ -13,3 +13,4 @@ sites/*.yml
 .venv*
 test_email.py
 test_email*.cnf
+penjelasan.md
