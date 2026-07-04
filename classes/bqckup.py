@@ -771,14 +771,18 @@ class Bqckup:
             with ProgressSpinner("doing incremental backup..."):
                 rustic_result = rustic.backup()
 
-            summary_payload["total_size"] = rustic_result.get("total_size", -1)
+            try:
+                stats = rustic.get_stats()
+                summary_payload["total_size"] = stats.get("compressed_repo_size", rustic_result.get("total_size", 0))
+            except Exception:
+                summary_payload["total_size"] = rustic_result.get("total_size", 0)
             summary_payload["new_data"] = rustic_result.get("uploaded", 0)
             summary_payload["status"] = "completed"
 
             result["success"] = True
             result["message"] = "File Backup Success"
             result["file_size"] = summary_payload["total_size"]
-            result["file_path"] = rustic_result.get('id')
+            result["file_path"] = rustic_result.get("id")
 
 
             print("=========================================")

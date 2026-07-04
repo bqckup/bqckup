@@ -44,6 +44,11 @@ def send_backup_summary(
     if not url:
         return
 
+    if new_data == 0:
+        message = f"Backup {status}: no new data uploaded (no changes detected)"
+    else:
+        message = f"Backup {status}: {new_data} bytes uploaded"
+
     payload = {
         "hostname": gethostname(),
         "domain": domain,
@@ -53,7 +58,20 @@ def send_backup_summary(
         "finish_at": finish_at,
         "status": status,
         "backup_method": backup_method,
+        "message": message,
     }
+
+    # Discord webhook requires JSON with a "content" field
+    is_discord = "discordapp.com" in url or "discord.com" in url
+    if is_discord:
+        discord_payload = {"content": f"**[{domain}]** {message} | size: {total_size} bytes | method: {backup_method}"}
+        try:
+            r = requests.post(url, json=discord_payload)
+            if r.status_code not in (200, 204):
+                print("Error while sending summary data.")
+        except Exception as e:
+            print(f"Error sending summary to Discord: {e}")
+        return
 
     try:
         r = requests.post(url, data=payload)
