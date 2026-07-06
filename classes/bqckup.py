@@ -1,46 +1,68 @@
-from helpers.utility import now
-from typing import List
-import os, time, shutil, signal, sys, socket, copy
+import copy
+import os
+import shutil
+import signal
+import socket
+import sys
+import time
 import traceback
-from subprocess import CalledProcessError
-from typing import Any, Dict, Optional
-from classes.database import Database, DatabaseCorruptException
-from classes.rustic import Rustic, RusticCheckError, RusticCleanError, RusticConfigError
-from classes.storage import Storage
-from classes.tar import Tar
-from classes.file import File
-from classes.config import Config
-from classes.yml_parser import Yml_Parser
-from classes.progress import ProgressSpinner
-from classes.yml_checker import Yml_Checker
-from classes.s3 import s3
-from helpers.hook import send_backup_summary
-from helpers.utility import is_debug
-from models.log import Log
-from models.notification_log import NotificationLog
-from classes.master import Master
-from constant import BQ_PATH, STORAGE_CONFIG_PATH, SITE_CONFIG_PATH, MAX_RETRIES, BACKOFF, VERSION
 from datetime import datetime
-from helpers.file import remove_folder
 from hashlib import sha256
 from pathlib import Path
+from subprocess import CalledProcessError
+from typing import Any, Dict, List, Optional
+
+from humanfriendly import format_size, format_timespan
+from rich import print
+
+from classes.config import Config
+from classes.database import Database, DatabaseCorruptException
+from classes.file import File
+from classes.master import Master
+from classes.progress import ProgressSpinner
+from classes.rustic import Rustic, RusticCheckError, RusticCleanError, RusticConfigError
+from classes.s3 import s3
+from classes.storage import Storage
+from classes.tar import Tar
+from classes.yml_checker import Yml_Checker
+from classes.yml_parser import Yml_Parser
+from constant import (
+    BACKOFF,
+    BQ_PATH,
+    MAX_RETRIES,
+    SITE_CONFIG_PATH,
+    STORAGE_CONFIG_PATH,
+    VERSION,
+)
+from helpers.datetime import (
+    difference_in_days,
+    get_today,
+    interval_in_number,
+    time_since,
+)
+from helpers.file import remove_folder
+from helpers.hook import send_backup_summary
+from helpers.network import get_server_ip
+from helpers.utility import is_debug, now
 from lib.notifications.discord import send_notification
 from lib.notifications.email import send_notification as send_email_notification
-from helpers.datetime import time_since, get_today, difference_in_days, interval_in_number
-from helpers.network import get_server_ip
-from rich import print
-from humanfriendly import format_size, format_timespan
+from models.log import Log
+from models.notification_log import NotificationLog
+
 
 class ConfigExceptions(Exception):
     pass
 
+
 def signal_handler(sig, frame):
     Log().delete().where(Log.status == Log.__ON_PROGRESS__).execute()
 
-    print ("\n[red]Aborted.[/red]")
+    print("\n[red]Aborted.[/red]")
     sys.exit(0)
-    
+
+
 signal.signal(signal.SIGINT, signal_handler)
+
 
 class Bqckup:
     def __init__(self):
@@ -48,7 +70,7 @@ class Bqckup:
 
         try:
             with ProgressSpinner("checking storage connection..."):
-                s3.check_connection() # check all storage
+                s3.check_connection()  # check all storage
         except Exception as e:
             print(f"[red]{e}[/red]")
             sys.exit()
@@ -84,7 +106,7 @@ class Bqckup:
                     "fields": fields,
                     "footer": {
                         "text": footer,
-                    }
+                    },
                 }
             ]
         }
@@ -94,21 +116,22 @@ class Bqckup:
             NotificationLog()
             .select()
             .where(NotificationLog.hash == hashed_payload)
-            .exists() and not is_debug()
+            .exists()
+            and not is_debug()
         ):
             return
 
         send_notification(payload)
         send_email_notification(payload)
         NotificationLog().create(hash=hashed_payload, sent_at=int(time.time()))
-            
+
     def validate_config(self, name: str) -> bool:
         try:
             with ProgressSpinner("Validating config..."):
                 config = self.detail(name)
                 if not config:
                     raise ConfigExceptions(f"Backup {name} not found")
-                for path in config.get('path'):
+                for path in config.get("path"):
                     if not os.path.exists(path):
                         raise ConfigExceptions(f"Can't find {path}")
 
@@ -120,66 +143,83 @@ class Bqckup:
                 for database in databases:
                     db_type = database.get("type", "mysql")
                     if db_type not in Database().SUPPORTED_DATABASE:
-                        raise ConfigExceptions(
-                            f"Database type {db_type} not supported"
-                        )
+                        raise ConfigExceptions(f"Database type {db_type} not supported")
 
                     if db_type == "sqlite":
-                        Database(type=db_type).test_connection({
-                            "name": database["name"],
-                        })
+                        Database(type=db_type).test_connection(
+                            {
+                                "name": database["name"],
+                            }
+                        )
                     else:
-                        Database(type=db_type).test_connection({
-                            "user": database["user"],
-                            "password": database["password"],
-                            "host": database["host"],
-                            "port": database["port"],
-                            "name": database["name"],
-                        })
+                        Database(type=db_type).test_connection(
+                            {
+                                "user": database["user"],
+                                "password": database["password"],
+                                "host": database["host"],
+                                "port": database["port"],
+                                "name": database["name"],
+                            }
+                        )
 
-                if config.get('options').get('provider') == 's3':
-                    Storage().get_storage_detail(config.get('options').get('storage'))
+                if config.get("options").get("provider") == "s3":
+                    Storage().get_storage_detail(config.get("options").get("storage"))
             return True
         except Exception as e:
             print(f"[red]Error: {e}[/red]")
             return False
-            
+
     def detail(self, name: str):
         backups = self.list()
-        
+
         for i in backups:
-            if backups[i]['name'] == name:
+            if backups[i]["name"] == name:
                 return backups[i]
-            
+
         return None
-    
+
     def list(self):
         files = File().get_file_list(SITE_CONFIG_PATH)
-        files = [file for file in files if file.endswith('.yml')]
+        files = [file for file in files if file.endswith(".yml")]
         results = {}
-        
+
         for index, file in enumerate(files):
             file_name = os.path.basename(file)
             parsed_content = Yml_Parser.parse(file)
-            bqckup = parsed_content['bqckup']
-            log = self.get_last_log(bqckup['name'])
+            bqckup = parsed_content["bqckup"]
+            log = self.get_last_log(bqckup["name"])
             results[index] = {}
             results[index] = bqckup
-            results[index]['config_path'] = file
-            results[index]['file_name'] = file_name
-            results[index]['last_backup'] = log.created_at if log else None
-            
+            results[index]["config_path"] = file
+            results[index]["file_name"] = file_name
+            results[index]["last_backup"] = log.created_at if log else None
+
             # Next Backup
-            results[index]['next_backup'] = False
-            if results[index]['last_backup']:
-                next_backup_in_date = datetime.fromtimestamp(results[index]['last_backup'] + (interval_in_number(bqckup['options']['interval']) * 86400)).strftime('%d/%m/%Y 00:00:00')
-                results[index]['next_backup'] = time_since(datetime.strptime(next_backup_in_date, '%d/%m/%Y %H:%M:%S').timestamp(), time.time(), reverse=True)
-            
+            results[index]["next_backup"] = False
+            if results[index]["last_backup"]:
+                next_backup_in_date = datetime.fromtimestamp(
+                    results[index]["last_backup"]
+                    + (interval_in_number(bqckup["options"]["interval"]) * 86400)
+                ).strftime("%d/%m/%Y 00:00:00")
+                results[index]["next_backup"] = time_since(
+                    datetime.strptime(
+                        next_backup_in_date, "%d/%m/%Y %H:%M:%S"
+                    ).timestamp(),
+                    time.time(),
+                    reverse=True,
+                )
+
         return results
-            
-    def get_last_log(self, name:str):
-        return Log().select().where((Log.name == name) & (Log.status != Log.__FAILED__)).order_by(Log.id.desc()).first()
-        
+
+    def get_last_log(self, name: str):
+        return (
+            Log()
+            .select()
+            .where((Log.name == name) & (Log.status != Log.__FAILED__))
+            .order_by(Log.id.desc())
+            .first()
+        )
+
     def get_logs(self, name: str):
         return list(Log().select().where(Log.name == name))
 
@@ -204,7 +244,7 @@ class Bqckup:
 
         # Clean up backup config for API
         config: dict = copy.deepcopy(site_config)
-        removed_keys = ['config_path', 'file_name', 'last_backup', 'next_backup']
+        removed_keys = ["config_path", "file_name", "last_backup", "next_backup"]
         for key in removed_keys:
             config.pop(key, None)
 
@@ -219,7 +259,9 @@ class Bqckup:
 
         if file_backup_result:
             backups["file"] = {
-                "status": "completed" if file_backup_result.get("success") else "failed",
+                "status": "completed"
+                if file_backup_result.get("success")
+                else "failed",
                 "size": file_backup_result.get("file_size", 0),
                 "errors": file_backup_result.get("errors", []),
                 "metadata": {},
@@ -232,15 +274,17 @@ class Bqckup:
             db_info = db_result.get("database", {})
             db_info.pop("password", None)
 
-            databases_payload.append({
-                "status": "completed" if db_result.get("success") else "failed",
-                "size": db_result.get("size", 0),
-                "errors": db_result.get("errors", []),
-                "database": db_info,
-                "metadata": {},
-                "started_at": db_result.get("started_at"),
-                "ended_at": db_result.get("ended_at"),
-            })
+            databases_payload.append(
+                {
+                    "status": "completed" if db_result.get("success") else "failed",
+                    "size": db_result.get("size", 0),
+                    "errors": db_result.get("errors", []),
+                    "database": db_info,
+                    "metadata": {},
+                    "started_at": db_result.get("started_at"),
+                    "ended_at": db_result.get("ended_at"),
+                }
+            )
 
         if databases_payload:
             backups["databases"] = databases_payload
@@ -261,6 +305,44 @@ class Bqckup:
 
         return payload
 
+    def _get_protected_db_backup_keys(self, site_config: Dict[str, Any]) -> set:
+        """S3 keys of the most recent successful backup for each database on
+        this site. These must survive retention cleanup even if they fall
+        outside the normal retention window, so that a database stuck in a
+        corrupt/unrepaired state never loses its last known-good backup.
+        Once a newer backup succeeds, this naturally points to that one
+        instead, releasing the older copy back to normal retention.
+        """
+        protected_keys = set()
+        site_name = site_config.get("name", "")
+        root_folder = Config().read("bqckup", "root_folder_name") or "bqckup"
+
+        for database in Database.get_all(site_config):
+            db_label = f"{database['user']}@{database['host']}:{database['port']}/{database['name']}"
+            last_success = (
+                Log()
+                .select()
+                .where(
+                    (Log.name == site_name)
+                    & (Log.type == Log.__DATABASE__)
+                    & (Log.status == Log.__SUCCESS__)
+                    & (Log.description.contains(db_label))
+                )
+                .order_by(Log.id.desc())
+                .first()
+            )
+
+            if not last_success or not last_success.file_path:
+                continue
+
+            date_str = datetime.fromtimestamp(last_success.created_at).strftime(
+                "%d-%B-%Y"
+            )
+            file_name = os.path.basename(last_success.file_path)
+            protected_keys.add(f"{root_folder}/{site_name}/{date_str}/{file_name}")
+
+        return protected_keys
+
     def _clean_old_backups(self, site_config: Dict[str, Any]) -> None:
         print("Removing old backups...")
 
@@ -276,12 +358,25 @@ class Bqckup:
                 print("No old backup to delete")
                 return
 
-            objects = [
+            candidate_objects = [
                 obj.get("Key")
                 for prefix in backup_to_delete
                 for obj in _s3.list(prefix=prefix).get("Contents", [])
                 if obj.get("Key")
             ]
+
+            protected_keys = self._get_protected_db_backup_keys(site_config)
+            objects = [key for key in candidate_objects if key not in protected_keys]
+
+            for key in candidate_objects:
+                if key in protected_keys:
+                    print(
+                        f"[yellow]Preserving last known-good database backup (outside retention window): {key}[/yellow]"
+                    )
+
+            if not objects:
+                print("No old backup to delete")
+                return
 
             _s3.delete_objects(objects=objects)
 
@@ -311,10 +406,20 @@ class Bqckup:
             print(f"[red]Backup for {backup_name} is not enabled[/red]")
             return True
 
-        last_any_log = Log().select().where(Log.name == backup_name).order_by(Log.id.desc()).first()
-        last_success_log = Log().select().where(
-            (Log.name == backup_name) & (Log.status == Log.__SUCCESS__)
-        ).order_by(Log.id.desc()).first()
+        last_any_log = (
+            Log()
+            .select()
+            .where(Log.name == backup_name)
+            .order_by(Log.id.desc())
+            .first()
+        )
+        last_success_log = (
+            Log()
+            .select()
+            .where((Log.name == backup_name) & (Log.status == Log.__SUCCESS__))
+            .order_by(Log.id.desc())
+            .first()
+        )
 
         if last_any_log:
             last_log_status = {
@@ -324,8 +429,12 @@ class Bqckup:
             }.get(last_any_log.status, "unknown")
 
             if last_any_log.status != Log().__SUCCESS__:
-                print(f"[yellow]The previous backup for {backup_name} was not successful.[/yellow]")
-                print(f"[yellow]Last Status: '{last_log_status}'. Attempted at: {datetime.fromtimestamp(last_any_log.created_at).strftime('%d/%m/%Y %H:%M:%S')}[/yellow]")
+                print(
+                    f"[yellow]The previous backup for {backup_name} was not successful.[/yellow]"
+                )
+                print(
+                    f"[yellow]Last Status: '{last_log_status}'. Attempted at: {datetime.fromtimestamp(last_any_log.created_at).strftime('%d/%m/%Y %H:%M:%S')}[/yellow]"
+                )
                 self._send_notification(
                     backup_name=backup_name,
                     title=f"Previous Backup Not Successful for {backup_name}",
@@ -336,38 +445,58 @@ class Bqckup:
                 )
 
         failed_components = []
-        last_file_log = Log().select().where(
-            (Log.name == backup_name) & (Log.type == Log.__FILES__)
-        ).order_by(Log.id.desc()).first()
+        last_file_log = (
+            Log()
+            .select()
+            .where((Log.name == backup_name) & (Log.type == Log.__FILES__))
+            .order_by(Log.id.desc())
+            .first()
+        )
         if last_file_log and last_file_log.status == Log.__FAILED__:
             failed_components.append("files")
 
         for database in Database.get_all(backup):
             db_label = f"{database['user']}@{database['host']}:{database['port']}/{database['name']}"
-            last_db_log = Log().select().where(
-                (Log.name == backup_name)
-                & (Log.type == Log.__DATABASE__)
-                & (Log.description.contains(db_label))
-            ).order_by(Log.id.desc()).first()
+            last_db_log = (
+                Log()
+                .select()
+                .where(
+                    (Log.name == backup_name)
+                    & (Log.type == Log.__DATABASE__)
+                    & (Log.description.contains(db_label))
+                )
+                .order_by(Log.id.desc())
+                .first()
+            )
             if last_db_log and last_db_log.status == Log.__FAILED__:
                 failed_components.append(f"database {db_label}")
 
         if failed_components:
-            print(f"[yellow]Previous backup has failed components ({', '.join(failed_components)}). Running backup again.[/yellow]")
+            print(
+                f"[yellow]Previous backup has failed components ({', '.join(failed_components)}). Running backup again.[/yellow]"
+            )
             return False
 
         if last_success_log:
-            interval = backup['options']['interval']
+            interval = backup["options"]["interval"]
             last_backup_timestamp = last_success_log.created_at
-            days_passed = abs(difference_in_days(last_backup_timestamp, int(time.time())))
+            days_passed = abs(
+                difference_in_days(last_backup_timestamp, int(time.time()))
+            )
             to_compare = interval_in_number(interval)
 
             if not force and days_passed < to_compare:
                 print("\n=========================================")
                 print(f"Backup Name: {backup_name}")
-                print(f"Current Date: {time.strftime('%d/%m/%Y %H:%M:%S', time.localtime())}")
-                print(f"Last Backup: {datetime.fromtimestamp(last_backup_timestamp).strftime('%d/%m/%Y %H:%M:%S')}")
-                print(f"Next bqckup: {datetime.fromtimestamp(last_backup_timestamp + (to_compare * 86400)).strftime('%d/%m/%Y 00:00:00')}")
+                print(
+                    f"Current Date: {time.strftime('%d/%m/%Y %H:%M:%S', time.localtime())}"
+                )
+                print(
+                    f"Last Backup: {datetime.fromtimestamp(last_backup_timestamp).strftime('%d/%m/%Y %H:%M:%S')}"
+                )
+                print(
+                    f"Next bqckup: {datetime.fromtimestamp(last_backup_timestamp + (to_compare * 86400)).strftime('%d/%m/%Y 00:00:00')}"
+                )
                 print(f"Day passed: {days_passed}")
                 print(f"Interval: {interval}")
                 print(f"\nBackup for {backup_name} is not needed yet...")
@@ -376,10 +505,10 @@ class Bqckup:
                 return True
 
         if (
-            Log().select().where(
-                (Log.name == backup_name) &
-                (Log.status == Log.__ON_PROGRESS__)
-            ).exists()
+            Log()
+            .select()
+            .where((Log.name == backup_name) & (Log.status == Log.__ON_PROGRESS__))
+            .exists()
         ):
             print(f"Backup for {backup_name} is already running...")
             return True
@@ -413,7 +542,9 @@ class Bqckup:
             backup_result = None
             backup_started_at = now()
             rustic_version = Rustic.version()
-            is_incremental = Rustic.is_enabled(backup) if incremental is None else incremental
+            is_incremental = (
+                Rustic.is_enabled(backup) if incremental is None else incremental
+            )
             backup_mode = "incremental" if is_incremental else "archive"
             database_results = []
 
@@ -431,26 +562,36 @@ class Bqckup:
                 self.backup_config(backup, _s3)
                 database_results = self.backup_databases(backup, _s3)
 
-                backup_method = self.incremental_backup if is_incremental else self.full_backup
+                backup_method = (
+                    self.incremental_backup if is_incremental else self.full_backup
+                )
 
-                log = Log().write({
-                    "name": backup["name"],
-                    "description": "File backup process starting...",
-                    "type": Log.__FILES__,
-                    "storage": backup["options"]["storage"],
-                    "file_path": "/dev/null",
-                })
+                log = Log().write(
+                    {
+                        "name": backup["name"],
+                        "description": "File backup process starting...",
+                        "type": Log.__FILES__,
+                        "storage": backup["options"]["storage"],
+                        "file_path": "/dev/null",
+                    }
+                )
 
                 errors = []
 
                 for attempt in range(MAX_RETRIES):
-                    attempt_info = f"(Attempt {attempt + 1}/{MAX_RETRIES})" if attempt > 0 else ""
-                    print(f"[green]Starting file backup for {backup['name']}[/green] {attempt_info}...")
+                    attempt_info = (
+                        f"(Attempt {attempt + 1}/{MAX_RETRIES})" if attempt > 0 else ""
+                    )
+                    print(
+                        f"[green]Starting file backup for {backup['name']}[/green] {attempt_info}..."
+                    )
 
                     backup_result = backup_method(backup)
 
                     if backup_result["success"]:
-                        print(f"[green]File backup for {backup['name']} successful.[/green]")
+                        print(
+                            f"[green]File backup for {backup['name']} successful.[/green]"
+                        )
                         break
 
                     error = backup_result.get("traceback") or backup_result.get("error")
@@ -458,19 +599,22 @@ class Bqckup:
                         errors.append(str(error))
 
                     error_message = backup_result.get("message", "Unknown error")
-                    print(f"[yellow]File backup for {backup['name']} failed: {error_message}[/yellow]")
+                    print(
+                        f"[yellow]File backup for {backup['name']} failed: {error_message}[/yellow]"
+                    )
 
                     if attempt < MAX_RETRIES - 1:
                         print(f"[yellow]Retrying in {BACKOFF} seconds...[/yellow]")
                         time.sleep(BACKOFF)
                 else:
-                    print(f"[red]File backup for {backup['name']} failed after {MAX_RETRIES} attempts.[/red]")
+                    print(
+                        f"[red]File backup for {backup['name']} failed after {MAX_RETRIES} attempts.[/red]"
+                    )
 
                 if backup_result:
                     backup_result["errors"] = errors
 
                     if not backup_result.get("summary_payload"):
-
                         # default payload
                         backup_result["summary_payload"] = {
                             "domain": backup.get("name"),
@@ -499,8 +643,7 @@ class Bqckup:
 
                     if notification_payload := backup_result.get("notification"):
                         self._send_notification(
-                            backup_name=backup.get("name"),
-                            **notification_payload
+                            backup_name=backup.get("name"), **notification_payload
                         )
 
                     try:
@@ -521,7 +664,9 @@ class Bqckup:
 
                         Master.get().send(payload)
                     except Exception as e:
-                        print(f"[red]Failed to send backup report for {backup['name']}: {e}[/red]")
+                        print(
+                            f"[red]Failed to send backup report for {backup['name']}: {e}[/red]"
+                        )
                         if is_debug():
                             traceback.print_exc()
 
@@ -543,7 +688,7 @@ class Bqckup:
                     title=f"Backup failed for {backup.get('name')}",
                     messages=error_msg,
                 )
-                
+
                 try:
                     payload = self._build_api_payload(
                         site_config=backup,
@@ -556,7 +701,9 @@ class Bqckup:
 
                     Master.get().send(payload)
                 except Exception as e:
-                    print(f"[red]Failed to send backup report for {backup['name']}: {e}[/red]")
+                    print(
+                        f"[red]Failed to send backup report for {backup['name']}: {e}[/red]"
+                    )
                     if is_debug():
                         traceback.print_exc()
 
@@ -598,28 +745,44 @@ class Bqckup:
         }
 
         try:
-            bqckup_config_location = os.path.join(SITE_CONFIG_PATH, site_config['file_name'])
-            backup = Yml_Parser.parse(bqckup_config_location)['bqckup']
+            bqckup_config_location = os.path.join(
+                SITE_CONFIG_PATH, site_config["file_name"]
+            )
+            backup = Yml_Parser.parse(bqckup_config_location)["bqckup"]
             backup_folder = f"{backup.get('name')}/{get_today()}"
-            tmp_path = os.path.join(BQ_PATH, 'tmp', f"{backup.get('name')}")
+            tmp_path = os.path.join(BQ_PATH, "tmp", f"{backup.get('name')}")
 
             if not File().is_exists(tmp_path):
                 os.makedirs(tmp_path)
 
             compressed_file = os.path.join(tmp_path, f"{int(time.time())}.tar.gz")
-            result['file_path'] = compressed_file
-            
-            compressed_file = Tar().compress(backup.get('path'), compressed_file, backup.get('options')['follow_symlink'],site_config.get('exclude_path', []))
-            
-            last_compressed_file_backup = Log().select().where((Log.name == backup.get('name')) & (Log.type == Log.__FILES__) & (Log.file_size != 0)).order_by(Log.id.desc()).get_or_none()
+            result["file_path"] = compressed_file
+
+            compressed_file = Tar().compress(
+                backup.get("path"),
+                compressed_file,
+                backup.get("options")["follow_symlink"],
+                site_config.get("exclude_path", []),
+            )
+
+            last_compressed_file_backup = (
+                Log()
+                .select()
+                .where(
+                    (Log.name == backup.get("name"))
+                    & (Log.type == Log.__FILES__)
+                    & (Log.file_size != 0)
+                )
+                .order_by(Log.id.desc())
+                .get_or_none()
+            )
 
             compressed_file_size = os.stat(compressed_file).st_size
-            result['file_size'] = compressed_file_size
+            result["file_size"] = compressed_file_size
             summary_payload["total_size"] = compressed_file_size
             summary_payload["new_data"] = compressed_file_size
 
             if last_compressed_file_backup:
-                
                 previous_size = format_size(last_compressed_file_backup.file_size)
                 current_size = format_size(compressed_file_size)
                 time_consume = format_timespan(last_compressed_file_backup.time_consume)
@@ -629,9 +792,15 @@ class Bqckup:
                 print(f"Current Size\t: {current_size}")
                 print(f"Time Consumed\t: {time_consume}")
                 print("=========================================")
-                
-            if last_compressed_file_backup and os.stat(compressed_file).st_size == last_compressed_file_backup.file_size:
-                print(f"[red]Based on file size, there is no changes detected for {compressed_file}[/red]\n")
+
+            if (
+                last_compressed_file_backup
+                and os.stat(compressed_file).st_size
+                == last_compressed_file_backup.file_size
+            ):
+                print(
+                    f"[red]Based on file size, there is no changes detected for {compressed_file}[/red]\n"
+                )
 
                 result["notification"] = {
                     "title": "No Changes Detected",
@@ -651,57 +820,79 @@ class Bqckup:
                         "inline": False,
                     },
                 }
-            
-            if backup.get('options').get('provider') == 'local':
-                destination = backup.get('options').get('save_locally_path')
+
+            if backup.get("options").get("provider") == "local":
+                destination = backup.get("options").get("save_locally_path")
                 if not destination:
-                    destination = os.path.join(BQ_PATH, 'tmp')
-                    print("[yellow]save_locally_path is not configured for local provider[/yellow]")
+                    destination = os.path.join(BQ_PATH, "tmp")
+                    print(
+                        "[yellow]save_locally_path is not configured for local provider[/yellow]"
+                    )
                     print(f"[yellow]Using '{destination}' as backup location[/yellow]")
 
                 backup_path = os.path.join(destination, backup_folder)
-                
+
                 if not os.path.exists(backup_path):
                     os.makedirs(backup_path, exist_ok=True)
-                
-                backup_path_without_date = os.path.join(destination, backup['name'])
-                folders = [folder for folder in os.listdir(backup_path_without_date) if os.path.isdir(os.path.join(backup_path_without_date, folder))]
-                folders.sort(key=lambda x: os.path.getmtime(os.path.join(backup_path_without_date, x)))
-                
-                if len(folders) > int(backup.get('options').get('retention')):
-                    shutil.rmtree(os.path.join(backup_path_without_date, folders[0]))                    
+
+                backup_path_without_date = os.path.join(destination, backup["name"])
+                folders = [
+                    folder
+                    for folder in os.listdir(backup_path_without_date)
+                    if os.path.isdir(os.path.join(backup_path_without_date, folder))
+                ]
+                folders.sort(
+                    key=lambda x: os.path.getmtime(
+                        os.path.join(backup_path_without_date, x)
+                    )
+                )
+
+                if len(folders) > int(backup.get("options").get("retention")):
+                    shutil.rmtree(os.path.join(backup_path_without_date, folders[0]))
 
                 if os.path.exists(compressed_file):
-                    shutil.move(compressed_file, os.path.join(backup_path, os.path.basename(compressed_file)))
-                    
-            if backup.get('options').get('provider') == 's3':
+                    shutil.move(
+                        compressed_file,
+                        os.path.join(backup_path, os.path.basename(compressed_file)),
+                    )
+
+            if backup.get("options").get("provider") == "s3":
                 # Cleaning Old Folder
                 self._clean_old_backups(site_config)
 
-                _s3 = s3(storage_name=backup.get('options').get('storage'))
+                _s3 = s3(storage_name=backup.get("options").get("storage"))
 
                 if os.path.exists(compressed_file):
                     print(f"\nUploading {compressed_file}")
                     _s3.upload(
                         compressed_file,
-                        f"{backup_folder}/{os.path.basename(compressed_file)}"
+                        f"{backup_folder}/{os.path.basename(compressed_file)}",
                     )
 
-                    should_save_locally = backup.get('options').get('save_locally')
-                    save_locally_path = backup.get('options').get('save_locally_path') # If not set it will be at /etc/bqckup/tmp
-                    
+                    should_save_locally = backup.get("options").get("save_locally")
+                    save_locally_path = backup.get("options").get(
+                        "save_locally_path"
+                    )  # If not set it will be at /etc/bqckup/tmp
+
                     if not should_save_locally:
                         os.unlink(compressed_file)
                     elif should_save_locally and save_locally_path:
                         print("Saving file backup locally ...")
                         if not os.path.isdir(save_locally_path):
-                            raise Exception(f"Save locally path {save_locally_path} is not a directory")
+                            raise Exception(
+                                f"Save locally path {save_locally_path} is not a directory"
+                            )
                         else:
                             try:
-                                save_locally_path = os.path.join(save_locally_path, backup.get('name'))
+                                save_locally_path = os.path.join(
+                                    save_locally_path, backup.get("name")
+                                )
                                 if not os.path.isdir(save_locally_path):
                                     os.makedirs(save_locally_path)
-                                if os.path.dirname(os.path.abspath(compressed_file)) != save_locally_path:
+                                if (
+                                    os.path.dirname(os.path.abspath(compressed_file))
+                                    != save_locally_path
+                                ):
                                     shutil.move(compressed_file, save_locally_path)
                             except Exception as e:
                                 print(f"Failed to save file backup locally: {e}")
@@ -716,7 +907,7 @@ class Bqckup:
                 traceback.print_exc()
 
             # If backup failed remove the tmp folder
-            if 'tmp_path' in locals() and os.path.exists(tmp_path):
+            if "tmp_path" in locals() and os.path.exists(tmp_path):
                 remove_folder(tmp_path)
 
             result["success"] = False
@@ -756,13 +947,15 @@ class Bqckup:
             "time_consumed": 0,
             "backup_method": "incremental",
             "summary_payload": summary_payload,
-            "notification": {}
+            "notification": {},
         }
 
         provider = site_config.get("options", {}).get("provider")
 
         if provider not in ("s3", "local"):
-            raise Exception(f"Incremental backup does not support provider '{provider}'. Supported providers: s3, local.")
+            raise Exception(
+                f"Incremental backup does not support provider '{provider}'. Supported providers: s3, local."
+            )
 
         if provider == "s3":
             bucket_name = site_config.get("options", {}).get("storage")
@@ -780,7 +973,9 @@ class Bqckup:
 
             try:
                 stats = rustic.get_stats()
-                summary_payload["total_size"] = stats.get("compressed_repo_size", rustic_result.get("total_size", 0))
+                summary_payload["total_size"] = stats.get(
+                    "compressed_repo_size", rustic_result.get("total_size", 0)
+                )
             except Exception:
                 summary_payload["total_size"] = rustic_result.get("total_size", 0)
             summary_payload["new_data"] = rustic_result.get("uploaded", 0)
@@ -790,7 +985,6 @@ class Bqckup:
             result["message"] = "File Backup Success"
             result["file_size"] = summary_payload["total_size"]
             result["file_path"] = rustic_result.get("id")
-
 
             print("=========================================")
             print("Backup complete")
@@ -832,7 +1026,6 @@ class Bqckup:
             }
             print(f"({site_config['name']}) Error while cleaning rustic repository.")
 
-
         except RusticCheckError as e:
             result["traceback"] = traceback.format_exc()
             result["success"] = False
@@ -841,7 +1034,9 @@ class Bqckup:
                 "title": f"Repository Check Failed for {site_config['name']}",
                 "messages": f"Error: {e}",
                 "additional_data": {
-                    "name": "Command Output", "value": e.stderr, "inline": False
+                    "name": "Command Output",
+                    "value": e.stderr,
+                    "inline": False,
                 },
                 "description": (
                     "Backup completed successfully, but repository check failed.\n"
@@ -870,17 +1065,23 @@ class Bqckup:
             elif isinstance(e, RusticConfigError):
                 err_msg = "invalid configuration"
 
-            print(f"Error while backing up {site_config['name']}: {err_msg}: {err_detail}")
+            print(
+                f"Error while backing up {site_config['name']}: {err_msg}: {err_detail}"
+            )
 
             result["success"] = False
             result["message"] = f"File Backup Failed: {err_msg}"
             result["error"] = e
             result["traceback"] = traceback.format_exc()
             result["notification"] = {
-                 "title": f"Incremental Backup Failed for {site_config['name']}",
-                 "messages": err_detail,
-                 "additional_data": { "name": "Error Message", "value": err_msg, "inline": True},
-                 "description": (
+                "title": f"Incremental Backup Failed for {site_config['name']}",
+                "messages": err_detail,
+                "additional_data": {
+                    "name": "Error Message",
+                    "value": err_msg,
+                    "inline": True,
+                },
+                "description": (
                     "An error occurred while backup.\n"
                     "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
                 ),
@@ -895,7 +1096,9 @@ class Bqckup:
 
         return result
 
-    def backup_databases(self, site_config: Dict[str, Any], s3: Optional[s3]) -> List[Dict[str, Any]]:
+    def backup_databases(
+        self, site_config: Dict[str, Any], s3: Optional[s3]
+    ) -> List[Dict[str, Any]]:
         databases = Database.get_all(site_config)
         results = []
 
@@ -904,9 +1107,15 @@ class Bqckup:
 
         print(f"Backing up {len(databases)} databases...")
 
-        should_save_locally: bool = site_config.get("options", {}).get("save_locally", False)
-        save_locally_path_str = site_config.get("options", {}).get("save_locally_path", "/etc/bqckup/tmp")
-        save_locally_path = Path(save_locally_path_str) if save_locally_path_str else None
+        should_save_locally: bool = site_config.get("options", {}).get(
+            "save_locally", False
+        )
+        save_locally_path_str = site_config.get("options", {}).get(
+            "save_locally_path", "/etc/bqckup/tmp"
+        )
+        save_locally_path = (
+            Path(save_locally_path_str) if save_locally_path_str else None
+        )
 
         if not s3:
             should_save_locally = True
@@ -946,8 +1155,12 @@ class Bqckup:
             errors = []
 
             for attempt in range(MAX_RETRIES):
-                attempt_info = f" (Attempt {attempt + 1}/{MAX_RETRIES})" if attempt > 0 else ""
-                print(f"Starting database backup for {site_config['name']} {db_label}{attempt_info}")
+                attempt_info = (
+                    f" (Attempt {attempt + 1}/{MAX_RETRIES})" if attempt > 0 else ""
+                )
+                print(
+                    f"Starting database backup for {site_config['name']} {db_label}{attempt_info}"
+                )
 
                 result = self.backup_database(
                     site_config=site_config,
@@ -966,19 +1179,25 @@ class Bqckup:
                     errors.append(str(error))
 
                 error_message = result.get("error", "Unknown error")
-                print(f"[yellow]Database backup for {db_label} failed: {error_message}[/yellow]")
+                print(
+                    f"[yellow]Database backup for {db_label} failed: {error_message}[/yellow]"
+                )
 
                 if result.get("corrupt"):
                     # Corrupt table + automatic repair already failed once; retrying the
                     # same dump won't help and would just waste time before we report it.
-                    print(f"[red]Skipping further retries for {db_label}: corrupt table repair failed and requires manual intervention.[/red]")
+                    print(
+                        f"[red]Skipping further retries for {db_label}: corrupt table repair failed and requires manual intervention.[/red]"
+                    )
                     break
 
                 if attempt < MAX_RETRIES - 1:
                     print(f"[yellow]Retrying in {BACKOFF} seconds...[/yellow]")
                     time.sleep(BACKOFF)
             else:
-                print(f"[red]Database backup for {db_label} failed after {MAX_RETRIES} attempts.[/red]")
+                print(
+                    f"[red]Database backup for {db_label} failed after {MAX_RETRIES} attempts.[/red]"
+                )
 
             db_job_result["success"] = result.get("success", False)
             db_job_result["size"] = result.get("file_size", 0)
@@ -1008,21 +1227,74 @@ class Bqckup:
                 log_update_data["status"] = Log.__FAILED__
 
                 if result.get("corrupt"):
-                    repair_status = (
-                        "succeeded but the table remained corrupt"
-                        if result.get("repair_succeeded")
-                        else "failed"
+                    if result.get("repair_succeeded"):
+                        repair_status = "succeeded but the table remained corrupt"
+                    else:
+                        repair_status = "failed"
+
+                    table_name = result.get("table_name")
+
+                    first_corrupt_log = (
+                        Log()
+                        .select()
+                        .where(
+                            (Log.name == site_config["name"])
+                            & (Log.type == Log.__DATABASE__)
+                            & (Log.status == Log.__FAILED__)
+                            & (Log.description.contains(db_label))
+                        )
+                        .order_by(Log.id.asc())
+                        .first()
                     )
+
+                    if first_corrupt_log:
+                        corrupt_since = datetime.fromtimestamp(
+                            first_corrupt_log.created_at
+                        ).strftime("%d %b %Y %H:%M")
+                        corrupt_duration = time_since(first_corrupt_log.created_at)
+                        corrupt_info = (
+                            f"First detected: {corrupt_since} ({corrupt_duration})"
+                        )
+                    else:
+                        corrupt_duration = "just now"
+                        corrupt_info = "First detected: just now"
+
+                    # Persisted report (requirement 4): visible via `bqckup history`
+                    # and the web backup detail page, independent of the transient
+                    # Discord ping below.
+                    log_update_data["description"] = (
+                        f"Database Backup Failed for '{db_label}'\n"
+                        f"Table: {table_name or 'unknown'}\n"
+                        f"Repair result: {repair_status}\n"
+                        f"Corrupt duration: {corrupt_duration}\n"
+                        f"Error: {result.get('error')}\n"
+                        f"Manual intervention required: yes"
+                    )
+
+                    db_type = database.get("type", "mysql")
+                    if db_type == "mysql":
+                        footer = f"Run `mysqlcheck --repair {db_label.split('/')[-1]}` to attempt a manual fix."
+                    else:
+                        footer = f"Automatic repair is not supported for '{db_type}'. Manual intervention is required."
+
                     self._send_notification(
                         backup_name=site_config["name"],
-                        title=f"Corrupt Table Detected - Repair Failed for {site_config['name']} {db_label}",
+                        title=f"\u26a0\ufe0f Corrupt Table \u2014 Manual Intervention Required ({site_config['name']})",
                         description=(
-                            f"A corrupt table was detected while backing up '{db_label}'. "
-                            f"Automatic repair {repair_status}. Manual intervention is required.\n\n"
-                            f"The last successful backup for this database has been left "
-                            f"untouched and was **not** overwritten or deleted."
+                            f"Database `{db_label}` has a corrupt table that could not be repaired automatically.\n\n"
+                            + (f"**Table:** `{table_name}`\n" if table_name else "")
+                            + f"**Repair status:** {repair_status}\n"
+                            f"**{corrupt_info}**\n"
+                            f"*(checked on {get_today(format='%d %b %Y')})*\n\n"
+                            f"The last successful backup has been left untouched and was **not** overwritten."
                         ),
                         messages=f"Error: {result.get('error')}",
+                        additional_data={
+                            "name": "Time Since First Failure",
+                            "value": corrupt_duration,
+                            "inline": True,
+                        },
+                        footer=footer,
                         color=15158332,  # Red color
                     )
                 else:
@@ -1102,6 +1374,7 @@ class Bqckup:
             result["corrupt"] = True
             result["repair_attempted"] = e.repair_attempted
             result["repair_succeeded"] = e.repair_succeeded
+            result["table_name"] = getattr(e, "table_name", None)
             result["message"] = f"Database Backup Failed for '{db_label}': {e}"
             result["error"] = e
             result["traceback"] = traceback.format_exc()
@@ -1125,12 +1398,17 @@ class Bqckup:
         should_save_locally: bool = False,
         save_locally_path: Optional[Path] = None,
     ) -> None:
-        last_log = Log.select().where(
-            (Log.name == site_name)
-            & (Log.type == Log.__DATABASE__)
-            & (Log.status == Log.__SUCCESS__)
-            & (Log.description.contains(db_label))
-        ).order_by(Log.id.desc()).get_or_none()
+        last_log = (
+            Log.select()
+            .where(
+                (Log.name == site_name)
+                & (Log.type == Log.__DATABASE__)
+                & (Log.status == Log.__SUCCESS__)
+                & (Log.description.contains(db_label))
+            )
+            .order_by(Log.id.desc())
+            .get_or_none()
+        )
 
         try:
             if last_log:
@@ -1152,7 +1430,7 @@ class Bqckup:
                     )
 
             if not should_save_locally:
-                backup_path.unlink(missing_ok=True) # remove file
+                backup_path.unlink(missing_ok=True)  # remove file
             elif should_save_locally and save_locally_path:
                 print(f"Saving '{backup_path.name}' locally ...")
                 final_dest_path: Path = save_locally_path / site_name

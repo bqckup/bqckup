@@ -2,9 +2,11 @@ import gzip
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -12,7 +14,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from rich import print
 
-from constant import LOG_DIR
+from constant import (
+    DB_REPAIR_BASE_WARNING_THRESHOLD,
+    DB_REPAIR_POLL_INTERVAL,
+    DB_REPAIR_SECONDS_PER_100MB,
+    LOG_DIR,
+)
 
 
 class DatabaseException(Exception):
@@ -26,7 +33,8 @@ class DatabaseCorruptException(DatabaseException):
 
     Additional optional metadata fields are provided but kept backward
     compatible: `repair_attempted`, `repair_succeeded`, `repair_started_at`,
-    `repair_duration_seconds`, `first_seen_timestamp`, `problem_age_seconds`.
+    `repair_duration_seconds`, `first_seen_timestamp`, `problem_age_seconds`,
+    `table_name`.
     """
 
     def __init__(
@@ -38,6 +46,7 @@ class DatabaseCorruptException(DatabaseException):
         repair_duration_seconds: Optional[float] = None,
         first_seen_timestamp: Optional[int] = None,
         problem_age_seconds: Optional[int] = None,
+        table_name: Optional[str] = None,
     ):
         super().__init__(message)
         self.repair_attempted = repair_attempted
@@ -46,6 +55,7 @@ class DatabaseCorruptException(DatabaseException):
         self.repair_duration_seconds = repair_duration_seconds
         self.first_seen_timestamp = first_seen_timestamp
         self.problem_age_seconds = problem_age_seconds
+        self.table_name = table_name
 
 
 DATABASE_LOG = LOG_DIR / "database.log"
@@ -71,13 +81,26 @@ CORRUPTION_KEYWORDS = (
 )
 
 # Keywords that indicate a corruption scenario that is NOT suitable for
-# automatic repair. Keep this conservative to avoid skipping repairs which
-# might succeed.
+# automatic repair. This list is intentionally narrow and strict: a repair
+# should be attempted whenever there is a reasonable chance it might work,
+# and only skipped upfront when there is strong, unambiguous evidence the
+# storage engine itself cannot perform a repair at all. Anything less
+# certain should still go through the normal repair attempt below.
+#
+# NOTE: matched against a lower-cased copy of the log content, so keywords
+# here must be lower case too.
 NON_REPAIRABLE_KEYWORDS = (
-    b"not a MyISAM table",
-    b"not repairable",
-    b"cannot be repaired",
+    # `mysqlcheck --auto-repair` (and `REPAIR TABLE`) only ever repairs
+    # MyISAM/Aria tables; for any other engine it is a documented no-op, so
+    # this is a certain, unambiguous "cannot repair automatically".
+    b"not a myisam table",
 )
+
+# Best-effort extraction of the table name from an engine error message, e.g.
+# "Table 'foo' is marked as crashed" or "Incorrect key file for table 'demo'".
+# The name is optional context for notifications/reports; not all corruption
+# messages mention a specific table.
+TABLE_NAME_PATTERN = re.compile(rb"table\s*:?\s*'([^']+)'", re.IGNORECASE)
 
 
 class Database:
@@ -132,6 +155,164 @@ class Database:
     def _get_sqlite_command(self, db_name: str) -> list:
         return ["sqlite3", db_name, ".dump"]
 
+    def _estimate_warning_threshold(
+        self,
+        db_user: str,
+        db_password: str,
+        db_name: str,
+        db_host: str,
+        db_port: int,
+        table_name: Optional[str] = None,
+    ) -> int:
+        """Estimates how long a repair may reasonably take before it is worth
+        flagging as "taking a while", based on the size of the data being
+        repaired.
+
+        "Long enough" is relative: a table with millions of rows / several GB
+        legitimately needs more time than a tiny one, so a single fixed
+        threshold for every database would be misleading either way. This
+        looks up the size of the affected table (or the whole database, if
+        the table isn't known) via `information_schema` and scales the
+        threshold accordingly.
+
+        Falls back to `DB_REPAIR_BASE_WARNING_THRESHOLD` if the size can't be
+        determined for any reason (e.g. connection issue).
+        """
+        try:
+            import mysql.connector
+
+            conn = mysql.connector.connect(
+                user=db_user, password=db_password, host=db_host, port=db_port
+            )
+            try:
+                cursor = conn.cursor()
+                if table_name:
+                    cursor.execute(
+                        "SELECT data_length + index_length FROM information_schema.tables "
+                        "WHERE table_schema = %s AND table_name = %s",
+                        (db_name, table_name),
+                    )
+                else:
+                    cursor.execute(
+                        "SELECT SUM(data_length + index_length) FROM information_schema.tables "
+                        "WHERE table_schema = %s",
+                        (db_name,),
+                    )
+                row = cursor.fetchone()
+                cursor.close()
+            finally:
+                conn.close()
+
+            size_bytes = row[0] if row and row[0] else 0
+            size_mb = size_bytes / (1024**2)
+
+            return max(
+                DB_REPAIR_BASE_WARNING_THRESHOLD,
+                int((size_mb / 100) * DB_REPAIR_SECONDS_PER_100MB),
+            )
+        except Exception:
+            return DB_REPAIR_BASE_WARNING_THRESHOLD
+
+    @staticmethod
+    def _read_log_tail(
+        log_file: Path, offset: int, max_chars: int = 1000
+    ) -> Optional[str]:
+        """Best-effort read of whatever has been written to the repair log so
+        far (since `offset`), so a long-running-repair warning can surface
+        any partial error/warning output the tool has already produced -
+        even though the repair itself hasn't finished yet.
+        """
+        try:
+            with open(log_file, "rb") as f:
+                f.seek(offset)
+                content = f.read().decode(errors="replace").strip()
+            return content[-max_chars:] if content else None
+        except OSError:
+            return None
+
+    def _notify_long_running_repair(
+        self,
+        db_name: str,
+        elapsed_seconds: float,
+        threshold_seconds: Optional[int] = None,
+        log_snippet: Optional[str] = None,
+    ) -> None:
+        """Best-effort notification that a repair is taking unusually long.
+
+        This never aborts the repair - it only informs so a human can check on
+        it manually if needed. Large databases can legitimately take hours (or
+        longer) to repair, so failing to notify here must never interrupt the
+        repair itself.
+        """
+        try:
+            from humanfriendly import format_timespan
+
+            from lib.notifications.discord import send_notification
+            from lib.notifications.email import (
+                send_notification as send_email_notification,
+            )
+
+            duration_label = format_timespan(elapsed_seconds)
+            threshold_label = (
+                format_timespan(threshold_seconds) if threshold_seconds else None
+            )
+
+            description = (
+                f"Automatic repair for database `{db_name}` has been "
+                f"running for **{duration_label}** without finishing yet.\n\n"
+            )
+            if threshold_label:
+                description += (
+                    f"Based on the size of the data being repaired, this is longer "
+                    f"than the expected time of ~{threshold_label}.\n\n"
+                )
+            description += (
+                "This can still be normal for very large databases, so the repair "
+                "is left running rather than aborted. If it keeps running much "
+                "longer, consider checking on it manually."
+            )
+
+            fields = [
+                {"name": "Database", "value": db_name, "inline": True},
+                {"name": "Running For", "value": duration_label, "inline": True},
+            ]
+            if threshold_label:
+                fields.append(
+                    {
+                        "name": "Expected Threshold (by size)",
+                        "value": threshold_label,
+                        "inline": True,
+                    }
+                )
+            if log_snippet:
+                fields.append(
+                    {
+                        "name": "Latest Repair Log Output",
+                        "value": log_snippet,
+                        "inline": False,
+                    }
+                )
+
+            payload = {
+                "embeds": [
+                    {
+                        "title": (
+                            f"\u23f3 Database Repair Still Running \u2014 Manual Check "
+                            f"Recommended ({db_name})"
+                        ),
+                        "description": description,
+                        "color": 16776960,
+                        "fields": fields,
+                    }
+                ]
+            }
+            send_notification(payload)
+            send_email_notification(payload)
+        except Exception as e:
+            print(
+                f"[yellow]Failed to send long-running repair notification: {e}[/yellow]"
+            )
+
     def _repair_mysql_database(
         self,
         db_user: str,
@@ -140,7 +321,19 @@ class Database:
         db_host: str,
         db_port: int,
         log_file: Path,
+        table_name: Optional[str] = None,
     ) -> Tuple[bool, float, float]:
+        """Attempts an automatic repair via `mysqlcheck --auto-repair`.
+
+        The repair is never killed on a timeout: very large databases can
+        legitimately take hours (or longer) to finish repairing. Instead, if
+        it is still running longer than expected for its size (see
+        `_estimate_warning_threshold`), a one-time notification is sent
+        recommending a manual check-in - including whatever the repair tool
+        has already logged so far - while the repair keeps running.
+
+        Returns a `(succeeded, started_at, duration_seconds)` tuple.
+        """
         command = [
             "mysqlcheck",
             "--repair",
@@ -152,30 +345,57 @@ class Database:
             db_name,
         ]
 
+        warning_threshold = self._estimate_warning_threshold(
+            db_user, db_password, db_name, db_host, db_port, table_name
+        )
+
         repair_started_at = time.time()
+        log_offset_before_repair = log_file.stat().st_size if log_file.exists() else 0
+        result_holder: Dict[str, int] = {}
+
+        def _run_repair() -> None:
+            with open(log_file, "ab") as log:
+                now_dt = datetime.now()
+                log.write(
+                    f"\n[{now_dt}] Starting AUTO-REPAIR for database {db_name}...\n".encode()
+                )
+                log.flush()
+                process = subprocess.run(command, stdout=log, stderr=log)
+                result_holder["returncode"] = process.returncode
+
+        repair_thread = threading.Thread(target=_run_repair, daemon=True)
+        repair_thread.start()
+
+        warned = False
+        while repair_thread.is_alive():
+            repair_thread.join(timeout=DB_REPAIR_POLL_INTERVAL)
+            if repair_thread.is_alive() and not warned:
+                elapsed = time.time() - repair_started_at
+                if elapsed >= warning_threshold:
+                    warned = True
+                    log_snippet = self._read_log_tail(
+                        log_file, log_offset_before_repair
+                    )
+                    self._notify_long_running_repair(
+                        db_name, elapsed, warning_threshold, log_snippet
+                    )
+
+        repair_duration = time.time() - repair_started_at
+        succeeded = result_holder.get("returncode") == 0
 
         with open(log_file, "ab") as log:
-            now_dt = datetime.now()
-            log.write(
-                f"\n[{now_dt}] Starting AUTO-REPAIR for database {db_name}...\n".encode()
-            )
-            log.flush()
-
-            process = subprocess.run(command, stdout=log, stderr=log)
-
-            repair_duration = time.time() - repair_started_at
-
-            if process.returncode == 0:
+            if succeeded:
                 log.write(b"[SUCCESS] Auto-repair completed.\n")
             else:
                 log.write(
-                    f"[FAILED] Auto-repair failed with return code {process.returncode}.\n".encode()
+                    f"[FAILED] Auto-repair failed with return code {result_holder.get('returncode')}.\n".encode()
                 )
-
-            log.write(f"[INFO] repair_started_at={repair_started_at}, duration_seconds={repair_duration}\n".encode())
+            log.write(
+                f"[INFO] repair_started_at={repair_started_at}, duration_seconds={repair_duration}\n".encode()
+            )
             log.flush()
 
-            return (process.returncode == 0, repair_started_at, repair_duration)
+        return (succeeded, repair_started_at, repair_duration)
 
     @staticmethod
     def _meta_file_path() -> Path:
@@ -198,7 +418,9 @@ class Database:
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             # atomic write
-            with tempfile.NamedTemporaryFile("w", delete=False, dir=str(path.parent)) as tf:
+            with tempfile.NamedTemporaryFile(
+                "w", delete=False, dir=str(path.parent)
+            ) as tf:
                 json.dump(data, tf)
                 tf.flush()
                 tmpname = tf.name
@@ -229,12 +451,24 @@ class Database:
     def _get_problem_age(db_label: str) -> Optional[int]:
         data = Database._read_meta()
         if db_label in data and "first_seen" in data[db_label]:
-            return int(time.time()) - int(data[db_label]["first_seen"]) 
+            return int(time.time()) - int(data[db_label]["first_seen"])
         return None
 
     @staticmethod
     def _is_corruption_detected(log_content: bytes) -> bool:
         return any(keyword in log_content for keyword in CORRUPTION_KEYWORDS)
+
+    @staticmethod
+    def _extract_table_name(log_content: bytes) -> Optional[str]:
+        """Best-effort extraction of the offending table name from the error
+        log, e.g. "Table './db/demo' is marked as crashed" -> "demo". Returns
+        None if no table name could be identified.
+        """
+        match = TABLE_NAME_PATTERN.search(log_content)
+        if not match:
+            return None
+        raw_name = match.group(1).decode(errors="replace")
+        return raw_name.rsplit("/", 1)[-1]
 
     def export(
         self,
@@ -246,7 +480,7 @@ class Database:
         db_port: int = 3306,
         log_dir: Optional[str] = None,
     ) -> None:
-  
+
         if self.type == "mysql":
             command = self._get_mysql_command(
                 db_user, db_password, db_name, db_host, db_port
@@ -317,7 +551,7 @@ class Database:
                     process.wait()
 
                     if process.returncode == 0:
-                        return 
+                        return
 
                 except KeyboardInterrupt:
                     print("\nDatabase export cancelled by user.")
@@ -335,13 +569,16 @@ class Database:
                     raise
 
             is_corrupt = False
+            corrupt_table_name = None
             try:
                 with open(log_file, "rb") as f:
                     f.seek(log_offset)
                     log_content = f.read().lower()
                 is_corrupt = self._is_corruption_detected(log_content)
+                if is_corrupt:
+                    corrupt_table_name = self._extract_table_name(log_content)
             except OSError:
-                pass  
+                pass
 
             if is_corrupt and self.type == "mysql" and attempt < max_retries:
                 # Repair assessment: check if log contains any non-repairable
@@ -363,6 +600,7 @@ class Database:
                         repair_succeeded=False,
                         first_seen_timestamp=first_seen,
                         problem_age_seconds=age,
+                        table_name=corrupt_table_name,
                     )
 
                 print(
@@ -370,7 +608,13 @@ class Database:
                 )
                 repair_attempted = True
                 repair_result = self._repair_mysql_database(
-                    db_user, db_password, db_name, db_host, db_port, log_file
+                    db_user,
+                    db_password,
+                    db_name,
+                    db_host,
+                    db_port,
+                    log_file,
+                    table_name=corrupt_table_name,
                 )
 
                 # _repair_mysql_database now returns (succeeded, started_at, duration)
@@ -410,12 +654,15 @@ class Database:
                         repair_succeeded=False,
                         first_seen_timestamp=first_seen,
                         problem_age_seconds=age,
+                        table_name=corrupt_table_name,
                     )
 
                 if not repair_attempted:
                     repair_note = "was not attempted"
                 elif repair_succeeded:
-                    repair_note = "reported success, but the table is still failing to export"
+                    repair_note = (
+                        "reported success, but the table is still failing to export"
+                    )
                 else:
                     repair_note = "failed"
 
@@ -426,16 +673,15 @@ class Database:
                     f"See log {log_file} for details.",
                     repair_attempted=repair_attempted,
                     repair_succeeded=repair_succeeded,
-                    repair_started_at=locals().get('repair_started_at'),
-                    repair_duration_seconds=locals().get('repair_duration'),
-                    first_seen_timestamp=locals().get('first_seen'),
-                    problem_age_seconds=locals().get('age'),
+                    repair_started_at=locals().get("repair_started_at"),
+                    repair_duration_seconds=locals().get("repair_duration"),
+                    first_seen_timestamp=locals().get("first_seen"),
+                    problem_age_seconds=locals().get("age"),
+                    table_name=corrupt_table_name,
                 )
-
             raise DatabaseException(
                 f"Database export failed, see log {log_file} for details: return code {process.returncode}"
             )
-
 
     def test_connection(self, credentials: dict) -> None:
         if self.type == "mysql":
