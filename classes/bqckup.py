@@ -118,17 +118,24 @@ class Bqckup:
                 databases = Database.get_all(config)
 
                 for database in databases:
-                    if database.get("type") not in Database().SUPPORTED_DATABASE:
+                    db_type = database.get("type", "mysql")
+                    if db_type not in Database().SUPPORTED_DATABASE:
                         raise ConfigExceptions(
-                            f"Database type {database.get('type')} not supported"
+                            f"Database type {db_type} not supported"
                         )
-                    Database(type=database["type"]).test_connection({
-                        "user": database["user"],
-                        "password": database["password"],
-                        "host": database["host"],
-                        "port": database["port"],
-                        "name": database["name"],
-                    })
+
+                    if db_type == "sqlite":
+                        Database(type=db_type).test_connection({
+                            "name": database["name"],
+                        })
+                    else:
+                        Database(type=db_type).test_connection({
+                            "user": database["user"],
+                            "password": database["password"],
+                            "host": database["host"],
+                            "port": database["port"],
+                            "name": database["name"],
+                        })
 
                 if config.get('options').get('provider') == 's3':
                     Storage().get_storage_detail(config.get('options').get('storage'))
@@ -1056,13 +1063,25 @@ class Bqckup:
 
         try:
             with ProgressSpinner(f"Exporting database {db_label}"):
-                Database(type=database.get("type", "mysql")).export(
+                db_type = database.get("type", "mysql")
+                if db_type == "sqlite":
+                    db_user = ""
+                    db_password = ""
+                    db_host = ""
+                    db_port = 0
+                else:
+                    db_user = database["user"]
+                    db_password = database["password"]
+                    db_host = database["host"]
+                    db_port = database["port"]
+
+                Database(type=db_type).export(
                     str(backup_path),
-                    db_user=database["user"],
-                    db_password=database["password"],
+                    db_user=db_user,
+                    db_password=db_password,
                     db_name=database["name"],
-                    db_host=database["host"],
-                    db_port=database["port"],
+                    db_host=db_host,
+                    db_port=db_port,
                 )
 
             if s3:

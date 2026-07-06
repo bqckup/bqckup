@@ -1,10 +1,14 @@
 import gzip
+import json
 import logging
 import os
+import shutil
 import subprocess
+import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from rich import print
 
@@ -19,6 +23,10 @@ class DatabaseCorruptException(DatabaseException):
     """Raised when a database backup fails because of a corrupt table and
     the automatic repair attempt did not resolve the issue (either it
     failed, or the database engine does not support auto-repair).
+
+    Additional optional metadata fields are provided but kept backward
+    compatible: `repair_attempted`, `repair_succeeded`, `repair_started_at`,
+    `repair_duration_seconds`, `first_seen_timestamp`, `problem_age_seconds`.
     """
 
     def __init__(
@@ -26,10 +34,18 @@ class DatabaseCorruptException(DatabaseException):
         message: str,
         repair_attempted: bool = False,
         repair_succeeded: bool = False,
+        repair_started_at: Optional[float] = None,
+        repair_duration_seconds: Optional[float] = None,
+        first_seen_timestamp: Optional[int] = None,
+        problem_age_seconds: Optional[int] = None,
     ):
         super().__init__(message)
         self.repair_attempted = repair_attempted
         self.repair_succeeded = repair_succeeded
+        self.repair_started_at = repair_started_at
+        self.repair_duration_seconds = repair_duration_seconds
+        self.first_seen_timestamp = first_seen_timestamp
+        self.problem_age_seconds = problem_age_seconds
 
 
 DATABASE_LOG = LOG_DIR / "database.log"
@@ -52,6 +68,15 @@ CORRUPTION_KEYWORDS = (
     b"error: 1035",  # Old database file
     b"error: 1194",  # Table is marked as crashed
     b"error 194",  # Tablespace is missing for a table (InnoDB)
+)
+
+# Keywords that indicate a corruption scenario that is NOT suitable for
+# automatic repair. Keep this conservative to avoid skipping repairs which
+# might succeed.
+NON_REPAIRABLE_KEYWORDS = (
+    b"not a MyISAM table",
+    b"not repairable",
+    b"cannot be repaired",
 )
 
 
@@ -115,12 +140,7 @@ class Database:
         db_host: str,
         db_port: int,
         log_file: Path,
-    ) -> bool:
-        """Menjalankan mysqlcheck untuk mereparasi tabel yang korup secara otomatis.
-
-        Returns:
-            True if mysqlcheck reported success (return code 0), False otherwise.
-        """
+    ) -> Tuple[bool, float, float]:
         command = [
             "mysqlcheck",
             "--repair",
@@ -132,28 +152,88 @@ class Database:
             db_name,
         ]
 
+        repair_started_at = time.time()
+
         with open(log_file, "ab") as log:
-            now = datetime.now()
+            now_dt = datetime.now()
             log.write(
-                f"\n[{now}] Memulai AUTO-REPAIR untuk database {db_name}...\n".encode()
+                f"\n[{now_dt}] Starting AUTO-REPAIR for database {db_name}...\n".encode()
             )
             log.flush()
 
             process = subprocess.run(command, stdout=log, stderr=log)
 
+            repair_duration = time.time() - repair_started_at
+
             if process.returncode == 0:
-                log.write(b"[SUCCESS] Auto-repair selesai.\n")
+                log.write(b"[SUCCESS] Auto-repair completed.\n")
             else:
                 log.write(
-                    f"[FAILED] Auto-repair gagal dengan return code {process.returncode}.\n".encode()
+                    f"[FAILED] Auto-repair failed with return code {process.returncode}.\n".encode()
                 )
+
+            log.write(f"[INFO] repair_started_at={repair_started_at}, duration_seconds={repair_duration}\n".encode())
             log.flush()
 
-            return process.returncode == 0
+            return (process.returncode == 0, repair_started_at, repair_duration)
+
+    @staticmethod
+    def _meta_file_path() -> Path:
+        return LOG_DIR / "db_corrupt_meta.json"
+
+    @staticmethod
+    def _read_meta() -> Dict[str, Any]:
+        path = Database._meta_file_path()
+        try:
+            if path.exists():
+                with open(path, "r") as f:
+                    return json.load(f)
+        except Exception:
+            print(f"[yellow]Failed to read DB corrupt meta {path}, ignoring.[/yellow]")
+        return {}
+
+    @staticmethod
+    def _write_meta(data: Dict[str, Any]) -> None:
+        path = Database._meta_file_path()
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            # atomic write
+            with tempfile.NamedTemporaryFile("w", delete=False, dir=str(path.parent)) as tf:
+                json.dump(data, tf)
+                tf.flush()
+                tmpname = tf.name
+            shutil.move(tmpname, str(path))
+        except Exception:
+            print(f"[yellow]Failed to write DB corrupt meta {path}, ignoring.[/yellow]")
+
+    @staticmethod
+    def _mark_manual_intervention(db_label: str) -> int:
+        data = Database._read_meta()
+        now_ts = int(time.time())
+        if db_label not in data:
+            data[db_label] = {"first_seen": now_ts}
+            Database._write_meta(data)
+        return data[db_label]["first_seen"]
+
+    @staticmethod
+    def _clear_manual_intervention(db_label: str) -> None:
+        data = Database._read_meta()
+        if db_label in data:
+            try:
+                del data[db_label]
+                Database._write_meta(data)
+            except Exception:
+                pass
+
+    @staticmethod
+    def _get_problem_age(db_label: str) -> Optional[int]:
+        data = Database._read_meta()
+        if db_label in data and "first_seen" in data[db_label]:
+            return int(time.time()) - int(data[db_label]["first_seen"]) 
+        return None
 
     @staticmethod
     def _is_corruption_detected(log_content: bytes) -> bool:
-        """Check a chunk of (lower-cased) log output for corrupt-table indicators."""
         return any(keyword in log_content for keyword in CORRUPTION_KEYWORDS)
 
     def export(
@@ -166,7 +246,7 @@ class Database:
         db_port: int = 3306,
         log_dir: Optional[str] = None,
     ) -> None:
-        """Mengekspor database ke file zip, dilengkapi dengan auto-repair untuk MySQL."""
+  
         if self.type == "mysql":
             command = self._get_mysql_command(
                 db_user, db_password, db_name, db_host, db_port
@@ -237,7 +317,7 @@ class Database:
                     process.wait()
 
                     if process.returncode == 0:
-                        return  # Backup berhasil, keluar dari loop
+                        return 
 
                 except KeyboardInterrupt:
                     print("\nDatabase export cancelled by user.")
@@ -264,27 +344,63 @@ class Database:
                 pass  
 
             if is_corrupt and self.type == "mysql" and attempt < max_retries:
+                # Repair assessment: check if log contains any non-repairable
+                # patterns. If so, mark manual intervention and raise.
+                non_repairable = any(k in log_content for k in NON_REPAIRABLE_KEYWORDS)
+
+                if non_repairable:
+                    print(
+                        f"[red]Detected non-repairable corruption in '{db_name}'. Manual intervention required.[/red]"
+                    )
+                    first_seen = Database._mark_manual_intervention(label)
+                    age = Database._get_problem_age(label)
+                    raise DatabaseCorruptException(
+                        f"Database backup for '{db_name}' failed because a corrupt table was "
+                        f"detected and it appears not to be automatically repairable. Manual "
+                        f"intervention required. The last successful backup was left untouched. "
+                        f"See log {log_file} for details.",
+                        repair_attempted=False,
+                        repair_succeeded=False,
+                        first_seen_timestamp=first_seen,
+                        problem_age_seconds=age,
+                    )
+
                 print(
-                    f"[yellow]Tabel korup terdeteksi di {db_name}! Menjalankan proses auto-repair...[/yellow]"
+                    f"[yellow]Corrupt table detected in '{db_name}'. Running auto-repair...[/yellow]"
                 )
                 repair_attempted = True
-                repair_succeeded = self._repair_mysql_database(
+                repair_result = self._repair_mysql_database(
                     db_user, db_password, db_name, db_host, db_port, log_file
                 )
 
+                # _repair_mysql_database now returns (succeeded, started_at, duration)
+                if isinstance(repair_result, tuple):
+                    repair_succeeded, repair_started_at, repair_duration = repair_result
+                else:
+                    repair_succeeded = bool(repair_result)
+                    repair_started_at = None
+                    repair_duration = None
+
                 if repair_succeeded:
-                    continue  # Lanjutkan iterasi untuk mencoba backup lagi
+                    # clear any manual intervention marker if repair succeeded
+                    Database._clear_manual_intervention(label)
+                    continue
 
                 print(
-                    f"[red]Auto-repair untuk {db_name} gagal. Backup dibatalkan agar "
-                    f"backup sukses terakhir tidak ditimpa/terhapus.[/red]"
+                    f"[red]Auto-repair for '{db_name}' failed. "
+                    f"Backup aborted to preserve the last successful backup.[/red]"
                 )
+                # mark manual intervention first_seen if not set
+                first_seen = Database._mark_manual_intervention(label)
+                age = Database._get_problem_age(label)
 
             if os.path.exists(output):
                 os.remove(output)
 
             if is_corrupt:
                 if self.type != "mysql":
+                    first_seen = Database._mark_manual_intervention(label)
+                    age = Database._get_problem_age(label)
                     raise DatabaseCorruptException(
                         f"Database backup for '{db_name}' failed because a corrupt table was "
                         f"detected, but automatic repair is only supported for MySQL. Manual "
@@ -292,6 +408,8 @@ class Database:
                         f"See log {log_file} for details.",
                         repair_attempted=False,
                         repair_succeeded=False,
+                        first_seen_timestamp=first_seen,
+                        problem_age_seconds=age,
                     )
 
                 if not repair_attempted:
@@ -308,6 +426,10 @@ class Database:
                     f"See log {log_file} for details.",
                     repair_attempted=repair_attempted,
                     repair_succeeded=repair_succeeded,
+                    repair_started_at=locals().get('repair_started_at'),
+                    repair_duration_seconds=locals().get('repair_duration'),
+                    first_seen_timestamp=locals().get('first_seen'),
+                    problem_age_seconds=locals().get('age'),
                 )
 
             raise DatabaseException(
