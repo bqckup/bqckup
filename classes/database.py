@@ -27,15 +27,6 @@ class DatabaseException(Exception):
 
 
 class DatabaseCorruptException(DatabaseException):
-    """Raised when a database backup fails because of a corrupt table and
-    the automatic repair attempt did not resolve the issue (either it
-    failed, or the database engine does not support auto-repair).
-
-    Additional optional metadata fields are provided but kept backward
-    compatible: `repair_attempted`, `repair_succeeded`, `repair_started_at`,
-    `repair_duration_seconds`, `first_seen_timestamp`, `problem_age_seconds`,
-    `table_name`.
-    """
 
     def __init__(
         self,
@@ -80,26 +71,10 @@ CORRUPTION_KEYWORDS = (
     b"error 194",  # Tablespace is missing for a table (InnoDB)
 )
 
-# Keywords that indicate a corruption scenario that is NOT suitable for
-# automatic repair. This list is intentionally narrow and strict: a repair
-# should be attempted whenever there is a reasonable chance it might work,
-# and only skipped upfront when there is strong, unambiguous evidence the
-# storage engine itself cannot perform a repair at all. Anything less
-# certain should still go through the normal repair attempt below.
-#
-# NOTE: matched against a lower-cased copy of the log content, so keywords
-# here must be lower case too.
 NON_REPAIRABLE_KEYWORDS = (
-    # `mysqlcheck --auto-repair` (and `REPAIR TABLE`) only ever repairs
-    # MyISAM/Aria tables; for any other engine it is a documented no-op, so
-    # this is a certain, unambiguous "cannot repair automatically".
     b"not a myisam table",
 )
 
-# Best-effort extraction of the table name from an engine error message, e.g.
-# "Table 'foo' is marked as crashed" or "Incorrect key file for table 'demo'".
-# The name is optional context for notifications/reports; not all corruption
-# messages mention a specific table.
 TABLE_NAME_PATTERN = re.compile(rb"table\s*:?\s*'([^']+)'", re.IGNORECASE)
 
 
@@ -164,20 +139,7 @@ class Database:
         db_port: int,
         table_name: Optional[str] = None,
     ) -> int:
-        """Estimates how long a repair may reasonably take before it is worth
-        flagging as "taking a while", based on the size of the data being
-        repaired.
-
-        "Long enough" is relative: a table with millions of rows / several GB
-        legitimately needs more time than a tiny one, so a single fixed
-        threshold for every database would be misleading either way. This
-        looks up the size of the affected table (or the whole database, if
-        the table isn't known) via `information_schema` and scales the
-        threshold accordingly.
-
-        Falls back to `DB_REPAIR_BASE_WARNING_THRESHOLD` if the size can't be
-        determined for any reason (e.g. connection issue).
-        """
+        
         try:
             import mysql.connector
 
@@ -237,13 +199,7 @@ class Database:
         threshold_seconds: Optional[int] = None,
         log_snippet: Optional[str] = None,
     ) -> None:
-        """Best-effort notification that a repair is taking unusually long.
-
-        This never aborts the repair - it only informs so a human can check on
-        it manually if needed. Large databases can legitimately take hours (or
-        longer) to repair, so failing to notify here must never interrupt the
-        repair itself.
-        """
+  
         try:
             from humanfriendly import format_timespan
 
@@ -323,17 +279,7 @@ class Database:
         log_file: Path,
         table_name: Optional[str] = None,
     ) -> Tuple[bool, float, float]:
-        """Attempts an automatic repair via `mysqlcheck --auto-repair`.
 
-        The repair is never killed on a timeout: very large databases can
-        legitimately take hours (or longer) to finish repairing. Instead, if
-        it is still running longer than expected for its size (see
-        `_estimate_warning_threshold`), a one-time notification is sent
-        recommending a manual check-in - including whatever the repair tool
-        has already logged so far - while the repair keeps running.
-
-        Returns a `(succeeded, started_at, duration_seconds)` tuple.
-        """
         command = [
             "mysqlcheck",
             "--repair",
@@ -617,7 +563,6 @@ class Database:
                     table_name=corrupt_table_name,
                 )
 
-                # _repair_mysql_database now returns (succeeded, started_at, duration)
                 if isinstance(repair_result, tuple):
                     repair_succeeded, repair_started_at, repair_duration = repair_result
                 else:
@@ -626,7 +571,6 @@ class Database:
                     repair_duration = None
 
                 if repair_succeeded:
-                    # clear any manual intervention marker if repair succeeded
                     Database._clear_manual_intervention(label)
                     continue
 

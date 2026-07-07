@@ -11,10 +11,8 @@ from hashlib import sha256
 from pathlib import Path
 from subprocess import CalledProcessError
 from typing import Any, Dict, List, Optional
-
 from humanfriendly import format_size, format_timespan
 from rich import print
-
 from classes.config import Config
 from classes.database import Database, DatabaseCorruptException
 from classes.file import File
