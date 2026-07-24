@@ -1,4 +1,5 @@
 import getpass
+import time
 from subprocess import CalledProcessError
 import traceback
 import typer
@@ -63,7 +64,7 @@ def migrate():
 
 
 @bq_cli.command()
-def summary(site: Optional[str] = None):
+def summary(site: Optional[str] = None, watch: bool = typer.Option(False, "--watch", help="Refresh summary until running backups finish")):
     from rich.progress import Progress, SpinnerColumn, TextColumn
     from helpers.datetime import interval_in_number
     from datetime import datetime
@@ -79,145 +80,172 @@ def summary(site: Optional[str] = None):
         print("[yellow]No sites found.[/yellow]")
         return
 
-    for site_config in all_backups:
-        storage_name = site_config["options"]["storage"]
-        backup_name = site_config["name"]
-        is_incremental = Rustic.is_enabled(site_config) and Rustic.is_installed()
-        is_local = site_config.get("options", {}).get("provider") == "local"
-        rustic_stats = None
+    def render_once() -> bool:
+        """Render summary for all sites once. Return True if any backup is running."""
+        any_running = False
 
-        last_log = (
-            Log.select()
-            .where(Log.name == backup_name)
-            .order_by(Log.id.desc())
-            .get_or_none()
-        )
+        for site_config in all_backups:
+            storage_name = site_config["options"]["storage"]
+            backup_name = site_config["name"]
+            is_incremental = Rustic.is_enabled(site_config) and Rustic.is_installed()
+            is_local = site_config.get("options", {}).get("provider") == "local"
+            rustic_stats = None
 
-        last_successful_log = (
-            Log.select()
-            .where((Log.name == backup_name) & (Log.status == Log.__SUCCESS__))
-            .order_by(Log.id.desc())
-            .get_or_none()
-        )
-
-        last_backup_status = "[yellow]N/A[/yellow]"
-        is_running = False
-
-        if last_log:
-            is_running = last_log.status == Log.__ON_PROGRESS__
-            last_backup_status = {
-                Log.__ON_PROGRESS__: "[yellow]On Progress[/yellow]",
-                Log.__SUCCESS__: "[green]Success[/green]",
-                Log.__FAILED__: "[red]Failed[/red]",
-            }.get(last_log.status, "[red]Unknown[/red]")
-
-        next_backup_date = "[yellow]N/A[/yellow]"
-        if last_successful_log:
-            interval = site_config["options"]["interval"]
-            interval_days = interval_in_number(interval)
-            next_backup_date = datetime.fromtimestamp(
-                last_successful_log.created_at + (interval_days * 86400)
-            ).strftime("%d/%m/%Y 00:00:00")
-
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            transient=True,
-        ) as progress:
-            task = progress.add_task(
-                description=f"fetching details for {backup_name}...", total=None
+            last_log = (
+                Log.select()
+                .where(Log.name == backup_name)
+                .order_by(Log.id.desc())
+                .get_or_none()
             )
 
-            dates = []
-            objects = {}
-            if not is_local:
-                _s3 = s3(storage_name)
-                dates = _s3.get_backup_dates(backup_name, sort_by_date=True)
-                objects = {
-                    prefix: obj
-                    for prefix in dates
-                    for obj in _s3.list(prefix=prefix).get("Contents", [])
-                }
-
-            if is_incremental:
-                try:
-                    rustic = Rustic(
-                        site_config=site_config,
-                        storage_config={} if is_local else Storage().get_storage_detail(storage_name),
-                    ).check_and_dump()
-                    rustic_stats = rustic.get_stats()                    
-                    rustic.dump_config(with_credentials=False)
-                except Exception as e:
-                    if is_debug() and isinstance(e, CalledProcessError):
-                        print(e.stderr)
-                    print(f"[red] Failed to get rustic stats, {e} [/red]")
-
-            progress.update(task, completed=True)
-
-        rows = {
-            "Status": "[yellow]Running[/yellow]" if is_running else "[green]Idle[/green]",
-            "Last Backup Status": last_backup_status,
-            "Storage Name": storage_name,
-            "Schedule": site_config["options"]["interval"],
-            "Local Backup": "yes" if site_config["options"]["save_locally"] else "no",
-            "Next Backup": next_backup_date,
-        }
-
-        if objects:
-            total_size = sum([i.get("Size") for i in objects.values()])
-            last_content = dates[-1]
-            last_backup_size = objects[last_content].get("Size")
-            last_modified = objects[last_content]["LastModified"]
-
-            rows.update(
-                {
-                    "Last Backup": last_modified.strftime("%d/%m/%Y %H:%M:%S"),
-                    "Last Backup Size": format_size(last_backup_size),
-                    "Total Backups Size": format_size(total_size),
-                    "Total Files": len(objects),
-                }
+            last_successful_log = (
+                Log.select()
+                .where((Log.name == backup_name) & (Log.status == Log.__SUCCESS__))
+                .order_by(Log.id.desc())
+                .get_or_none()
             )
 
-        if is_incremental and rustic_stats:
-            rows["Incremental Snapshots"] = rustic_stats.get("snapshots_count", "N/A")
-            rows["Repository Size"] = format_size(
-                rustic_stats.get("compressed_repo_size", 0)
+            last_backup_status = "[yellow]N/A[/yellow]"
+            is_running = False
+
+            if last_log:
+                is_running = last_log.status == Log.__ON_PROGRESS__
+                last_backup_status = {
+                    Log.__ON_PROGRESS__: "[yellow]On Progress[/yellow]",
+                    Log.__SUCCESS__: "[green]Success[/green]",
+                    Log.__FAILED__: "[red]Failed[/red]",
+                }.get(last_log.status, "[red]Unknown[/red]")
+
+            next_backup_date = "[yellow]N/A[/yellow]"
+            if last_successful_log:
+                interval = site_config["options"]["interval"]
+                interval_days = interval_in_number(interval)
+                next_backup_date = datetime.fromtimestamp(
+                    last_successful_log.created_at + (interval_days * 86400)
+                ).strftime("%d/%m/%Y 00:00:00")
+
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                transient=True,
+            ) as progress:
+                task = progress.add_task(
+                    description=f"fetching details for {backup_name}...", total=None
+                )
+
+                dates = []
+                objects = {}
+                if not is_local:
+                    _s3 = s3(storage_name)
+                    dates = _s3.get_backup_dates(backup_name, sort_by_date=True)
+                    objects = {
+                        prefix: obj
+                        for prefix in dates
+                        for obj in _s3.list(prefix=prefix).get("Contents", [])
+                    }
+
+                if is_incremental:
+                    try:
+                        rustic = Rustic(
+                            site_config=site_config,
+                            storage_config={} if is_local else Storage().get_storage_detail(storage_name),
+                        ).check_and_dump()
+                        rustic_stats = rustic.get_stats()
+                        rustic.dump_config(with_credentials=False)
+                    except Exception as e:
+                        if is_debug() and isinstance(e, CalledProcessError):
+                            print(e.stderr)
+                        print(f"[red] Failed to get rustic stats, {e} [/red]")
+
+                progress.update(task, completed=True)
+
+            rows = {
+                "Status": "[yellow]Running[/yellow]" if is_running else "[green]Idle[/green]",
+                "Last Backup Status": last_backup_status,
+                "Storage Name": storage_name,
+                "Schedule": site_config["options"]["interval"],
+                "Local Backup": "yes" if site_config["options"]["save_locally"] else "no",
+                "Next Backup": next_backup_date,
+            }
+
+            if objects:
+                total_size = sum([i.get("Size") for i in objects.values()])
+                last_content = dates[-1]
+                last_backup_size = objects[last_content].get("Size")
+                last_modified = objects[last_content]["LastModified"]
+
+                rows.update(
+                    {
+                        "Last Backup": last_modified.strftime("%d/%m/%Y %H:%M:%S"),
+                        "Last Backup Size": format_size(last_backup_size),
+                        "Total Backups Size": format_size(total_size),
+                        "Total Files": len(objects),
+                    }
+                )
+
+            if is_incremental and rustic_stats:
+                rows["Incremental Snapshots"] = rustic_stats.get("snapshots_count", "N/A")
+                rows["Repository Size"] = format_size(
+                    rustic_stats.get("compressed_repo_size", 0)
+                )
+
+            orders = [
+                "Status",
+                "Last Backup",
+                "Last Backup Status",
+                "Last Backup Size",
+                "Total Backups Size",
+                "Total Files",
+                "Repository Size",
+                "Incremental Snapshots",
+                "Storage Name",
+                "Schedule",
+                "Next Backup",
+                "Local Backup",
+            ]
+
+            table = Table(show_header=False, box=None, padding=(0, 2, 0, 0))
+            table.add_column(style="cyan")
+            table.add_column(style="white")
+
+            for key in orders:
+                if not rows.get(key):
+                    continue
+
+                table.add_row(key, f": {rows[key]}")
+
+            # If running, compute elapsed time from log.created_at
+            if last_log and last_log.status == Log.__ON_PROGRESS__:
+                any_running = True
+                elapsed_seconds = int(time.time()) - int(last_log.created_at)
+                table.add_row("Elapsed", f": {format_timespan(elapsed_seconds)}")
+
+            print(
+                Panel(
+                    table,
+                    title=f"Backup Summary for [bold]{backup_name}[/bold]",
+                    border_style="green",
+                    expand=False,
+                    title_align="left",
+                )
             )
 
-        orders = [
-            "Status",
-            "Last Backup",
-            "Last Backup Status",
-            "Last Backup Size",
-            "Total Backups Size",
-            "Total Files",
-            "Repository Size",
-            "Incremental Snapshots",
-            "Storage Name",
-            "Schedule",
-            "Next Backup",
-            "Local Backup",
-        ]
+        return any_running
 
-        table = Table(show_header=False, box=None, padding=(0, 2, 0, 0))
-        table.add_column(style="cyan")
-        table.add_column(style="white")
+    if watch:
+        try:
+            while True:
+                Console().clear()
+                running = render_once()
+                if not running:
+                    break
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\nStopped watching.")
+        return
 
-        for key in orders:
-            if not rows.get(key):
-                continue
-
-            table.add_row(key, f": {rows[key]}")
-
-        print(
-            Panel(
-                table,
-                title=f"Backup Summary for [bold]{backup_name}[/bold]",
-                border_style="green",
-                expand=False,
-                title_align="left",
-            )
-        )
+    # default single render
+    render_once()
 
     print("\nVisit: https://bqckup.com\n")
 
