@@ -42,6 +42,7 @@ bq_cli = typer.Typer()
 @bq_cli.command()
 def migrate():
     from models import database
+    # pyrefly: ignore [missing-import]
     from playhouse.migrate import SqliteMigrator, migrate, IntegerField, FloatField
 
     try:

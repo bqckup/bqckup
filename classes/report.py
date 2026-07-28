@@ -32,8 +32,12 @@ class Report:
         storages = Storage().list()
         sites = Bqckup().list()
 
-        first_day_of_month = datetime.now().replace(day=1).timestamp()
-        first_day_of_two_month_ago = datetime.now().replace(day=1, month=datetime.now().month - 1).timestamp()
+        now = datetime.now()
+        first_day_of_month = now.replace(day=1).timestamp()
+        if now.month == 1:
+            first_day_of_two_month_ago = now.replace(year=now.year - 1, month=12, day=1).timestamp()
+        else:
+            first_day_of_two_month_ago = now.replace(day=1, month=now.month - 1).timestamp()
 
         for storage in storages:
             hash_value_notification = sha256(f"{storage}_{get_today('%B_%Y')}".encode()).hexdigest()
@@ -77,7 +81,7 @@ class Report:
                     # check if backup exists
                     if not backups or not backups.get('Contents'):
                         print(f"[red] No backup found for {storage} [/red]")
-                        return None
+                        continue
 
                     # count the failed site in logs
                     logs = {}
