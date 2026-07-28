@@ -1,5 +1,5 @@
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from lib.notifications.webhook import send_report_to_webhook
+from lib.notifications.webhook import send_report_to_n8n
 from datetime import datetime
 from helpers.datetime import difference_in_days, interval_in_number, get_today
 from helpers.utility import isset
@@ -143,13 +143,8 @@ class Report:
                         errors = list_error_site_need_to_check.get(site, [])
                         failed_logs_list = failed_logs_description.get(site, [])
                         
-                        # Determine status: failed > no_change > completed
-                        status = "completed"
-                        if failed_logs_list or any("interval" in err for err in errors):
-                            status = "failed"
-                        elif any("size" in err for err in errors):
-                            status = "no_change"
-                            
+                        status = self._classify_status(errors, failed_logs_list)
+
                         data_payload.append({
                             "site": site,
                             "status": status,
@@ -174,16 +169,24 @@ class Report:
                         "data": data_payload
                     }
 
-                    # send to webhook
-                    send_report_to_webhook(payload)
+                    # send to n8n
+                    send_report_to_n8n(payload)
                     
                     NotificationLog().create(hash=hash_value_notification, sent_at=int(datetime.now().timestamp()))  
                     progress.update(task, completed=True)
-                    print ('[green]success send report to webhook[/green]')
+                    print ('[green]success send report to n8n[/green]')
             except Exception as e:
-                print(f"[red]Failed to send data to webhook, {str(e)}[/red]")
+                print(f"[red]Failed to send data to n8n, {str(e)}[/red]")
         return True
     
+    def _classify_status(self, errors, failed_logs_list):
+        INTERVAL_ERR = "backup interval is not same as set in site configuration"
+        if failed_logs_list or any(INTERVAL_ERR in err for err in errors):
+            return "failed"
+        if errors:
+            return "no_change"
+        return "completed"
+
     def _check_site(self, backups, interval, site, type):
         # reverse content to check from the latest backup
         backups.reverse()
