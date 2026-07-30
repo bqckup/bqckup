@@ -2,7 +2,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from lib.notifications.webhook import send_report_to_n8n
 from datetime import datetime
 from helpers.datetime import difference_in_days, interval_in_number, get_today
-from helpers.utility import isset
+from helpers.utility import isset, is_debug
 from models.log import Log
 from classes.bqckup import Bqckup
 from classes.storage import Storage
@@ -17,12 +17,12 @@ from models.notification_log import NotificationLog
 
 class Report:
 
-    def send(self):
+    def send(self, force: bool = False):
         if Config().read('notification', 'enabled') != '1' and Config().read('notification', 'monthly_report_enabled') != '1':
             return
         
         last_day_of_month = calendar.monthrange(datetime.now().year, datetime.now().month)[1]
-        if datetime.now().day != last_day_of_month:
+        if not force and not is_debug() and datetime.now().day != last_day_of_month:
             return
         
         storages = Storage().list()
@@ -37,7 +37,7 @@ class Report:
 
         for storage in storages:
             hash_value_notification = sha256(f"{storage}_{get_today('%B_%Y')}".encode()).hexdigest()
-            if NotificationLog().select().where(NotificationLog.hash == hash_value_notification).exists():
+            if not force and not is_debug() and NotificationLog().select().where(NotificationLog.hash == hash_value_notification).exists():
                 continue
             
             print (f"make report this month for '{storage}'")

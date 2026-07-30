@@ -33,10 +33,10 @@ from humanfriendly import format_size, format_timespan
 
 bq_cli = typer.Typer()
 
-# @ bq_cli.command()
-# def report():
-#     from classes.report import Report
-#     Report().send()
+@bq_cli.command()
+def report(force: bool = typer.Option(False, "--force", "-f", help="force generate monthly report")):
+    from classes.report import Report
+    Report().send(force=force)
 
 
 @bq_cli.command()
@@ -439,6 +439,11 @@ def run(
         "--incremental/--full",
         help="use incremental backup or create a full tar.gz archive",
     ),
+    report: bool = typer.Option(
+        False,
+        "--report",
+        help="force trigger monthly report generation",
+    ),
 ):
     from classes.report import Report
 
@@ -448,7 +453,7 @@ def run(
         incremental=incremental
     )
 
-    Report().send()
+    Report().send(force=report)
 
 
 @bq_cli.command()
