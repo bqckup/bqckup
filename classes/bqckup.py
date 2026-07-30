@@ -24,7 +24,7 @@ from datetime import datetime
 from helpers.file import remove_folder
 from hashlib import sha256
 from pathlib import Path
-from lib.notifications.webhook import send_report_to_n8n
+from lib.notifications.webhook import send_report_to_webhook
 from lib.notifications.email import send_notification as send_email_notification
 from lib.notifications.discord import send_notification as send_discord_notification
 from helpers.datetime import time_since, get_today, difference_in_days, interval_in_number
@@ -90,7 +90,7 @@ class Bqckup:
         ):
             return
 
-        send_report_to_n8n(payload)
+        send_report_to_webhook(payload)
         send_email_notification(payload)
         send_discord_notification(payload)
         NotificationLog().create(hash=hashed_payload, sent_at=int(time.time()))
