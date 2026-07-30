@@ -7,7 +7,7 @@ def _channels():
     return [c.strip().lower() for c in channel.split(",") if c.strip()]
 
 
-def send_report_to_n8n(data):
+def send_report_to_webhook(data):
     enabled = Config().read("notification", "enabled")
     monthly_enabled = Config().read("notification", "monthly_report_enabled")
     is_monthly = data.get("report_type") == "monthly"
@@ -18,7 +18,7 @@ def send_report_to_n8n(data):
         return
 
     channels = _channels()
-    if channels and "webhook" not in channels and "n8n" not in channels:
+    if channels and "webhook" not in channels:
         return
 
     webhook_url = Config().read("notification", "webhook_url")
@@ -29,7 +29,7 @@ def send_report_to_n8n(data):
         response = req.post(webhook_url, json=data, timeout=30)
         response.raise_for_status()
     except Exception as e:
-        print(f"Failed to send report to n8n webhook: {e}")
+        print(f"Failed to send report to webhook: {e}")
 
         # Webhook Operational Fallback to Discord
         discord_webhook_url = Config().read("notification", "discord_webhook_url")
@@ -46,12 +46,12 @@ def send_report_to_n8n(data):
                 "event": "webhook_failed",
                 "title": "⚠️ Webhook Delivery Failed",
                 "description": (
-                    f"An error occurred while attempting to send notification data to n8n webhook.\n"
+                    f"An error occurred while attempting to send notification data to webhook.\n"
                     f"**Webhook URL:** `{webhook_url}`\n"
                     f"**Target Site:** `{site_name}`\n"
                     f"**Event:** `{event_name}`"
                 ),
-                "message": f"Failed to send report to n8n webhook: {e}",
+                "message": f"Failed to send report to webhook: {e}",
                 "color": 15548997,  # Red
             }
             try:
