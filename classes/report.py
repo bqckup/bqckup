@@ -1,5 +1,5 @@
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from lib.notifications.webhook import send_report_to_n8n
+from lib.notifications.webhook import send_report_to_webhook
 from datetime import datetime
 from helpers.datetime import difference_in_days, interval_in_number, get_today
 from helpers.utility import isset, is_debug
@@ -169,14 +169,14 @@ class Report:
                         "data": data_payload
                     }
 
-                    # send to n8n
-                    send_report_to_n8n(payload)
+                    # send to webhook
+                    send_report_to_webhook(payload)
                     
                     NotificationLog().create(hash=hash_value_notification, sent_at=int(datetime.now().timestamp()))  
                     progress.update(task, completed=True)
-                    print ('[green]success send report to n8n[/green]')
+                    print ('[green]success send report to webhook[/green]')
             except Exception as e:
-                print(f"[red]Failed to send data to n8n, {str(e)}[/red]")
+                print(f"[red]Failed to send data to webhook, {str(e)}[/red]")
         return True
     
     def _classify_status(self, errors, failed_logs_list):
