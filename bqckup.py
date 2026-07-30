@@ -902,7 +902,7 @@ def restore(
 @bq_cli.command()
 def test_notification():
     """Send a test notification to every configured channel (Discord + Email)."""
-    from lib.notifications.webhook import send_report_to_n8n as send_webhook
+    from lib.notifications.webhook import send_report_to_webhook as send_webhook
     from lib.notifications.email import send_notification as send_email
     from helpers.network import get_server_ip
     from helpers.datetime import get_today
