@@ -23,7 +23,7 @@ enabled=0
 ; Send a monthly report at the end of every month (requires enabled=1)
 monthly_report_enabled=0
 
-; Which channels to send to. Comma separated. Supported: discord, email, n8n
+; Which channels to send to. Comma separated. Supported: discord, email, webhook
 ;   channel=discord        -> only Discord
 ;   channel=email          -> only Email
 ;   channel=webhook        -> only webhook
