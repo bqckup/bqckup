@@ -11,7 +11,7 @@ from lib.notifications.discord import (
     _flat_to_embed,
     send_notification as send_discord_notification,
 )
-from lib.notifications.webhook import send_report_to_n8n
+from lib.notifications.webhook import send_report_to_webhook
 
 
 @contextmanager
@@ -126,14 +126,14 @@ class TestWebhookFallbackToDiscord:
         with webhook_config(
             enabled="1",
             channel="webhook",
-            webhook_url="https://invalid-n8n.com/hook",
+            webhook_url="https://invalid-webhook.com/hook",
             discord_webhook_url="https://discord.com/hook",
         ) as mock_post, \
              patch("lib.notifications.discord.send_notification") as mock_discord_send:
-            # Simulate HTTP failure on n8n webhook
+            # Simulate HTTP failure on webhook
             mock_post.return_value.raise_for_status.side_effect = Exception("404 Client Error")
 
-            send_report_to_n8n(self.PAYLOAD)
+            send_report_to_webhook(self.PAYLOAD)
 
         mock_discord_send.assert_called_once()
         call_kwargs = mock_discord_send.call_args
