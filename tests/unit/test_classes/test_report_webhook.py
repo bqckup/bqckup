@@ -1,7 +1,7 @@
 """Unit tests for monthly report: status classification, payload shape, webhook dispatch.
 
 Covers ``Report._classify_status``, ``Report._check_site``, and
-``send_report_to_n8n`` via mocked ``requests.post``. No real S3 or network.
+``send_report_to_webhook`` via mocked ``requests.post``. No real S3 or network.
 """
 
 from contextlib import contextmanager
@@ -11,7 +11,7 @@ import pytest
 import requests as req
 
 from classes.report import Report
-from lib.notifications.webhook import send_report_to_n8n
+from lib.notifications.webhook import send_report_to_webhook
 
 
 INTERVAL_ERR = "backup interval is not same as set in site configuration"
@@ -121,7 +121,7 @@ class TestCheckSite:
 def webhook_test_config(**values):
     cfg = Mock()
     defaults = {
-        "webhook_url": "https://n8n.example.com/webhook",
+        "webhook_url": "https://webhook.example.com/webhook",
         "enabled": "1",
         "channel": "webhook",
     }
@@ -134,7 +134,7 @@ def webhook_test_config(**values):
         yield mock_post
 
 
-class TestSendReportToN8n:
+class TestSendReportTowebhook:
     def test_payload_structure(self):
         with webhook_test_config() as mock_post:
             mock_post.return_value.raise_for_status = Mock()
@@ -176,7 +176,7 @@ class TestSendReportToN8n:
                 ],
             }
 
-            send_report_to_n8n(payload)
+            send_report_to_webhook(payload)
 
             mock_post.assert_called_once()
             args, kwargs = mock_post.call_args
@@ -195,12 +195,12 @@ class TestSendReportToN8n:
             mock_post.return_value.raise_for_status.side_effect = req.HTTPError("500 Server Error")
 
             # Should not raise exception (caught internally)
-            send_report_to_n8n({"report_type": "monthly"})
+            send_report_to_webhook({"report_type": "monthly"})
             mock_post.assert_called_once()
 
     def test_skips_when_no_url(self):
         with webhook_test_config(webhook_url=None) as mock_post:
-            send_report_to_n8n({"report_type": "monthly"})
+            send_report_to_webhook({"report_type": "monthly"})
             mock_post.assert_not_called()
 
     def test_in_config_flag_sites_in_storage_but_not_in_config(self):
@@ -215,7 +215,7 @@ class TestSendReportToN8n:
                 ],
             }
 
-            send_report_to_n8n(payload)
+            send_report_to_webhook(payload)
             data = mock_post.call_args.kwargs["json"]["data"]
             assert data[0]["in_config"] is True
             assert data[1]["in_config"] is False
