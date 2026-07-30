@@ -1,8 +1,8 @@
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from lib.notifications.discord import send_notification
+from lib.notifications.webhook import send_report_to_webhook
 from datetime import datetime
 from helpers.datetime import difference_in_days, interval_in_number, get_today
-from helpers.utility import split_list, isset
+from helpers.utility import isset, is_debug
 from models.log import Log
 from classes.bqckup import Bqckup
 from classes.storage import Storage
@@ -14,30 +14,30 @@ from classes.config import Config
 import calendar
 from hashlib import sha256
 from models.notification_log import NotificationLog
-from humanfriendly import format_size
 
 class Report:
 
-    RED_ASTERISK = '[2;31m*[0m'
-    YELLOW_ASTERISK = '[2;33m*[0m'
-
-    def send(self):
+    def send(self, force: bool = False):
         if Config().read('notification', 'enabled') != '1' and Config().read('notification', 'monthly_report_enabled') != '1':
             return
         
         last_day_of_month = calendar.monthrange(datetime.now().year, datetime.now().month)[1]
-        if datetime.now().day != last_day_of_month:
+        if not force and not is_debug() and datetime.now().day != last_day_of_month:
             return
         
         storages = Storage().list()
         sites = Bqckup().list()
 
-        first_day_of_month = datetime.now().replace(day=1).timestamp()
-        first_day_of_two_month_ago = datetime.now().replace(day=1, month=datetime.now().month - 1).timestamp()
+        now = datetime.now()
+        first_day_of_month = now.replace(day=1).timestamp()
+        if now.month == 1:
+            first_day_of_two_month_ago = now.replace(year=now.year - 1, month=12, day=1).timestamp()
+        else:
+            first_day_of_two_month_ago = now.replace(day=1, month=now.month - 1).timestamp()
 
         for storage in storages:
             hash_value_notification = sha256(f"{storage}_{get_today('%B_%Y')}".encode()).hexdigest()
-            if NotificationLog().select().where(NotificationLog.hash == hash_value_notification).exists():
+            if not force and not is_debug() and NotificationLog().select().where(NotificationLog.hash == hash_value_notification).exists():
                 continue
             
             print (f"make report this month for '{storage}'")
@@ -77,7 +77,7 @@ class Report:
                     # check if backup exists
                     if not backups or not backups.get('Contents'):
                         print(f"[red] No backup found for {storage} [/red]")
-                        return None
+                        continue
 
                     # count the failed site in logs
                     logs = {}
@@ -90,10 +90,8 @@ class Report:
                         else:
                             logs[failed_log.name] = 1
                             failed_logs_description[failed_log.name] = [f"{failed_log.description} ({created_at})"]
-                    failed_site = ''
                     for log in logs:
                         failed_logs_description[log] = list(set(failed_logs_description[log]))
-                        failed_site += f"{log} ({logs[log]} fail)\n"
                     
                     # get content for this month from backups s3
                     filter_this_month = lambda content: content.get('LastModified').month == datetime.now().month
@@ -133,99 +131,62 @@ class Report:
                             list_error_site_need_to_check[site['name']] = error
 
                     # calculate size
-                    largest_backup = max(backups_this_month, key=lambda x: x['Size'])
+                    largest_backup = max(backups_this_month, key=lambda x: x['Size']) if backups_this_month else {}
                     total_size = 0
                     for backup in backups_this_month:
                         total_size += backup['Size']
 
-                    # format message list site in storage
-                    list_failed_site_logs = logs.keys()
-                    failed_site = logs
-                    message_list_site_in_storage = ''
-                    message_list_site_in_storage += '```ansi\n'
-                    list_site_name_in_config = list(map(lambda x: x['name'], sites.values()))
+                    list_site_name_in_config = [site['name'] for site in sites.values()]
+
+                    data_payload = []
                     for site in list_site_in_storage:
-                        if site in list_error_site_need_to_check:
-                            message_list_site_in_storage += self.RED_ASTERISK
-                        elif site not in list_site_name_in_config:
-                            message_list_site_in_storage += self.YELLOW_ASTERISK
-                        else:
-                            message_list_site_in_storage += ' '
-
-                        message_list_site_in_storage += site
-
-                        if site in list_failed_site_logs:
-                            message_list_site_in_storage += f" [2;31m({logs[site]} fail)[0m"
-                        message_list_site_in_storage += '\n'
-                    message_list_site_in_storage += '```'
-
-                    # list message site need to check
-                    embeds_site_need_to_check = []
-                    for site_name in list_error_site_need_to_check:
-                        message_list_site_need_to_check = ''
-                        unique_error = list(set(list_error_site_need_to_check[site_name]))
-                        for i, error in enumerate(unique_error):
-                            message_list_site_need_to_check += f"{i + 1}. {error} \n"
-
-                        # merge with failed logs
-                        if site_name in failed_logs_description:
-                            message_list_site_need_to_check += f"\nFailed logs: \n"
-                            for i, log in enumerate(failed_logs_description[site_name]):
-                                message_list_site_need_to_check += f"{i + 1}. {log} \n"
-
-                        embeds = {
-                                'title': f"Issue Report : '{site_name}' at '{storage}'",
-                                'description' : message_list_site_need_to_check,
-                                'color' : 16713736,
-                                "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
-                            }
+                        errors = list_error_site_need_to_check.get(site, [])
+                        failed_logs_list = failed_logs_description.get(site, [])
                         
-                        embeds_site_need_to_check.append(embeds)
+                        status = self._classify_status(errors, failed_logs_list)
 
-                    # list all backups for this month
-                    fields = [
-                            {"name": "Server IP", "value": get_server_ip(), "inline": True},
-                            {"name": "Bqckup Version", "value": VERSION, "inline": True},
-                            {"name": "Storage", "value": storage, "inline": True},
-                            {"name": "Total Site on config", "value": len(Bqckup().list()), "inline": True},
-                            {"name": "Total Size", "value": f"{format_size(total_size)}", "inline": True},
-                            {"name": "Largest Site Files", "value": f"{largest_backup.get('Key').split('/')[1]} ({format_size( largest_backup.get('Size'))})", "inline": True},
-                            {"name": "List site in storage", "value": message_list_site_in_storage, "inline": False},
-                            {"name": "", "value": f"```ansi\n{self.YELLOW_ASTERISK} : Site is available in storage, but not in config\n{self.RED_ASTERISK} : Issue Found```", "inline": False},
-                            # {"name": "Failed Site", "value": failed_site, "inline": True},
-                        ]
+                        data_payload.append({
+                            "site": site,
+                            "status": status,
+                            "in_config": site in list_site_name_in_config,
+                            "errors": errors,
+                            "fail_count": logs.get(site, 0),
+                            "failed_logs": failed_logs_list
+                        })
+
                     payload = {
-                            "embeds": [{
-                                "title": f"Report this {get_today('%B_%Y')}",
-                                "description": (
-                                                    "We have not detected any changes. There could be 2 reasons for this:\n"
-                                                    "1. The application is rarely used.\n"
-                                                    "2. There might be an issue with the database backup process.\n\n"
-                                                    "We recommend the following steps:\n"
-                                                    "1. Check the storage (S3) bucket {bucket_name}. If the database size is less than 1 KB or seems unusual, it likely means the backup did not complete successfully.\n"
-                                                    "2. Attempt to force a backup by running `bqckup --site {domain_name} --force` to ensure the backup process is functioning correctly."
-                                        ),                                
-                                "color": 30646,
-                                "fields": fields,
-                                "footer": {"text": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup"}
-                            }, ]
-                        }
+                        "report_type": "monthly",
+                        "storage": storage,
+                        "month": get_today('%B_%Y'),
+                        "server_ip": get_server_ip(),
+                        "version": VERSION,
+                        "total_size_bytes": total_size,
+                        "largest_site": {
+                            "name": largest_backup.get('Key', '').split('/')[1] if largest_backup else "",
+                            "size_bytes": largest_backup.get('Size', 0)
+                        },
+                        "total_sites_in_config": len(sites),
+                        "data": data_payload
+                    }
+
+                    # send to webhook
+                    send_report_to_webhook(payload)
                     
-                    # send to discord
-                    send_notification(payload)
-
-                    embeds_site_need_to_check = split_list(embeds_site_need_to_check, 10)
-                    for embeds in embeds_site_need_to_check:
-                        payload = {"embeds" : embeds}
-                        send_notification(payload)
-
                     NotificationLog().create(hash=hash_value_notification, sent_at=int(datetime.now().timestamp()))  
                     progress.update(task, completed=True)
-                    print ('[green]success send report to discord[/green]')
+                    print ('[green]success send report to webhook[/green]')
             except Exception as e:
-                print(f"[red]Failed to send data to discord, {str(e)}[/red]")
+                print(f"[red]Failed to send data to webhook, {str(e)}[/red]")
         return True
     
+    def _classify_status(self, errors, failed_logs_list):
+        INTERVAL_ERR = "backup interval is not same as set in site configuration"
+        if failed_logs_list or any(INTERVAL_ERR in err for err in errors):
+            return "failed"
+        if errors:
+            return "no_change"
+        return "completed"
+
     def _check_site(self, backups, interval, site, type):
         # reverse content to check from the latest backup
         backups.reverse()

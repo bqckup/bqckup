@@ -23,15 +23,20 @@ enabled=0
 ; Send a monthly report at the end of every month (requires enabled=1)
 monthly_report_enabled=0
 
-; Which channels to send to. Comma separated. Supported: discord, email
+; Which channels to send to. Comma separated. Supported: discord, email, webhook
 ;   channel=discord        -> only Discord
 ;   channel=email          -> only Email
-;   channel=discord,email  -> both
-channel=discord
+;   channel=webhook        -> only webhook
+;   channel=discord,email,webhook  -> both
+channel=webhook
 
 ; --- Discord channel ---
-; Webhook URL (required when 'discord' is in channel)
+; Webhook URL (required when 'discord' is in channel and for flag webhook if error)
 discord_webhook_url=
+
+; --- webhook channel ---
+; Webhook URL (required when 'webhook' is in channel)
+webhook_url=
 
 ; --- Email channel ---
 ; Recipient address(es), comma separated (required when 'email' is in channel)
