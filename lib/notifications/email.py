@@ -6,6 +6,14 @@ LOGO_URL = "https://avatars.githubusercontent.com/u/108687982?s=200&v=4"
 BRAND_COLOR = "#0A1A4F"   # navy from the Bqckup logo
 ACCENT_COLOR = "#F5B820"  # gold from the Bqckup logo
 
+# Map flat payload statuses to Discord-style embed colors
+_STATUS_COLORS = {
+    "completed": 3066993,            # green
+    "no_change": 16776960,           # yellow
+    "failed": 15548997,              # red
+    "completed_with_errors": 16744192,  # orange
+}
+
 
 def _channels():
     channel = Config().read('notification', 'channel', default='', print_error=False) or ''
@@ -124,6 +132,41 @@ def _render_html(embeds):
 </html>"""
 
 
+def _flat_to_embeds(payload):
+    """Convert a flat daily notification payload into the embed format
+    expected by _render_html. This keeps the existing email template
+    working without changes."""
+    from datetime import datetime
+
+    status = payload.get("status", "failed")
+    color = _STATUS_COLORS.get(status, 15548997)
+    timestamp = payload.get("timestamp")
+    date_str = (
+        datetime.fromtimestamp(timestamp).strftime("%d-%B-%Y %H:%M:%S")
+        if timestamp
+        else "N/A"
+    )
+
+    fields = [
+        {"name": "Server IP", "value": payload.get("server_ip", "N/A"), "inline": True},
+        {"name": "Site", "value": payload.get("site", "N/A"), "inline": True},
+        {"name": "Date", "value": date_str, "inline": True},
+        {"name": "Status", "value": status, "inline": True},
+    ]
+
+    message = payload.get("message")
+    if message:
+        fields.append({"name": "Details", "value": message, "inline": False})
+
+    return [{
+        "title": payload.get("title", "Bqckup Notification"),
+        "description": None,
+        "color": color,
+        "fields": fields,
+        "footer": {"text": None},
+    }]
+
+
 def send_notification(payload):
     if Config().read('notification', 'enabled') != '1':
         return
@@ -139,7 +182,10 @@ def send_notification(payload):
     to = [addr.strip() for addr in recipient.split(',') if addr.strip()]
 
     try:
-        embeds = payload.get('embeds') or []
+        embeds = payload.get('embeds')
+        if embeds is None:
+            # Flat daily payload — convert to embed format for rendering
+            embeds = _flat_to_embeds(payload)
         subject = embeds[0].get('title') if embeds else 'Bqckup Notification'
         Mail().send(subject=subject, to=to, content=_render_html(embeds))
     except Exception as e:

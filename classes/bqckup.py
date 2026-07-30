@@ -24,7 +24,7 @@ from datetime import datetime
 from helpers.file import remove_folder
 from hashlib import sha256
 from pathlib import Path
-from lib.notifications.discord import send_notification
+from lib.notifications.webhook import send_report_to_n8n
 from lib.notifications.email import send_notification as send_email_notification
 from helpers.datetime import time_since, get_today, difference_in_days, interval_in_number
 from helpers.network import get_server_ip
@@ -55,41 +55,24 @@ class Bqckup:
 
     def _send_notification(
         self,
-        backup_name,
+        site,
+        status,
+        event,
         title,
-        description=None,
-        messages=None,
-        additional_data=None,
-        footer=None,
-        color=15548997,
+        message="",
     ):
-        fields = [
-            {"name": "Server IP", "value": get_server_ip(), "inline": True},
-            {"name": "Name", "value": backup_name, "inline": True},
-            {"name": "Date", "value": get_today(format="%d-%B-%Y"), "inline": True},
-        ]
-
-        if additional_data:
-            fields.append(additional_data)
-
-        if messages:
-            fields.append({"name": "Details", "value": messages, "inline": False})
-
         payload = {
-            "embeds": [
-                {
-                    "title": title,
-                    "description": description,
-                    "color": color,
-                    "fields": fields,
-                    "footer": {
-                        "text": footer,
-                    }
-                }
-            ]
+            "report_type": "daily",
+            "site": site,
+            "status": status,
+            "event": event,
+            "title": title,
+            "message": message,
+            "timestamp": int(time.time()),
+            "server_ip": get_server_ip(),
         }
 
-        hashed_payload = sha256(str(payload).encode()).hexdigest()
+        hashed_payload = sha256(f"{site}_{event}".encode()).hexdigest()
         if (
             NotificationLog()
             .select()
@@ -98,7 +81,7 @@ class Bqckup:
         ):
             return
 
-        send_notification(payload)
+        send_report_to_n8n(payload)
         send_email_notification(payload)
         NotificationLog().create(hash=hashed_payload, sent_at=int(time.time()))
             
@@ -285,10 +268,11 @@ class Bqckup:
             err_msg = f"Failed to Clean Old Backups for {site_config.get('name')}"
             print(f"[red]Error: {err_msg}.[/red]")
             self._send_notification(
-                backup_name=site_config.get("name"),
+                site=site_config.get("name"),
+                status="failed",
+                event="cleanup_failed",
                 title=err_msg,
-                description=f"An error occurred while trying to clean old backups.\n\n**Error:**\n```{e}```",
-                color=15158332,  # Red color
+                message=f"An error occurred while trying to clean old backups.\nError: {e}",
             )
 
     def _should_skip_backup(self, backup: Dict[str, Any], force: bool) -> bool:
@@ -320,11 +304,13 @@ class Bqckup:
                 print(f"[yellow]The previous backup for {backup_name} was not successful.[/yellow]")
                 print(f"[yellow]Last Status: '{last_log_status}'. Attempted at: {datetime.fromtimestamp(last_any_log.created_at).strftime('%d/%m/%Y %H:%M:%S')}[/yellow]")
                 self._send_notification(
-                    backup_name=backup_name,
+                    site=backup_name,
+                    status="failed",
+                    event="previous_backup_failed",
                     title=f"Previous Backup Not Successful for {backup_name}",
-                    description=(
+                    message=(
                         f"The last backup attempt on {datetime.fromtimestamp(last_any_log.created_at).strftime('%d/%m/%Y %H:%M:%S')} "
-                        f"did not complete successfully. The last known status was '{last_log_status}'.\n\n"
+                        f"did not complete successfully. The last known status was '{last_log_status}'."
                     ),
                 )
 
@@ -492,7 +478,7 @@ class Bqckup:
 
                     if notification_payload := backup_result.get("notification"):
                         self._send_notification(
-                            backup_name=backup.get("name"),
+                            site=backup.get("name"),
                             **notification_payload
                         )
 
@@ -532,9 +518,11 @@ class Bqckup:
                     ).where(Log.id == log.id).execute()
 
                 self._send_notification(
-                    backup_name=backup.get("name"),
+                    site=backup.get("name"),
+                    status="failed",
+                    event="backup_failed",
                     title=f"Backup failed for {backup.get('name')}",
-                    messages=error_msg,
+                    message=error_msg,
                 )
                 
                 try:
@@ -627,22 +615,17 @@ class Bqckup:
                 print(f"[red]Based on file size, there is no changes detected for {compressed_file}[/red]\n")
 
                 result["notification"] = {
+                    "status": "no_change",
+                    "event": "no_change_detected",
                     "title": "No Changes Detected",
-                    "messages": "Based on file size, there is no changes detected",
-                    "description": (
-                        "We have not detected any changes. There could be 2 reasons for this:\n"
-                        "1. The application is rarely used.\n"
-                        "2. There might be an issue with the database backup process.\n\n"
-                        "We recommend the following steps:\n"
-                        "1. Check the storage (S3) bucket {bucket_name}. If the database size is less than 1 KB or seems unusual, it likely means the backup did not complete successfully.\n"
-                        "2. Attempt to force a backup by running `bqckup --site {domain_name} --force` to ensure the backup process is functioning correctly."
+                    "message": (
+                        "Based on file size, there is no changes detected. "
+                        f"File: {os.path.basename(compressed_file)}. "
+                        "There could be 2 reasons for this: "
+                        "1. The application is rarely used. "
+                        "2. There might be an issue with the database backup process. "
+                        "We recommend checking the storage bucket and attempting a forced backup."
                     ),
-                    "footer": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup",
-                    "additional_data": {
-                        "name": "File name",
-                        "value": os.path.basename(compressed_file),
-                        "inline": False,
-                    },
                 }
             
             if backup.get('options').get('provider') == 'local':
@@ -815,9 +798,10 @@ class Bqckup:
                 )
 
             result["notification"] = {
+                "status": "completed_with_errors",
+                "event": "cleanup_failed",
                 "title": f"Rustic Repository Cleanup Failed for {site_config['name']}",
-                "messages": err_detail,
-                "description": "Backup completed successfully, but repository cleanup failed.",
+                "message": f"Backup completed successfully, but repository cleanup failed. {err_detail}",
             }
             print(f"({site_config['name']}) Error while cleaning rustic repository.")
 
@@ -827,14 +811,12 @@ class Bqckup:
             result["success"] = False
             result["message"] = "File Backup Success, but repository check failed."
             result["notification"] = {
+                "status": "completed_with_errors",
+                "event": "repo_check_failed",
                 "title": f"Repository Check Failed for {site_config['name']}",
-                "messages": f"Error: {e}",
-                "additional_data": {
-                    "name": "Command Output", "value": e.stderr, "inline": False
-                },
-                "description": (
-                    "Backup completed successfully, but repository check failed.\n"
-                    "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
+                "message": (
+                    f"Backup completed successfully, but repository check failed. Error: {e}. "
+                    "Visit https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup to fix it"
                 ),
             }
             print(f"({site_config['name']}) Error while checking repository.")
@@ -866,12 +848,12 @@ class Bqckup:
             result["error"] = e
             result["traceback"] = traceback.format_exc()
             result["notification"] = {
+                 "status": "failed",
+                 "event": "incremental_backup_failed",
                  "title": f"Incremental Backup Failed for {site_config['name']}",
-                 "messages": err_detail,
-                 "additional_data": { "name": "Error Message", "value": err_msg, "inline": True},
-                 "description": (
-                    "An error occurred while backup.\n"
-                    "Visit the [documentation](https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup) to fix it"
+                 "message": (
+                    f"An error occurred while backup. {err_msg}: {err_detail}. "
+                    "Visit https://docs.bqckup.com/bqckup-documentation/troubleshoots/fixing-a-corrupted-incremental-backup to fix it"
                 ),
             }
 
@@ -990,9 +972,11 @@ class Bqckup:
             else:
                 log_update_data["status"] = Log.__FAILED__
                 self._send_notification(
-                    backup_name=site_config["name"],
+                    site=site_config["name"],
+                    status="failed",
+                    event="database_backup_failed",
                     title=f"Database Backup Failed for {site_config['name']} {db_label}",
-                    messages=f"Error: {result.get('error')}",
+                    message=f"Error: {result.get('error')}",
                 )
 
             Log.update(log_update_data).where(Log.id == current_log.id).execute()

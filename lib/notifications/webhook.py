@@ -6,5 +6,9 @@ def send_report_to_n8n(data):
     if not webhook_url:
         return
     
-    response = req.post(webhook_url, json=data, timeout=30)
-    response.raise_for_status()
+    try:
+        response = req.post(webhook_url, json=data, timeout=30)
+        response.raise_for_status()
+    except Exception as e:
+        print(f"[red]Failed to send report to n8n webhook: {e}[/red]")
+

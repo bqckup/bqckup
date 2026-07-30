@@ -869,7 +869,7 @@ def restore(
 @bq_cli.command()
 def test_notification():
     """Send a test notification to every configured channel (Discord + Email)."""
-    from lib.notifications.discord import send_notification as send_discord
+    from lib.notifications.webhook import send_report_to_n8n as send_webhook
     from lib.notifications.email import send_notification as send_email
     from helpers.network import get_server_ip
     from helpers.datetime import get_today
@@ -902,7 +902,7 @@ def test_notification():
     }
 
     print(f"Sending test notification to: [cyan]{', '.join(channels)}[/cyan] ...")
-    send_discord(payload)   # no-op unless 'discord' is in channels
+    send_webhook(payload)   # no-op unless 'discord' is in channels
     send_email(payload)     # no-op unless 'email' is in channels
     print("[green]Test notification dispatched. Check your channel(s).[/green]")
 
