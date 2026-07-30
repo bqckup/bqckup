@@ -31,7 +31,7 @@ monthly_report_enabled=0
 channel=webhook
 
 ; --- Discord channel ---
-; Webhook URL (required when 'discord' is in channel)
+; Webhook URL (required when 'discord' is in channel and for flag webhook if error)
 discord_webhook_url=
 
 ; --- webhook channel ---

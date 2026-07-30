@@ -184,7 +184,7 @@ class TestFlatToEmbeds:
 
 
 class TestBackupNotificationDispatch:
-    """The backup flow dispatches to both webhook and Email via _send_notification."""
+    """The backup flow dispatches to webhook, Email, and Discord via _send_notification."""
 
     def _bqckup(self):
         from classes.bqckup import Bqckup
@@ -198,14 +198,15 @@ class TestBackupNotificationDispatch:
              patch("classes.bqckup.is_debug", return_value=False), \
              patch("classes.bqckup.NotificationLog") as MockNL, \
              patch("classes.bqckup.send_report_to_n8n") as mock_webhook, \
-             patch("classes.bqckup.send_email_notification") as mock_email:
+             patch("classes.bqckup.send_email_notification") as mock_email, \
+             patch("classes.bqckup.send_discord_notification") as mock_discord:
             (MockNL.return_value.select.return_value
                    .where.return_value.exists.return_value) = already_sent
-            yield mock_webhook, mock_email
+            yield mock_webhook, mock_email, mock_discord
 
-    def test_dispatches_to_email_and_webhook(self):
+    def test_dispatches_to_email_webhook_and_discord(self):
         bq = self._bqckup()
-        with self._patched(already_sent=False) as (mock_webhook, mock_email):
+        with self._patched(already_sent=False) as (mock_webhook, mock_email, mock_discord):
             bq._send_notification(
                 site="mysite", status="failed",
                 event="backup_failed", title="Backup Failed",
@@ -213,6 +214,7 @@ class TestBackupNotificationDispatch:
 
         mock_webhook.assert_called_once()
         mock_email.assert_called_once()
+        mock_discord.assert_called_once()
         payload = mock_webhook.call_args[0][0]
         assert payload["report_type"] == "daily"
         assert payload["site"] == "mysite"
@@ -223,7 +225,7 @@ class TestBackupNotificationDispatch:
 
     def test_skips_duplicate_notification(self):
         bq = self._bqckup()
-        with self._patched(already_sent=True) as (mock_webhook, mock_email):
+        with self._patched(already_sent=True) as (mock_webhook, mock_email, mock_discord):
             bq._send_notification(
                 site="mysite", status="failed",
                 event="backup_failed", title="Backup Failed",
@@ -231,6 +233,7 @@ class TestBackupNotificationDispatch:
 
         mock_webhook.assert_not_called()
         mock_email.assert_not_called()
+        mock_discord.assert_not_called()
 
 
 @pytest.mark.cli

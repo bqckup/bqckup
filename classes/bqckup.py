@@ -26,6 +26,7 @@ from hashlib import sha256
 from pathlib import Path
 from lib.notifications.webhook import send_report_to_n8n
 from lib.notifications.email import send_notification as send_email_notification
+from lib.notifications.discord import send_notification as send_discord_notification
 from helpers.datetime import time_since, get_today, difference_in_days, interval_in_number
 from helpers.network import get_server_ip
 from rich import print
@@ -60,6 +61,10 @@ class Bqckup:
         event,
         title,
         message="",
+        description=None,
+        additional_data=None,
+        footer=None,
+        color=None,
     ):
         payload = {
             "report_type": "daily",
@@ -68,6 +73,10 @@ class Bqckup:
             "event": event,
             "title": title,
             "message": message,
+            "description": description,
+            "additional_data": additional_data,
+            "footer": footer,
+            "color": color,
             "timestamp": int(time.time()),
             "server_ip": get_server_ip(),
         }
@@ -83,6 +92,7 @@ class Bqckup:
 
         send_report_to_n8n(payload)
         send_email_notification(payload)
+        send_discord_notification(payload)
         NotificationLog().create(hash=hashed_payload, sent_at=int(time.time()))
             
     def validate_config(self, name: str) -> bool:
@@ -618,14 +628,21 @@ class Bqckup:
                     "status": "no_change",
                     "event": "no_change_detected",
                     "title": "No Changes Detected",
-                    "message": (
-                        "Based on file size, there is no changes detected. "
-                        f"File: {os.path.basename(compressed_file)}. "
-                        "There could be 2 reasons for this: "
-                        "1. The application is rarely used. "
-                        "2. There might be an issue with the database backup process. "
-                        "We recommend checking the storage bucket and attempting a forced backup."
+                    "description": (
+                        "We have not detected any changes. There could be 2 reasons for this:\n"
+                        "1. The application is rarely used.\n"
+                        "2. There might be an issue with the database backup process.\n\n"
+                        "We recommend the following steps:\n"
+                        "1. Check the storage (S3) bucket. If the database size is less than 1 KB or seems unusual, it likely means the backup did not complete successfully.\n"
+                        "2. Attempt to force a backup by running `bqckup --site {domain_name} --force` to ensure the backup process is functioning correctly."
                     ),
+                    "message": "Based on file size, there is no changes detected",
+                    "additional_data": {
+                        "name": "File name",
+                        "value": os.path.basename(compressed_file),
+                        "inline": False,
+                    },
+                    "footer": "If this was a mistake, please create issue here: https://github.com/bqckup/bqckup",
                 }
             
             if backup.get('options').get('provider') == 'local':

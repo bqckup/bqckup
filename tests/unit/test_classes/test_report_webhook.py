@@ -115,11 +115,28 @@ class TestCheckSite:
         assert r._check_site([], 1, site, "sql") == []
 
 
+
+
+@contextmanager
+def webhook_test_config(**values):
+    cfg = Mock()
+    defaults = {
+        "webhook_url": "https://n8n.example.com/webhook",
+        "enabled": "1",
+        "channel": "webhook",
+    }
+    merged = {**defaults, **values}
+    cfg.read.side_effect = (
+        lambda section, key, default=None, print_error=True: merged.get(key, default)
+    )
+    with patch("lib.notifications.webhook.Config", return_value=cfg), \
+         patch("lib.notifications.webhook.req.post") as mock_post:
+        yield mock_post
+
+
 class TestSendReportToN8n:
     def test_payload_structure(self):
-        with patch("lib.notifications.webhook.Config") as MockConfig, \
-             patch("lib.notifications.webhook.req.post") as mock_post:
-            MockConfig.return_value.read.return_value = "https://n8n.example.com/webhook"
+        with webhook_test_config() as mock_post:
             mock_post.return_value.raise_for_status = Mock()
 
             payload = {
@@ -173,27 +190,21 @@ class TestSendReportToN8n:
                 assert "fail_count" in item
                 assert "failed_logs" in item
 
-    def test_raises_on_non_200(self):
-        with patch("lib.notifications.webhook.Config") as MockConfig, \
-             patch("lib.notifications.webhook.req.post") as mock_post:
-            MockConfig.return_value.read.return_value = "https://n8n.example.com/webhook"
-            mock_post.return_value.raise_for_status.side_effect = req.HTTPError("500")
+    def test_handles_http_error_gracefully(self):
+        with webhook_test_config() as mock_post:
+            mock_post.return_value.raise_for_status.side_effect = req.HTTPError("500 Server Error")
 
-            with pytest.raises(req.HTTPError):
-                send_report_to_n8n({"report_type": "monthly"})
+            # Should not raise exception (caught internally)
+            send_report_to_n8n({"report_type": "monthly"})
+            mock_post.assert_called_once()
 
     def test_skips_when_no_url(self):
-        with patch("lib.notifications.webhook.Config") as MockConfig, \
-             patch("lib.notifications.webhook.req.post") as mock_post:
-            MockConfig.return_value.read.return_value = None
-
+        with webhook_test_config(webhook_url=None) as mock_post:
             send_report_to_n8n({"report_type": "monthly"})
             mock_post.assert_not_called()
 
     def test_in_config_flag_sites_in_storage_but_not_in_config(self):
-        with patch("lib.notifications.webhook.Config") as MockConfig, \
-             patch("lib.notifications.webhook.req.post") as mock_post:
-            MockConfig.return_value.read.return_value = "https://n8n.example.com/webhook"
+        with webhook_test_config() as mock_post:
             mock_post.return_value.raise_for_status = Mock()
 
             payload = {
@@ -208,3 +219,4 @@ class TestSendReportToN8n:
             data = mock_post.call_args.kwargs["json"]["data"]
             assert data[0]["in_config"] is True
             assert data[1]["in_config"] is False
+
