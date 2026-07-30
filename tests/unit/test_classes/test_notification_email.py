@@ -197,7 +197,7 @@ class TestBackupNotificationDispatch:
         with patch("classes.bqckup.get_server_ip", return_value="1.2.3.4"), \
              patch("classes.bqckup.is_debug", return_value=False), \
              patch("classes.bqckup.NotificationLog") as MockNL, \
-             patch("classes.bqckup.send_report_to_n8n") as mock_webhook, \
+             patch("classes.bqckup.send_report_to_webhook") as mock_webhook, \
              patch("classes.bqckup.send_email_notification") as mock_email, \
              patch("classes.bqckup.send_discord_notification") as mock_discord:
             (MockNL.return_value.select.return_value
