@@ -9,22 +9,22 @@ from classes.config import Config
 from constant import CONFIG_PATH, DEFAULT_HEADER
 
 
+class StorageCredentialError(Exception):
+    """Raised when remote credential fetch fails."""
+
 @lru_cache(maxsize=None)
 def get_credential(base_url: str) -> Dict[str, str]:
     try:
-        r = requests.get(base_url, headers=DEFAULT_HEADER)
+        r = requests.get(base_url, headers=DEFAULT_HEADER, timeout=30)
         json: dict = r.json()
     except JSONDecodeError:
-        print("Error while decode json.")
-        sys.exit(1)
-    except Exception:
-        print(f"Error while request to {base_url}.")
-        sys.exit(1)
+        raise StorageCredentialError(f"Error while decode json from {base_url}")
+    except Exception as e:
+        raise StorageCredentialError(f"Error while request to {base_url}: {e}")
 
     if r.status_code != 200:
-        raise RequestException(
-            f"{json.get('error', 'Error')} {base_url}: {json.get('message') or str(json)}",
-            response=r,
+        raise StorageCredentialError(
+            f"{json.get('error', 'Error')} {base_url}: {json.get('message') or str(json)}"
         )
 
     return r.json()

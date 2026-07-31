@@ -29,6 +29,7 @@ from helpers.utility import (
     validate_path,
 )
 from helpers.network import download_files, generate_short_link
+from helpers.hook import StorageCredentialError
 from humanfriendly import format_size, format_timespan
 
 
@@ -873,6 +874,29 @@ def restore(
                 storage_config = Storage().get_storage_detail(
                     site_config.get("options").get("storage")
                 )
+        except StorageCredentialError as e:
+            if is_debug():
+                traceback.print_exc()
+
+            print(f"Error while getting credential: {e}")
+
+            from helpers.network import get_server_ip
+            from lib.notifications.webhook import send_report_to_webhook
+            from lib.notifications.email import send_notification as send_email
+
+            payload = {
+                "report_type": "daily",
+                "site": site,
+                "status": "failed",
+                "event": "credential_failed",
+                "title": f"Storage Credential Failed for {site}",
+                "message": str(e),
+                "timestamp": int(__import__("time").time()),
+                "server_ip": get_server_ip(),
+            }
+            send_report_to_webhook(payload)
+            send_email(payload)
+            raise
         except Exception as e:
             if is_debug():
                 traceback.print_exc()

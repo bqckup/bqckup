@@ -38,6 +38,12 @@ from helpers.datetime import (
     interval_in_number,
     time_since,
 )
+from classes.s3 import s3
+from helpers.hook import send_backup_summary, StorageCredentialError
+from helpers.utility import is_debug
+from models.log import Log
+from models.notification_log import NotificationLog
+from classes.master import Master
 from helpers.file import remove_folder
 from hashlib import sha256
 from pathlib import Path
@@ -71,8 +77,7 @@ class Bqckup:
             with ProgressSpinner("checking storage connection..."):
                 s3.check_connection()  # check all storage
         except Exception as e:
-            print(f"[red]{e}[/red]")
-            sys.exit()
+            print(f"[red]Storage connection check failed: {e}[/red]")
 
     def _send_notification(
         self,
@@ -156,6 +161,16 @@ class Bqckup:
                 if config.get("options").get("provider") == "s3":
                     Storage().get_storage_detail(config.get("options").get("storage"))
             return True
+        except StorageCredentialError as e:
+            print(f"[red]{e}[/red]")
+            self._send_notification(
+                site=config.get("name"),
+                status="failed",
+                event="credential_failed",
+                title=f"Storage Credential Failed for {config.get('name')}",
+                message=str(e),
+            )
+            return False
         except Exception as e:
             print(f"[red]Error: {e}[/red]")
             return False
@@ -665,6 +680,16 @@ class Bqckup:
                         if is_debug():
                             traceback.print_exc()
 
+            except StorageCredentialError as e:
+                print(f"[red]{e}[/red]")
+                self._send_notification(
+                    site=backup.get("name"),
+                    status="failed",
+                    event="credential_failed",
+                    title=f"Storage Credential Failed for {backup.get('name')}",
+                    message=str(e),
+                )
+                continue
             except Exception as e:
                 if is_debug():
                     traceback.print_exc()
@@ -958,7 +983,17 @@ class Bqckup:
 
         if provider == "s3":
             bucket_name = site_config.get("options", {}).get("storage")
-            storage_config = Storage().get_storage_detail(bucket_name)
+            try:
+                storage_config = Storage().get_storage_detail(bucket_name)
+            except StorageCredentialError as e:
+                print(f"[red]{e}[/red]")
+                result["notification"] = {
+                    "status": "failed",
+                    "event": "credential_failed",
+                    "title": f"Storage Credential Failed for {site_config['name']}",
+                    "message": str(e),
+                }
+                return result
         else:
             storage_config = {}
 

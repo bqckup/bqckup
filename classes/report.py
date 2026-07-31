@@ -1,5 +1,8 @@
+import time
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from lib.notifications.webhook import send_report_to_webhook
+from lib.notifications.email import send_notification as send_email_notification
+from lib.notifications.discord import send_notification as send_discord_notification
 from datetime import datetime
 from helpers.datetime import difference_in_days, interval_in_number, get_today
 from helpers.utility import isset, is_debug
@@ -8,6 +11,7 @@ from classes.bqckup import Bqckup
 from classes.storage import Storage
 from classes.s3 import s3
 from helpers.network import get_server_ip
+from helpers.hook import StorageCredentialError
 from bqckup import VERSION
 from rich import print
 from classes.config import Config
@@ -175,6 +179,24 @@ class Report:
                     NotificationLog().create(hash=hash_value_notification, sent_at=int(datetime.now().timestamp()))  
                     progress.update(task, completed=True)
                     print ('[green]success send report to webhook[/green]')
+            except StorageCredentialError as e:
+                print(f"[red]Storage credential check failed for '{storage}': {e}[/red]")
+                payload = {
+                    "report_type": "daily",
+                    "site": storage,
+                    "status": "failed",
+                    "event": "credential_failed",
+                    "title": f"Storage Credential Failed for {storage}",
+                    "message": str(e),
+                    "timestamp": int(time.time()),
+                    "server_ip": get_server_ip(),
+                }
+                hashed_payload = sha256(f"{storage}_credential_failed".encode()).hexdigest()
+                if not NotificationLog().select().where(NotificationLog.hash == hashed_payload).exists() or is_debug():
+                    send_report_to_webhook(payload)
+                    send_email_notification(payload)
+                    send_discord_notification(payload)
+                    NotificationLog().create(hash=hashed_payload, sent_at=int(time.time()))
             except Exception as e:
                 print(f"[red]Failed to send data to webhook, {str(e)}[/red]")
         return True

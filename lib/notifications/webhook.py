@@ -46,7 +46,7 @@ def send_report_to_webhook(data):
                 "event": "webhook_failed",
                 "title": "⚠️ Webhook Delivery Failed",
                 "description": (
-                    f"An error occurred while attempting to send notification data to webhook.\n"
+                    f"An error occurred while attempting to send notification data to webhook webhook.\n"
                     f"**Webhook URL:** `{webhook_url}`\n"
                     f"**Target Site:** `{site_name}`\n"
                     f"**Event:** `{event_name}`"
