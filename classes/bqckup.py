@@ -20,7 +20,7 @@ from classes.master import Master
 from classes.progress import ProgressSpinner
 from classes.rustic import Rustic, RusticCheckError, RusticCleanError, RusticConfigError
 from classes.s3 import s3
-from classes.storage import Storage
+from classes.storage import Storage, StorageException
 from classes.tar import Tar
 from classes.yml_checker import Yml_Checker
 from classes.yml_parser import Yml_Parser
@@ -40,7 +40,7 @@ from helpers.datetime import (
 )
 from classes.s3 import s3
 from helpers.hook import send_backup_summary, StorageCredentialError
-from helpers.utility import is_debug
+from helpers.utility import is_debug, now
 from models.log import Log
 from models.notification_log import NotificationLog
 from classes.master import Master
@@ -75,7 +75,16 @@ class Bqckup:
 
         try:
             with ProgressSpinner("checking storage connection..."):
-                s3.check_connection()  # check all storage
+                s3.check_connection() # check all storage
+        except StorageCredentialError as e:
+            print(f"[red]Storage connection check failed: {e}[/red]")
+            self._send_notification(
+                site=getattr(e, "storage_name", "unknown"),
+                status="failed",
+                event="credential_failed",
+                title=f"Storage Credential Failed for {getattr(e, 'storage_name', 'unknown')}",
+                message=str(e),
+            )
         except Exception as e:
             print(f"[red]Storage connection check failed: {e}[/red]")
 
@@ -168,6 +177,16 @@ class Bqckup:
                 status="failed",
                 event="credential_failed",
                 title=f"Storage Credential Failed for {config.get('name')}",
+                message=str(e),
+            )
+            return False
+        except StorageException as e:
+            print(f"[red]{e}[/red]")
+            self._send_notification(
+                site=config.get("name"),
+                status="failed",
+                event="storage_error",
+                title=f"Storage Error for {config.get('name')}",
                 message=str(e),
             )
             return False

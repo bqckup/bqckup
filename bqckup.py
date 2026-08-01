@@ -476,13 +476,14 @@ def run(
 ):
     from classes.report import Report
 
-    Bqckup().backup(
+    bqckup = Bqckup()
+    bqckup.backup(
         force=force,
         site=site,
         incremental=incremental
     )
 
-    Report().send(force=report)
+    Report().send(force=report, bqckup=bqckup)
 
 
 @bq_cli.command()

@@ -21,16 +21,16 @@ from models.notification_log import NotificationLog
 
 class Report:
 
-    def send(self, force: bool = False):
+    def send(self, force: bool = False, bqckup: Bqckup = None):
         if Config().read('notification', 'enabled') != '1' and Config().read('notification', 'monthly_report_enabled') != '1':
             return
         
         last_day_of_month = calendar.monthrange(datetime.now().year, datetime.now().month)[1]
-        if not force and not is_debug() and datetime.now().day != last_day_of_month:
+        if datetime.now().day != last_day_of_month:
             return
         
         storages = Storage().list()
-        sites = Bqckup().list()
+        sites = (bqckup or Bqckup()).list()
 
         now = datetime.now()
         first_day_of_month = now.replace(day=1).timestamp()

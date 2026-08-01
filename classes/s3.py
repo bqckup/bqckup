@@ -7,6 +7,7 @@ from botocore.exceptions import ClientError
 from classes.config import Config as bqckup_config
 from classes.progress import ProgressPercentage
 from classes.storage import Storage
+from helpers.hook import StorageCredentialError
 from datetime import datetime
 from functools import lru_cache
 from helpers.utility import is_debug, is_verbose
@@ -284,5 +285,8 @@ class s3(object):
             try:
                 obj = cls(storage_name)
                 obj.client.head_bucket(Bucket=obj.bucket_name)
+            except StorageCredentialError as e:
+                e.storage_name = storage_name
+                raise
             except Exception as e:
                 raise Exception(f"{e.__class__.__name__}: Failed connection check for {storage_name} -> {e}") from e
