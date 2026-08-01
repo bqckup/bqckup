@@ -30,7 +30,7 @@ def get_credential(base_url: str) -> Dict[str, str]:
         raise _credential_failure_cache[base_url]
 
     try:
-        r = requests.get(base_url, headers=DEFAULT_HEADER, timeout=30)
+        r = requests.get(base_url, headers=DEFAULT_HEADER, timeout=(5, 30))
         json: dict = r.json()
     except JSONDecodeError:
         error = StorageCredentialError(f"Error while decode json from {base_url}")

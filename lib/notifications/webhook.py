@@ -26,7 +26,7 @@ def send_report_to_webhook(data):
         return
 
     try:
-        response = req.post(webhook_url, json=data, timeout=30)
+        response = req.post(webhook_url, json=data, timeout=(5, 10))
         response.raise_for_status()
     except Exception as e:
         print(f"Failed to send report to webhook: {e}")

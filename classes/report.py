@@ -1,4 +1,5 @@
 import time
+from typing import Optional
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from lib.notifications.webhook import send_report_to_webhook
 from lib.notifications.email import send_notification as send_email_notification
@@ -21,12 +22,12 @@ from models.notification_log import NotificationLog
 
 class Report:
 
-    def send(self, force: bool = False, bqckup: Bqckup = None):
+    def send(self, force: bool = False, bqckup: Optional[Bqckup] = None):
         if Config().read('notification', 'enabled') != '1' and Config().read('notification', 'monthly_report_enabled') != '1':
             return
         
         last_day_of_month = calendar.monthrange(datetime.now().year, datetime.now().month)[1]
-        if datetime.now().day != last_day_of_month:
+        if not force and not is_debug() and datetime.now().day != last_day_of_month:
             return
         
         storages = Storage().list()
