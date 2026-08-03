@@ -20,7 +20,7 @@ from classes.master import Master
 from classes.progress import ProgressSpinner
 from classes.rustic import Rustic, RusticCheckError, RusticCleanError, RusticConfigError
 from classes.s3 import s3
-from classes.storage import Storage
+from classes.storage import Storage, StorageException
 from classes.tar import Tar
 from classes.yml_checker import Yml_Checker
 from classes.yml_parser import Yml_Parser
@@ -38,6 +38,12 @@ from helpers.datetime import (
     interval_in_number,
     time_since,
 )
+from classes.s3 import s3
+from helpers.hook import send_backup_summary, StorageCredentialError
+from helpers.utility import is_debug, now
+from models.log import Log
+from models.notification_log import NotificationLog
+from classes.master import Master
 from helpers.file import remove_folder
 from hashlib import sha256
 from pathlib import Path
@@ -69,10 +75,18 @@ class Bqckup:
 
         try:
             with ProgressSpinner("checking storage connection..."):
-                s3.check_connection()  # check all storage
+                s3.check_connection() # check all storage
+        except StorageCredentialError as e:
+            print(f"[red]Storage connection check failed: {e}[/red]")
+            self._send_notification(
+                site=getattr(e, "storage_name", "unknown"),
+                status="failed",
+                event="credential_failed",
+                title=f"Storage Credential Failed for {getattr(e, 'storage_name', 'unknown')}",
+                message=str(e),
+            )
         except Exception as e:
-            print(f"[red]{e}[/red]")
-            sys.exit()
+            print(f"[red]Storage connection check failed: {e}[/red]")
 
     def _send_notification(
         self,
@@ -156,6 +170,26 @@ class Bqckup:
                 if config.get("options").get("provider") == "s3":
                     Storage().get_storage_detail(config.get("options").get("storage"))
             return True
+        except StorageCredentialError as e:
+            print(f"[red]{e}[/red]")
+            self._send_notification(
+                site=config.get("name"),
+                status="failed",
+                event="credential_failed",
+                title=f"Storage Credential Failed for {config.get('name')}",
+                message=str(e),
+            )
+            return False
+        except StorageException as e:
+            print(f"[red]{e}[/red]")
+            self._send_notification(
+                site=config.get("name"),
+                status="failed",
+                event="storage_error",
+                title=f"Storage Error for {config.get('name')}",
+                message=str(e),
+            )
+            return False
         except Exception as e:
             print(f"[red]Error: {e}[/red]")
             return False
@@ -665,6 +699,16 @@ class Bqckup:
                         if is_debug():
                             traceback.print_exc()
 
+            except StorageCredentialError as e:
+                print(f"[red]{e}[/red]")
+                self._send_notification(
+                    site=backup.get("name"),
+                    status="failed",
+                    event="credential_failed",
+                    title=f"Storage Credential Failed for {backup.get('name')}",
+                    message=str(e),
+                )
+                continue
             except Exception as e:
                 if is_debug():
                     traceback.print_exc()
@@ -958,7 +1002,17 @@ class Bqckup:
 
         if provider == "s3":
             bucket_name = site_config.get("options", {}).get("storage")
-            storage_config = Storage().get_storage_detail(bucket_name)
+            try:
+                storage_config = Storage().get_storage_detail(bucket_name)
+            except StorageCredentialError as e:
+                print(f"[red]{e}[/red]")
+                result["notification"] = {
+                    "status": "failed",
+                    "event": "credential_failed",
+                    "title": f"Storage Credential Failed for {site_config['name']}",
+                    "message": str(e),
+                }
+                return result
         else:
             storage_config = {}
 

@@ -26,7 +26,7 @@ def send_report_to_webhook(data):
         return
 
     try:
-        response = req.post(webhook_url, json=data, timeout=30)
+        response = req.post(webhook_url, json=data, timeout=(5, 10))
         response.raise_for_status()
     except Exception as e:
         print(f"Failed to send report to webhook: {e}")
@@ -46,7 +46,7 @@ def send_report_to_webhook(data):
                 "event": "webhook_failed",
                 "title": "⚠️ Webhook Delivery Failed",
                 "description": (
-                    f"An error occurred while attempting to send notification data to webhook.\n"
+                    f"An error occurred while attempting to send notification data to webhook webhook.\n"
                     f"**Webhook URL:** `{webhook_url}`\n"
                     f"**Target Site:** `{site_name}`\n"
                     f"**Event:** `{event_name}`"
