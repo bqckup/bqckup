@@ -16,15 +16,12 @@ from werkzeug.utils import secure_filename
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..")))
 
-# SECRET_KEY=os.urandom(24)
 SECRET_KEY="secret_key"
 
 app = Flask(__name__)
 
 app.permanent_session_lifetime = timedelta(minutes=30)
 app.secret_key = SECRET_KEY
-# app.cache_type = "SimpleCache"
-# app.cache_default_timeout = 300
 
 app.register_blueprint(auth, url_prefix="/auth/")
 app.register_blueprint(backup, url_prefix="/backup/")

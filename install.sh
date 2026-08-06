@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define variables
-REPO_URL="https://github.com/bqckup/bqckup"
+REPO_URL="https://github.com/bqckup/bqckup/"
 INSTALL_DIR="/usr/bin"
 APP_NAME="bqckup"
 

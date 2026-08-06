@@ -3,9 +3,7 @@ from helpers.hook import get_credential
 from constant import STORAGE_CONFIG_PATH
 from typing import Dict, List, Union
 
-
 class StorageException(Exception): ...
-
 
 class Storage:
     def __init__(self):

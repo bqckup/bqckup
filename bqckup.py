@@ -1,4 +1,5 @@
 import getpass
+import time
 from subprocess import CalledProcessError
 import traceback
 import typer
@@ -28,20 +29,22 @@ from helpers.utility import (
     validate_path,
 )
 from helpers.network import download_files, generate_short_link
+from helpers.hook import StorageCredentialError
 from humanfriendly import format_size, format_timespan
 
 
 bq_cli = typer.Typer()
 
-# @ bq_cli.command()
-# def report():
-#     from classes.report import Report
-#     Report().send()
+@bq_cli.command()
+def report(force: bool = typer.Option(False, "--force", "-f", help="force generate monthly report")):
+    from classes.report import Report
+    Report().send(force=force)
 
 
 @bq_cli.command()
 def migrate():
     from models import database
+    # pyrefly: ignore [missing-import]
     from playhouse.migrate import SqliteMigrator, migrate, IntegerField, FloatField
 
     try:
@@ -63,7 +66,7 @@ def migrate():
 
 
 @bq_cli.command()
-def summary(site: Optional[str] = None):
+def summary(site: Optional[str] = None, watch: bool = typer.Option(False, "--watch", help="Refresh summary until running backups finish")):
     from rich.progress import Progress, SpinnerColumn, TextColumn
     from helpers.datetime import interval_in_number
     from datetime import datetime
@@ -79,145 +82,172 @@ def summary(site: Optional[str] = None):
         print("[yellow]No sites found.[/yellow]")
         return
 
-    for site_config in all_backups:
-        storage_name = site_config["options"]["storage"]
-        backup_name = site_config["name"]
-        is_incremental = Rustic.is_enabled(site_config) and Rustic.is_installed()
-        is_local = site_config.get("options", {}).get("provider") == "local"
-        rustic_stats = None
+    def render_once() -> bool:
+        """Render summary for all sites once. Return True if any backup is running."""
+        any_running = False
 
-        last_log = (
-            Log.select()
-            .where(Log.name == backup_name)
-            .order_by(Log.id.desc())
-            .get_or_none()
-        )
+        for site_config in all_backups:
+            storage_name = site_config["options"]["storage"]
+            backup_name = site_config["name"]
+            is_incremental = Rustic.is_enabled(site_config) and Rustic.is_installed()
+            is_local = site_config.get("options", {}).get("provider") == "local"
+            rustic_stats = None
 
-        last_successful_log = (
-            Log.select()
-            .where((Log.name == backup_name) & (Log.status == Log.__SUCCESS__))
-            .order_by(Log.id.desc())
-            .get_or_none()
-        )
-
-        last_backup_status = "[yellow]N/A[/yellow]"
-        is_running = False
-
-        if last_log:
-            is_running = last_log.status == Log.__ON_PROGRESS__
-            last_backup_status = {
-                Log.__ON_PROGRESS__: "[yellow]On Progress[/yellow]",
-                Log.__SUCCESS__: "[green]Success[/green]",
-                Log.__FAILED__: "[red]Failed[/red]",
-            }.get(last_log.status, "[red]Unknown[/red]")
-
-        next_backup_date = "[yellow]N/A[/yellow]"
-        if last_successful_log:
-            interval = site_config["options"]["interval"]
-            interval_days = interval_in_number(interval)
-            next_backup_date = datetime.fromtimestamp(
-                last_successful_log.created_at + (interval_days * 86400)
-            ).strftime("%d/%m/%Y 00:00:00")
-
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            transient=True,
-        ) as progress:
-            task = progress.add_task(
-                description=f"fetching details for {backup_name}...", total=None
+            last_log = (
+                Log.select()
+                .where(Log.name == backup_name)
+                .order_by(Log.id.desc())
+                .get_or_none()
             )
 
-            dates = []
-            objects = {}
-            if not is_local:
-                _s3 = s3(storage_name)
-                dates = _s3.get_backup_dates(backup_name, sort_by_date=True)
-                objects = {
-                    prefix: obj
-                    for prefix in dates
-                    for obj in _s3.list(prefix=prefix).get("Contents", [])
-                }
-
-            if is_incremental:
-                try:
-                    rustic = Rustic(
-                        site_config=site_config,
-                        storage_config={} if is_local else Storage().get_storage_detail(storage_name),
-                    ).check_and_dump()
-                    rustic_stats = rustic.get_stats()                    
-                    rustic.dump_config(with_credentials=False)
-                except Exception as e:
-                    if is_debug() and isinstance(e, CalledProcessError):
-                        print(e.stderr)
-                    print(f"[red] Failed to get rustic stats, {e} [/red]")
-
-            progress.update(task, completed=True)
-
-        rows = {
-            "Status": "[yellow]Running[/yellow]" if is_running else "[green]Idle[/green]",
-            "Last Backup Status": last_backup_status,
-            "Storage Name": storage_name,
-            "Schedule": site_config["options"]["interval"],
-            "Local Backup": "yes" if site_config["options"]["save_locally"] else "no",
-            "Next Backup": next_backup_date,
-        }
-
-        if objects:
-            total_size = sum([i.get("Size") for i in objects.values()])
-            last_content = dates[-1]
-            last_backup_size = objects[last_content].get("Size")
-            last_modified = objects[last_content]["LastModified"]
-
-            rows.update(
-                {
-                    "Last Backup": last_modified.strftime("%d/%m/%Y %H:%M:%S"),
-                    "Last Backup Size": format_size(last_backup_size),
-                    "Total Backups Size": format_size(total_size),
-                    "Total Files": len(objects),
-                }
+            last_successful_log = (
+                Log.select()
+                .where((Log.name == backup_name) & (Log.status == Log.__SUCCESS__))
+                .order_by(Log.id.desc())
+                .get_or_none()
             )
 
-        if is_incremental and rustic_stats:
-            rows["Incremental Snapshots"] = rustic_stats.get("snapshots_count", "N/A")
-            rows["Repository Size"] = format_size(
-                rustic_stats.get("compressed_repo_size", 0)
+            last_backup_status = "[yellow]N/A[/yellow]"
+            is_running = False
+
+            if last_log:
+                is_running = last_log.status == Log.__ON_PROGRESS__
+                last_backup_status = {
+                    Log.__ON_PROGRESS__: "[yellow]On Progress[/yellow]",
+                    Log.__SUCCESS__: "[green]Success[/green]",
+                    Log.__FAILED__: "[red]Failed[/red]",
+                }.get(last_log.status, "[red]Unknown[/red]")
+
+            next_backup_date = "[yellow]N/A[/yellow]"
+            if last_successful_log:
+                interval = site_config["options"]["interval"]
+                interval_days = interval_in_number(interval)
+                next_backup_date = datetime.fromtimestamp(
+                    last_successful_log.created_at + (interval_days * 86400)
+                ).strftime("%d/%m/%Y 00:00:00")
+
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                transient=True,
+            ) as progress:
+                task = progress.add_task(
+                    description=f"fetching details for {backup_name}...", total=None
+                )
+
+                dates = []
+                objects = {}
+                if not is_local:
+                    _s3 = s3(storage_name)
+                    dates = _s3.get_backup_dates(backup_name, sort_by_date=True)
+                    objects = {
+                        prefix: obj
+                        for prefix in dates
+                        for obj in _s3.list(prefix=prefix).get("Contents", [])
+                    }
+
+                if is_incremental:
+                    try:
+                        rustic = Rustic(
+                            site_config=site_config,
+                            storage_config={} if is_local else Storage().get_storage_detail(storage_name),
+                        ).check_and_dump()
+                        rustic_stats = rustic.get_stats()
+                        rustic.dump_config(with_credentials=False)
+                    except Exception as e:
+                        if is_debug() and isinstance(e, CalledProcessError):
+                            print(e.stderr)
+                        print(f"[red] Failed to get rustic stats, {e} [/red]")
+
+                progress.update(task, completed=True)
+
+            rows = {
+                "Status": "[yellow]Running[/yellow]" if is_running else "[green]Idle[/green]",
+                "Last Backup Status": last_backup_status,
+                "Storage Name": storage_name,
+                "Schedule": site_config["options"]["interval"],
+                "Local Backup": "yes" if site_config["options"]["save_locally"] else "no",
+                "Next Backup": next_backup_date,
+            }
+
+            if objects:
+                total_size = sum([i.get("Size") for i in objects.values()])
+                last_content = dates[-1]
+                last_backup_size = objects[last_content].get("Size")
+                last_modified = objects[last_content]["LastModified"]
+
+                rows.update(
+                    {
+                        "Last Backup": last_modified.strftime("%d/%m/%Y %H:%M:%S"),
+                        "Last Backup Size": format_size(last_backup_size),
+                        "Total Backups Size": format_size(total_size),
+                        "Total Files": len(objects),
+                    }
+                )
+
+            if is_incremental and rustic_stats:
+                rows["Incremental Snapshots"] = rustic_stats.get("snapshots_count", "N/A")
+                rows["Repository Size"] = format_size(
+                    rustic_stats.get("compressed_repo_size", 0)
+                )
+
+            orders = [
+                "Status",
+                "Last Backup",
+                "Last Backup Status",
+                "Last Backup Size",
+                "Total Backups Size",
+                "Total Files",
+                "Repository Size",
+                "Incremental Snapshots",
+                "Storage Name",
+                "Schedule",
+                "Next Backup",
+                "Local Backup",
+            ]
+
+            table = Table(show_header=False, box=None, padding=(0, 2, 0, 0))
+            table.add_column(style="cyan")
+            table.add_column(style="white")
+
+            for key in orders:
+                if not rows.get(key):
+                    continue
+
+                table.add_row(key, f": {rows[key]}")
+
+            # If running, compute elapsed time from log.created_at
+            if last_log and last_log.status == Log.__ON_PROGRESS__:
+                any_running = True
+                elapsed_seconds = int(time.time()) - int(last_log.created_at)
+                table.add_row("Elapsed", f": {format_timespan(elapsed_seconds)}")
+
+            print(
+                Panel(
+                    table,
+                    title=f"Backup Summary for [bold]{backup_name}[/bold]",
+                    border_style="green",
+                    expand=False,
+                    title_align="left",
+                )
             )
 
-        orders = [
-            "Status",
-            "Last Backup",
-            "Last Backup Status",
-            "Last Backup Size",
-            "Total Backups Size",
-            "Total Files",
-            "Repository Size",
-            "Incremental Snapshots",
-            "Storage Name",
-            "Schedule",
-            "Next Backup",
-            "Local Backup",
-        ]
+        return any_running
 
-        table = Table(show_header=False, box=None, padding=(0, 2, 0, 0))
-        table.add_column(style="cyan")
-        table.add_column(style="white")
+    if watch:
+        try:
+            while True:
+                Console().clear()
+                running = render_once()
+                if not running:
+                    break
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\nStopped watching.")
+        return
 
-        for key in orders:
-            if not rows.get(key):
-                continue
-
-            table.add_row(key, f": {rows[key]}")
-
-        print(
-            Panel(
-                table,
-                title=f"Backup Summary for [bold]{backup_name}[/bold]",
-                border_style="green",
-                expand=False,
-                title_align="left",
-            )
-        )
+    # default single render
+    render_once()
 
     print("\nVisit: https://bqckup.com\n")
 
@@ -438,16 +468,22 @@ def run(
         "--incremental/--full",
         help="use incremental backup or create a full tar.gz archive",
     ),
+    report: bool = typer.Option(
+        False,
+        "--report",
+        help="force trigger monthly report generation",
+    ),
 ):
     from classes.report import Report
 
-    Bqckup().backup(
+    bqckup = Bqckup()
+    bqckup.backup(
         force=force,
         site=site,
         incremental=incremental
     )
 
-    Report().send()
+    Report().send(force=report, bqckup=bqckup)
 
 
 @bq_cli.command()
@@ -839,6 +875,29 @@ def restore(
                 storage_config = Storage().get_storage_detail(
                     site_config.get("options").get("storage")
                 )
+        except StorageCredentialError as e:
+            if is_debug():
+                traceback.print_exc()
+
+            print(f"Error while getting credential: {e}")
+
+            from helpers.network import get_server_ip
+            from lib.notifications.webhook import send_report_to_webhook
+            from lib.notifications.email import send_notification as send_email
+
+            payload = {
+                "report_type": "daily",
+                "site": site,
+                "status": "failed",
+                "event": "credential_failed",
+                "title": f"Storage Credential Failed for {site}",
+                "message": str(e),
+                "timestamp": int(__import__("time").time()),
+                "server_ip": get_server_ip(),
+            }
+            send_report_to_webhook(payload)
+            send_email(payload)
+            raise
         except Exception as e:
             if is_debug():
                 traceback.print_exc()
@@ -868,7 +927,7 @@ def restore(
 @bq_cli.command()
 def test_notification():
     """Send a test notification to every configured channel (Discord + Email)."""
-    from lib.notifications.discord import send_notification as send_discord
+    from lib.notifications.webhook import send_report_to_webhook as send_webhook
     from lib.notifications.email import send_notification as send_email
     from helpers.network import get_server_ip
     from helpers.datetime import get_today
@@ -901,7 +960,7 @@ def test_notification():
     }
 
     print(f"Sending test notification to: [cyan]{', '.join(channels)}[/cyan] ...")
-    send_discord(payload)   # no-op unless 'discord' is in channels
+    send_webhook(payload)   # no-op unless 'discord' is in channels
     send_email(payload)     # no-op unless 'email' is in channels
     print("[green]Test notification dispatched. Check your channel(s).[/green]")
 
