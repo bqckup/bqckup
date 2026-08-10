@@ -46,7 +46,7 @@ it is necessary to first create the necessary storage and site configurations. Y
 Once the storage and site configurations have been created, you can run the following command to initiate the backup process:
 
 ```shell
-bqckup run
+sudo bqckup run
 ```
 
 To automate the backup process, you can add the above command to the cron schedule.here is how i do it 

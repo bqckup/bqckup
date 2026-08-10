@@ -1,4 +1,5 @@
-import getpass
+import shlex
+import sys
 import time
 from subprocess import CalledProcessError
 import traceback
@@ -978,6 +979,21 @@ def get_version(version: bool):
         raise typer.Exit()
 
 
+def is_root_user() -> bool:
+    """Return whether the current process has root privileges."""
+    return os.geteuid() == 0
+
+
+def require_root() -> None:
+    """Stop non-root invocations with the command needed to retry as root."""
+    if is_root_user():
+        return
+
+    command = shlex.join(["sudo", "bqckup", *sys.argv[1:]])
+    print(f"Please run this command with sudo: {command}")
+    raise typer.Exit(code=1)
+
+
 @bq_cli.callback()
 def common(
     ctx: typer.Context,
@@ -997,14 +1013,13 @@ def common(
         os.environ["BQCKUP_KEEP_RUSTIC_SECRETS"] = "1"
 
 if __name__ == "__main__":
-    if getpass.getuser() != "root":
-        print("Please run this script as root user")
-    else:
-        from app import initialization
+    require_root()
 
-        try:
-            initialization()
-        except Exception as e:
-            print(f"Failed to initialize, {str(e)}")
-        else:
-            bq_cli()
+    from app import initialization
+
+    try:
+        initialization()
+    except Exception as e:
+        print(f"Failed to initialize, {str(e)}")
+    else:
+        bq_cli()
